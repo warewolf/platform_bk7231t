@@ -34,6 +34,8 @@
 #include "uart_pub.h"
 #include "mem_pub.h"
 
+static beken_mutex_t hal_flash_mutex;
+
 /* Logic partition on flash devices */
 const bk_logic_partition_t bk7231_partitions[BK_PARTITION_MAX] =
 {
@@ -305,6 +307,29 @@ OSStatus test_flash_read_time(volatile uint32_t start_addr, uint32_t len)
 
     os_printf("cost time:%d\r\n", time_end - time_start);
 	
+	return kNoErr;
+}
+
+int hal_flash_lock(void)
+{
+	rtos_lock_mutex(&hal_flash_mutex);
+	return kNoErr;
+}
+
+int hal_flash_unlock(void)
+{
+	rtos_unlock_mutex(&hal_flash_mutex);
+	return kNoErr;
+}
+
+
+int hal_flash_init(void)
+{
+	int ret = 0;
+
+	ret = rtos_init_mutex(&hal_flash_mutex);
+	if (ret != 0)
+		return kGeneralErr;
 	return kNoErr;
 }
 

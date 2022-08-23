@@ -261,6 +261,8 @@ UINT32 save_info_item(NET_INFO_ITEM item,UINT8 *ptr0,UINT8*ptr1,UINT8 *ptr2)
 
 //set TLV header
 	os_memcpy(tmpptr,&head,sizeof(TLV_HEADER_ST));
+
+	hal_flash_lock();
 //assume info cfg tbl size is less than 4k
 #if CFG_SUPPORT_ALIOS
 	offset = 0;
@@ -274,7 +276,8 @@ UINT32 save_info_item(NET_INFO_ITEM item,UINT8 *ptr0,UINT8*ptr1,UINT8 *ptr2)
 	bk_flash_write(BK_PARTITION_NET_PARAM,0,tmpptr,cfg_tbl_len);
 	bk_flash_enable_security(FLASH_PROTECT_ALL);
 #endif
-	
+	hal_flash_unlock();
+
 	os_free(wrbuf);
 	
 	return 1;

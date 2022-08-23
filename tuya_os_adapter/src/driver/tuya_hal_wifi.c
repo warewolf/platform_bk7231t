@@ -44,7 +44,6 @@ typedef struct {
 static WF_WK_MD_E wf_mode = WWM_STATION; //WWM_LOWPOWER
 static SNIFFER_CALLBACK snif_cb = NULL;
 
-static uint8_t ap_not_find = FALSE;
 static SEM_HANDLE scanHandle = NULL;
 
 static bool lp_mode = FALSE;
@@ -583,6 +582,8 @@ int tuya_hal_wifi_station_get_status(WF_STATION_STAT_E *stat)
     {
         switch(type) {
             case RW_EVT_STA_IDLE:                   *stat = WSS_IDLE;               break;
+            case RW_EVT_STA_SCANNING:               *stat = WSS_CONNECTING;         break;
+            case RW_EVT_STA_SCAN_OVER:              *stat = WSS_CONNECTING;         break;
             case RW_EVT_STA_CONNECTING:             *stat = WSS_CONNECTING;         break;
             case RW_EVT_STA_PASSWORD_WRONG:         *stat = WSS_PASSWD_WRONG;       break;
             case RW_EVT_STA_NO_AP_FOUND:            *stat = WSS_NO_AP_FOUND;        break;
@@ -874,7 +875,7 @@ static OPERATE_RET ty_wf_mgnt_frame_thread_init(VOID)
     }
 
     THRD_HANDLE     thrd;    
-    THRD_PARAM_S thrd_param = {2*1024 + 256,TRD_PRIO_3,"wifi_frame_task"};
+    THRD_PARAM_S thrd_param = {2*1024 + 256,TRD_PRIO_1,"wifi_frame_task"};
 
     op_ret = CreateAndStart(&thrd, 
                             NULL,

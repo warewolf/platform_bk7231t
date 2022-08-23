@@ -123,6 +123,7 @@ UINT32 func_init_extended(void)
 UINT32 func_init_basic(void)
 {
     intc_init();
+    hal_flash_init();
 
     return 0;
 }

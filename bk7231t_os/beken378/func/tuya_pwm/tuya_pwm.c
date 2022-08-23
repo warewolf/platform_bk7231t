@@ -79,154 +79,118 @@ void tuya_pwm_stop(uint8 channel_num_1, uint8 channel_num_2)
     ASSERT(PWM_SUCCESS == ret);
 }
 
-// dead_band_2 = end_value - duty_cycle_1 - duty_cycle_2 - dead_band_1 > 0
 void tuya_pwm_reset_duty_cycle(uint8 channel_num_1, uint8 channel_num_2,
-                                           uint32 duty_cycle_1, uint32 duty_cycle_2,
-                                           uint32 end_value, uint32 dead_band_1)
+										uint32 duty_cycle_1, uint32 duty_cycle_2,
+										uint32 end_value, uint32 dead_band_1)
 {
-    UINT32 i_time_out1, i_time_out2;
+	GLOBAL_INT_DECLARATION();
+	UINT32 i_time_out1, i_time_out2, status;
 
-    TPWM_PRT("tuya_pwm_reset_duty_cycle: %d %d %ld %ld %ld %ld\r\n", 
-             channel_num_1, channel_num_2, duty_cycle_1, duty_cycle_2, end_value, dead_band_1);
+	TPWM_PRT("tuya_pwm_reset_duty_cycle: %d %d %ld %ld %ld %ld\r\n", 
+	channel_num_1, channel_num_2, duty_cycle_1, duty_cycle_2, end_value, dead_band_1);
 
-    if ((channel_num_1 >= PWM_COUNT) || (channel_num_2 >= PWM_COUNT))
-    {
-        TPWM_FATAL("tuya_pwm_reset_duty_cycle param 1 error!\r\n");
-        return;
-    }
+	if ((channel_num_1 >= PWM_COUNT) || (channel_num_2 >= PWM_COUNT))
+	{
+		TPWM_FATAL("tuya_pwm_reset_duty_cycle param 1 error!\r\n");
+		return;
+	}
 
-    if (end_value < duty_cycle_1 + duty_cycle_2 + dead_band_1*2)
-    {
-        TPWM_FATAL("tuya_pwm_reset_duty_cycle param 2 error!\r\n");
-        return;
-    }
+	if (end_value < duty_cycle_1 + duty_cycle_2 + dead_band_1*2)
+	{
+		TPWM_FATAL("tuya_pwm_reset_duty_cycle param 2 error!\r\n");
+		return;
+	}
 
-    // disable PWM 1/2 channel
-    *(volatile unsigned long *) (0x00802A80) &= (~((1 << (channel_num_1 * 4))
-                                                | (1 << (channel_num_2 * 4))));
+	// set PWM 1/2 end value
+	*(volatile unsigned long *) (0x00802A80 + 0x08 + (channel_num_1 * 3 * 4)) = end_value;
+	*(volatile unsigned long *) (0x00802A80 + 0x08 + (channel_num_2 * 3 * 4)) = end_value;
 
-    // set PWM 1/2 end value
-    *(volatile unsigned long *) (0x00802A80 + 0x08 + (channel_num_1 * 3 * 4)) = end_value;
-    *(volatile unsigned long *) (0x00802A80 + 0x08 + (channel_num_2 * 3 * 4)) = end_value;
+	// set PWM 1/2 duty cycle
+	*(volatile unsigned long *) (0x00802A80 + 0x0C + (channel_num_1 * 3 * 4)) = duty_cycle_1;
+	*(volatile unsigned long *) (0x00802A80 + 0x0C + (channel_num_2 * 3 * 4)) = duty_cycle_2;
 
-    // set PWM 1/2 duty cycle
-    *(volatile unsigned long *) (0x00802A80 + 0x0C + (channel_num_1 * 3 * 4)) = duty_cycle_1;
-    *(volatile unsigned long *) (0x00802A80 + 0x0C + (channel_num_2 * 3 * 4)) = duty_cycle_2;
 
-    // disable global interrupt
-    *(volatile unsigned long *) (0x00802000 + 0x11 * 4) = 0x00;
-    
-    // cache tuya_pwm_set_duty_cycle function
-    do
-    {
-        char *text, temp;
-        int i;
+	//enable pwm1 and pwm1 int
+	*(volatile unsigned long *) (0x00802040) |= (1 << 9);
+	*(volatile unsigned long *) (0x00802A80) |= (1 << (channel_num_1 * 4));
+	*(volatile unsigned long *) (0x00802A80) |= (1 << (channel_num_1 * 4+1));
 
-        text = (char *)tuya_pwm_reset_duty_cycle;
-        for (i = 0; i < 0x400; i ++)
-        {
-            temp = text[i];
-        }
-    } while(0);
+	GLOBAL_INT_DISABLE();
 
-    // delay
-    {
-        uint32 slot1, t;
-        volatile uint32 slot2;
+	while(1)
+	{  	
+		//wait pwm int
+		status = *(volatile unsigned long *) (0x0080204C);
+		if(status & (1 << 9))
+		{	
+			break;
+		}
+	}
 
-        *(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
-        i_time_out1 = 0;
-        while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
-        {
-            i_time_out1 ++;
-            if (i_time_out1 > (120 * 1000))
-            {
-                break;
-            }
-        }
-        slot1 = *(volatile unsigned long *) (0x00802A14);
+	// disable PWM 2 channel
+	*(volatile unsigned long *) (0x00802A80) &= (~((1 << (channel_num_2 * 4))));
+					   
+	// cache tuya_pwm_set_duty_cycle function
+	do
+	{
+		char *text, temp;
+		int i;
 
-        t = dead_band_1 + slot1;
-        i_time_out1 = 0;
-        while (1)
-        {
-            *(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
-            i_time_out2 = 0;
-            while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
-            {
-                i_time_out2 ++;
-                if (i_time_out2 > (120 * 1000))
-                {
-                    break;
-                }
-            }
-            slot2 = *(volatile unsigned long *) (0x00802A14);
-            if (slot2 >= t)
-            {
-                break;
-            }
+		text = (char *)tuya_pwm_reset_duty_cycle;
+		for (i = 0; i < 0x400; i ++)
+		{
+			temp = text[i];
+		}
+	} while(0);
 
-            i_time_out1 ++;
-            if (i_time_out1 > (120 * 1000))
-            {
-                break;
-            }
-        }
-    }
-	
-    // enable PWM channel 1
-    *(volatile unsigned long *) (0x00802A80) |= (1 << (channel_num_1 * 4));
+	// delay
+	{
+		uint32 slot1, t;
+		volatile uint32 slot2;
 
-    // delay
-    {
-        uint32 slot1, t;
-        volatile uint32 slot2;
+		*(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
+		i_time_out1 = 0;
+		while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
+		{
+			i_time_out1 ++;
+			if (i_time_out1 > (120 * 1000))
+			{
+				break;
+			}
+		}
+		slot1 = *(volatile unsigned long *) (0x00802A14);
 
-        *(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
-        i_time_out1 = 0;
-        while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
-        {
-            i_time_out1 ++;
-            if (i_time_out1 > (120 * 1000))
-            {
-                break;
-            }
-        }
-        slot1 = *(volatile unsigned long *) (0x00802A14);
+		//pwm int time about 5us
+		t = duty_cycle_1 + dead_band_1 + slot1;
+		i_time_out1 = 0;
+		while (1)
+		{
+			*(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
+			i_time_out2 = 0;
+			while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
+			{
+				i_time_out2 ++;
+				if (i_time_out2 > (120 * 1000))
+				{
+					break;
+				}
+			}
+			slot2 = *(volatile unsigned long *) (0x00802A14);
+			if (slot2 >= t)
+			{
+				break;
+			}
 
-        t = duty_cycle_1 + dead_band_1 + slot1;
-        i_time_out1 = 0;
-        while (1)
-        {
-            *(volatile unsigned long *) (0x00802A10) = (1 << 2) | (1 << 0);
-            i_time_out2 = 0;
-            while ((*(volatile unsigned long *) (0x00802A10)) & (1 << 0))
-            {
-                i_time_out2 ++;
-                if (i_time_out2 > (120 * 1000))
-                {
-                    break;
-                }
-            }
-            slot2 = *(volatile unsigned long *) (0x00802A14);
-            if (slot2 >= t)
-            {
-                break;
-            }
+			i_time_out1 ++;
+			if (i_time_out1 > (120 * 1000))
+			{
+				break;
+			}
+		}
+	}
 
-            i_time_out1 ++;
-            if (i_time_out1 > (120 * 1000))
-            {
-                break;
-            }
-        }
-    }
-
-    // enable PWM channel 1/2
-    *(volatile unsigned long *) (0x00802A80) |= (1 << (channel_num_1 * 4))
-                                            | (1 << (channel_num_2 * 4));
-
-    // enable global interrupt
-    *(volatile unsigned long *) (0x00802000 + 0x11 * 4) = 0x03;
+	// enable PWM channel 1/2
+	*(volatile unsigned long *) (0x00802A80) |= (1 << (channel_num_1 * 4))
+					   						  | (1 << (channel_num_2 * 4));
+	GLOBAL_INT_RESTORE();
 }
-

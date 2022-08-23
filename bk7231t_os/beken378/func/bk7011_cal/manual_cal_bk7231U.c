@@ -1237,6 +1237,8 @@ write_again:
 
     os_memcpy(read_buf+addr_offset, buf, len);
 
+	hal_flash_lock();
+
 	#if CFG_SUPPORT_ALIOS
 	hal_flash_dis_secure(0, 0, 0);
 	#else
@@ -1251,6 +1253,7 @@ write_again:
     if(status != FLASH_SUCCESS) {
         MCAL_FATAL("save txpwr tab to flash failed\r\n");
         ret = 1;
+    	hal_flash_unlock();
         goto updata_exit;
     }
 	
@@ -1259,6 +1262,7 @@ write_again:
 	#else
 	bk_flash_enable_security(FLASH_PROTECT_ALL);
 	#endif
+	hal_flash_unlock();
 
     {
         UINT8 *check_buf = read_buf, *org_buf = (UINT8 *)buf;

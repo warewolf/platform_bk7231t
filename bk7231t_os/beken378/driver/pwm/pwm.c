@@ -154,11 +154,6 @@ static void init_pwm_param(pwm_param_t *pwm_param, UINT8 enable)
 		pwm_gpio_configuration(pwm_param->channel, enable);
 #endif
 	}
-
-    value = REG_READ(PWM_CTL);
-    value = (value & (~(0x0F << (0x04 *  pwm_param->channel))))
-            | ((pwm_param->cfg.val & 0x0F) << (0x04 * pwm_param->channel));
-    REG_WRITE(PWM_CTL, value);
 	
 #if (CFG_SOC_NAME == SOC_BK7231)
     value = (((UINT32)pwm_param->duty_cycle & 0x0000FFFF) << 16)
@@ -172,6 +167,11 @@ static void init_pwm_param(pwm_param_t *pwm_param, UINT8 enable)
     REG_WRITE(REG_APB_BK_PWMn_DC_ADDR(pwm_param->channel), value);
 #endif
 
+    value = REG_READ(PWM_CTL);
+    value = (value & (~(0x0F << (0x04 *  pwm_param->channel))))
+            | ((pwm_param->cfg.val & 0x0F) << (0x04 * pwm_param->channel));
+    REG_WRITE(PWM_CTL, value);
+	
     p_PWM_Int_Handler[pwm_param->channel] = pwm_param->p_Int_Handler;
 
     pwm_icu_configuration(pwm_param, enable);

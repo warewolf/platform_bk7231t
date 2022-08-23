@@ -189,6 +189,34 @@ OSStatus bk_flash_enable_security(PROTECT_TYPE type );
 OSStatus BkFlashDisableSecurity( bk_partition_t partition, uint32_t off_set, uint32_t size );
 #endif
 
+/**@brief    Take lock before oprition on flash sr,erase,write.
+ *           If can not get will be blocked.
+ *
+ * @param    None
+ *
+ * @return    kNoErr        : On success.
+ * @return    kGeneralErr   : If an error occurred with any step
+ */
+int hal_flash_lock(void);
+
+/**@brief    Release lock after oprition flash.
+ *
+ * @param    None
+ *
+ * @return    kNoErr        : On success.
+ * @return    kGeneralErr   : If an error occurred with any step
+ */
+int hal_flash_unlock(void);
+
+/**@brief    init flash oprition mutex.
+ *
+ * @param    None
+ *
+ * @return    kNoErr        : On success.
+ * @return    kGeneralErr   : If an error occurred with any step
+ */
+int hal_flash_init(void);
+
 
 /** @} */
 /** @} */

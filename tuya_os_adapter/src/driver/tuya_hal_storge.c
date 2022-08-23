@@ -56,6 +56,7 @@ static UF_PARTITION_TABLE_S uf_file = {
     }
 };
 
+
 /***********************************************************
 *************************function define********************
 ***********************************************************/
@@ -71,11 +72,14 @@ int tuya_hal_flash_read(const uint32_t addr, uint8_t *dst, const uint32_t size)
     if(NULL == dst) {
         return OPRT_INVALID_PARM;
     }
+	hal_flash_lock();
 
     DD_HANDLE flash_handle;
     flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
     ddev_read(flash_handle, dst, size, addr);
     ddev_close(flash_handle);
+    
+	hal_flash_unlock();
 
     return OPRT_OK;
 }
@@ -112,6 +116,8 @@ int tuya_hal_flash_write(const uint32_t addr, const uint8_t *src, const uint32_t
         return OPRT_INVALID_PARM;
     }
 
+	hal_flash_lock();
+
     protect_flag = __uni_flash_is_protect_all();
     flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
 
@@ -123,13 +129,19 @@ int tuya_hal_flash_write(const uint32_t addr, const uint8_t *src, const uint32_t
     
     ddev_write(flash_handle, (char *)src, size, addr);
 
+    protect_flag = __uni_flash_is_protect_all();
+
 	if(protect_flag)
 	{
         param = FLASH_PROTECT_ALL;
         ddev_control(flash_handle, CMD_FLASH_SET_PROTECT, (void *)&param);
     }
+
+
+
     
     ddev_close(flash_handle);
+	hal_flash_unlock();
 
     return OPRT_OK;
 }
@@ -151,6 +163,8 @@ int tuya_hal_flash_erase(const uint32_t addr, const uint32_t size)
     uint32_t  param;
     uint32_t protect_flag;
 
+	hal_flash_lock();
+
     protect_flag = __uni_flash_is_protect_all();
     flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
 
@@ -165,6 +179,8 @@ int tuya_hal_flash_erase(const uint32_t addr, const uint32_t size)
         ddev_control(flash_handle, CMD_FLASH_ERASE_SECTOR,(void*)(&sector_addr));
     }
 
+    protect_flag = __uni_flash_is_protect_all();
+
     if(protect_flag)
     {
         param = FLASH_PROTECT_ALL;
@@ -172,6 +188,8 @@ int tuya_hal_flash_erase(const uint32_t addr, const uint32_t size)
     }
     
     ddev_close(flash_handle);
+
+	hal_flash_unlock();
      
     return OPRT_OK;
 }
@@ -219,4 +237,5 @@ int tuya_hal_flash_set_protect(const bool enable)
     ddev_close(flash_handle);
     return OPRT_OK;
 }
+
 
