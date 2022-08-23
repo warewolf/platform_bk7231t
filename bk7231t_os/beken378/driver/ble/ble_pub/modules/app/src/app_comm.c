@@ -221,7 +221,6 @@ static int bk_ble_enable_rsp_handler(kernel_msg_id_t const msgid,
 static int bk_ble_gattc_cmp_evt_handler(kernel_msg_id_t const msgid,  struct bk_ble_gattc_cmp_evt const *param,
                                  kernel_task_id_t const dest_id, kernel_task_id_t const src_id)
 {	
-    bk_printf("%s,operation = %x,status = 0x%x,att_id = 0x%x\r\n",__func__,param->operation,param->status,param->att_id);
 	if(param->operation == GATTC_INDICATE || param->operation == GATTC_NOTIFY)
 	{
 		if(ble_event_cb)

@@ -223,15 +223,15 @@ STATIC VOID __mqtt_monitor_tm_cb(UINT_T timerID,PVOID_T pTimerArg)
                 last_nw_stat = cur_nw_stat;
                 check_cnt = 0;
             
-                SCHAR_T rssi = 0;
-                op_ret = wf_station_get_conn_ap_rssi(&rssi);
+                //SCHAR_T rssi = 0;
+                //op_ret = wf_station_get_conn_ap_rssi(&rssi);
 
-                if(OPRT_OK == op_ret && rssi < -75) {
-                    PR_DEBUG("rssi:%d", rssi);
+                //if(OPRT_OK == op_ret && rssi < -75) {
+                    //PR_DEBUG("rssi:%d", rssi);
                     //关闭蓝牙
                     PR_DEBUG("++++++++++++++++ disable bluetooth ++++++++++");
                     tuya_bt_close();
-                }
+                //}
                 
                 sys_start_timer(tm_monitor, APP_MQTT_MONITOR_TIMER * 1000, TIMER_ONCE);
             } else {

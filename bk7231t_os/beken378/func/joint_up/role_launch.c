@@ -109,6 +109,22 @@ static void rl_sta_fast_connect(RL_BSSID_INFO_PTR bssid_info)
 
 	bk_wlan_start_sta_adv(&inNetworkInitParaAdv);
 }
+
+void rl_clear_bssid_info(void)
+{
+	DD_HANDLE flash_hdl;
+	uint32_t status, addr;
+	uint8_t protect_flag, protect_param;
+	
+	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
+	ddev_control(flash_hdl, CMD_FLASH_GET_PROTECT, &protect_flag);
+	protect_param = FLASH_PROTECT_NONE;
+	ddev_control(flash_hdl, CMD_FLASH_SET_PROTECT, (void *)&protect_param);
+	addr = BSSID_INFO_ADDR;
+	ddev_control(flash_hdl, CMD_FLASH_ERASE_SECTOR, (void *)&addr);
+	ddev_control(flash_hdl, CMD_FLASH_SET_PROTECT, (void *)&protect_flag);
+	ddev_close(flash_hdl);
+}
 #endif
 
 uint32_t rl_launch_sta(void)
@@ -783,6 +799,17 @@ void rl_sta_request_start(LAUNCH_REQ *req)
 				&& os_strcmp(req->descr.wifi_key, bssid_info.pwd) == 0)
 			{
 				bk_printf("fast_connect\r\n");
+                if(rl_pre_sta_get_status() == RL_STATUS_STA_SCANNING)
+                {
+                    os_printf("[wzl]It's scanning, terminate scan!\r\n");
+                    extern  void scan_fast_terminate(void);
+                    scan_fast_terminate();
+                    while(rl_pre_sta_get_status() == RL_STATUS_STA_SCANNING)
+                    {
+                        rtos_delay_milliseconds(20);
+                    }
+                }
+                
 				rl_sta_fast_connect(&bssid_info);
 			}
 			else

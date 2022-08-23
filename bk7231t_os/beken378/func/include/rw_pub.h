@@ -137,19 +137,23 @@ typedef enum
 {
     /* for station mode */
 	RW_EVT_STA_IDLE = 0,
+	RW_EVT_STA_SCANNING,
+	RW_EVT_STA_SCAN_OVER,
 	RW_EVT_STA_CONNECTING,
 	RW_EVT_STA_BEACON_LOSE,
 	RW_EVT_STA_PASSWORD_WRONG,
 	RW_EVT_STA_NO_AP_FOUND,
 	RW_EVT_STA_ASSOC_FULL,
     RW_EVT_STA_DISCONNECTED,    /* disconnect with server */
-    RW_EVT_STA_CONNECT_FAILED, /* authentication failed */
-	RW_EVT_STA_CONNECTED,	 /* authentication success */
-	RW_EVT_STA_GOT_IP,
+    RW_EVT_STA_CONNECT_FAILED,  /* authentication failed */
+	RW_EVT_STA_CONNECTED,	    /* authentication success */	
+	RW_EVT_STA_GOT_IP, 
+	
     /* for softap mode */
     RW_EVT_AP_CONNECTED,          /* a client association success */
-    RW_EVT_AP_DISCONNECTED,    /* a client disconnect */
-    RW_EVT_AP_CONNECT_FAILED, /* a client association failed */
+    RW_EVT_AP_DISCONNECTED,       /* a client disconnect */
+    RW_EVT_AP_CONNECT_FAILED,     /* a client association failed */
+    
     RW_EVT_MAX
 }rw_evt_type;
 

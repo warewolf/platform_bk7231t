@@ -509,7 +509,9 @@ void bk_wlan_terminate_sta_rescan(void)
 }
 
 void bk_wlan_sta_init(network_InitTypeDef_st *inNetworkInitPara)
-{
+{	
+    mhdr_set_station_status(RW_EVT_STA_IDLE);
+	
     if(!g_sta_param_ptr)
     {
         g_sta_param_ptr = (sta_param_t *)os_zalloc(sizeof(sta_param_t));
@@ -713,6 +715,8 @@ void bk_wlan_start_assign_scan(UINT8 **ssid_ary, UINT8 ssid_num)
 
 void bk_wlan_sta_init_adv(network_InitTypeDef_adv_st *inNetworkInitParaAdv)
 {
+    mhdr_set_station_status(RW_EVT_STA_IDLE);
+	
     if(!g_sta_param_ptr)
     {
         g_sta_param_ptr = (sta_param_t *)os_zalloc(sizeof(sta_param_t));

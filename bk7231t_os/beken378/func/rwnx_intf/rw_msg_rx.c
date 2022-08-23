@@ -540,7 +540,6 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 			switch (status_ind->status)
 			{
 				case WLAN_REASON_PREV_AUTH_NOT_VALID:
-				case WLAN_REASON_DEAUTH_LEAVING:
 				case WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT:
 					param = RW_EVT_STA_PASSWORD_WRONG;
 					break;
@@ -549,6 +548,7 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 					param = RW_EVT_STA_ASSOC_FULL;
 					break;
 		
+				case WLAN_REASON_DEAUTH_LEAVING:
 				default:
 					param = RW_EVT_STA_CONNECT_FAILED;
 					break;

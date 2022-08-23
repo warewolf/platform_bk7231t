@@ -290,6 +290,9 @@ enum mm_msg_tag
 	MM_GET_CHANNEL_REQ,
 	MM_GET_CHANNEL_CFM,
 
+	///Beacon tagged parameters change
+	MM_TAGGED_PARAM_CHANGE,
+
     /// MAX number of messages
     MM_MAX,
 };

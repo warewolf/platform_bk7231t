@@ -58,8 +58,8 @@ struct interface {
 };
 FUNCPTR sta_connected_func;
 
-static struct interface g_mlan;
-static struct interface g_uap;
+static struct interface g_mlan = {{0}};
+static struct interface g_uap = {{0}};
 net_sta_ipup_cb_fn sta_ipup_cb = NULL;
 
 extern void *net_get_sta_handle(void);
@@ -383,18 +383,21 @@ void sta_ip_down(void)
 
 void sta_ip_start(void)
 {
-	if(!sta_ip_start_flag)
-	{
-		os_printf("sta_ip_start\r\n");
-		sta_ip_start_flag = 1;
-		net_configure_address(&sta_ip_settings, net_get_sta_handle());
-	}
-    else
+    struct wlan_ip_config address = {0};
+
+    if(!sta_ip_start_flag)
     {
-        if(mhdr_get_station_status() == RW_EVT_STA_CONNECTED)
-        {
-            mhdr_set_station_status(RW_EVT_STA_GOT_IP);
-        }
+        os_printf("sta_ip_start\r\n");
+        sta_ip_start_flag = 1;
+        net_configure_address(&sta_ip_settings, net_get_sta_handle());
+        return;
+    }
+
+    net_get_if_addr(&address, net_get_sta_handle());
+    if((mhdr_get_station_status() == RW_EVT_STA_CONNECTED)
+    && (0 != address.ipv4.address))
+    {
+        mhdr_set_station_status(RW_EVT_STA_GOT_IP);
     }
 }
 

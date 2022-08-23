@@ -634,7 +634,7 @@ void wpa_bss_update_scan_res(struct wpa_supplicant *wpa_s,
 			     struct wpa_scan_res *res,
 			     struct os_reltime *fetch_time)
 {
-	const u8 *ssid, *p2p, *mesh;
+	const u8 *ssid, *p2p;
 	struct wpa_bss *bss;
 
 	if (wpa_s->conf->ignore_old_scan_res) {
@@ -683,11 +683,10 @@ void wpa_bss_update_scan_res(struct wpa_supplicant *wpa_s,
 		return; /* Skip P2P listen discovery results here */
 
 	/* TODO: add option for ignoring BSSes we are not interested in
-	 * (to save memory) */
-
+	 * (to save memory) 
 	mesh = wpa_scan_get_ie(res, WLAN_EID_MESH_ID);
 	if (mesh && mesh[1] <= SSID_MAX_LEN)
-		ssid = mesh;
+		ssid = mesh;*/
 
 	bss = wpa_bss_get(wpa_s, res->bssid, ssid + 2, ssid[1]);
 	if (bss == NULL)

@@ -528,6 +528,7 @@ int wpa_send_scan_req(struct prism2_hostapd_param *param, int len)
     scan_param.bssid = mac_addr_bcst;
     scan_param.vif_idx = param->vif_idx;
 
+	mhdr_set_station_status(RW_EVT_STA_SCANNING);
     return rw_msg_send_scanu_req(&scan_param);
 }
 
@@ -539,6 +540,8 @@ int wpa_get_scan_rst(struct prism2_hostapd_param *param, int len)
 	FUNC_1PARAM_PTR fn;
     int i, ret = 0;
 	u32 val;
+
+	mhdr_set_station_status(RW_EVT_STA_SCAN_OVER);
 
     if(NULL == s_scan_result_upload_ptr)
     {
@@ -648,7 +651,6 @@ int wpa_send_disconnect_req(struct prism2_hostapd_param *param, int len)
 	switch(disconnect_param.reason_code)
 	{
 		case WLAN_REASON_PREV_AUTH_NOT_VALID:
-		case WLAN_REASON_DEAUTH_LEAVING:
 		case WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT:
 			val = RW_EVT_STA_PASSWORD_WRONG;
 			break;
@@ -657,10 +659,12 @@ int wpa_send_disconnect_req(struct prism2_hostapd_param *param, int len)
 			val = RW_EVT_STA_ASSOC_FULL;
 			break;
 	
+		case WLAN_REASON_DEAUTH_LEAVING:
 		default:
 			val = RW_EVT_STA_CONNECT_FAILED;
 			break;
 	}
+	
 	fn = bk_wlan_get_status_cb();
 	if(fn)
 	{

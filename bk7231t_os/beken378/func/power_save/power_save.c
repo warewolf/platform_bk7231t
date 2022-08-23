@@ -24,6 +24,7 @@
 #include "start_type_pub.h"
 
 volatile static PS_MODE_STATUS    bk_ps_mode = PS_NO_PS_MODE;
+UINT32 last_rw_time = 0;
 
 #if CFG_USE_STA_PS
 static STA_PS_INFO bk_ps_info =
@@ -255,6 +256,12 @@ bool power_save_sleep(void)
              | CO_BIT(FIQ_DPLL_UNLOCK));
     REG_WRITE(ICU_INTERRUPT_ENABLE, reg);
 #if NX_POWERSAVE
+	last_rw_time = nxmac_monotonic_counter_2_lo_get();
+
+	if ( last_rw_time == 0xdead5555 ) {
+		bk_printf ( "XXXXXXXXXXXXXXXXXXXXXXXX TIME DEAD\r\n" );
+	}
+
     ret = rwnxl_sleep(power_save_gops_wait_idle_int_cb, power_save_mac_idle_callback);
 
     if(false == ret)

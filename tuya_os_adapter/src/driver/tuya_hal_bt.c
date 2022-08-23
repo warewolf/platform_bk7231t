@@ -30,7 +30,6 @@ bk_attm_desc_t btl_att_db[6] =
 	//  Level Characteristic Value
 	//[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
 	[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE)|BK_PERM_SET(WRITE_COMMAND, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
-	
 	[3]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
 	//  Level Characteristic Value
 	[4]        =   {0x2b10,   BK_PERM_SET(NTF, ENABLE) , BK_PERM_SET(RI, ENABLE) , 20},
@@ -56,7 +55,7 @@ void ble_write_callback(write_req_t *write_req)
         data.data = write_req->value;
         data.len = write_req->len;
 
-        bk_printf("%s len:%d\r\n", __FUNCTION__, data.len);
+        os_printf("%s len:%d\r\n", __FUNCTION__, data.len);
         if(ty_bt_msg_cb!=NULL)
             ty_bt_msg_cb(0, TY_BT_EVENT_RX_DATA, &data);
     }
@@ -139,7 +138,7 @@ void ble_event_callback(ble_event_t event, void *param)
             bk_printf("BLE_CFG_INDICATE:%d\r\n", *(uint16_t *)param);
         break;
         case BLE_TX_DONE:
-            bk_printf("BLE_TX_DONE\r\n");
+            os_printf("BLE_TX_DONE\r\n");
 			ble_att_flag = 0;
         break;
         case BLE_GEN_DH_KEY:
@@ -243,7 +242,7 @@ OPERATE_RET tuya_hal_bt_gap_disconnect(void)
 
 OPERATE_RET tuya_hal_bt_send(BYTE_T *data, UINT8_T len)
 {
-    bk_printf("!!!!!!!!!!tuya_bt_send\r\n");
+    os_printf("!!!!!!!!!!tuya_bt_send\r\n");
 	while(ble_att_flag == 1){
 		rtos_delay_milliseconds(1);
 	}
