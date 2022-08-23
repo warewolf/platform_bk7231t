@@ -423,6 +423,7 @@ OPERATE_RET __mf_gw_upgrade_notify_cb(VOID)
     pTempbuf = Malloc(BUF_SIZE);
     if(pTempbuf == NULL) {
         PR_ERR("Malloc failed!!");
+        return OPRT_MALLOC_FAILED;
     }
 
     for(i = 0; i < ug_proc->file_header.bin_len; i += BUF_SIZE) {
@@ -463,6 +464,7 @@ STATIC VOID __gw_upgrade_notify_cb(IN CONST FW_UG_S *fw, IN CONST INT_T download
         pTempbuf = Malloc(BUF_SIZE);
         if(pTempbuf == NULL){
             PR_ERR("Malloc failed!!");
+            return;
         }
         for(i = 0; i < ug_proc->file_header.bin_len; i += BUF_SIZE){
             rlen  = ((ug_proc->file_header.bin_len - i) >= BUF_SIZE) ? BUF_SIZE : (ug_proc->file_header.bin_len - i);
