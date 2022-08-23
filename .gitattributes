@@ -1,0 +1,18 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# binary things.
+*.bin -crlf -diff -merge -text
+*.enc -crlf -diff -merge -text
+*.exe -crlf -diff -merge -text
+*.a -crlf -diff -merge -text
+bk7231t_os/tools/generate/* -crlf -diff -merge -text
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.c text
+*.h text
+
+# Declare files that will always have CRLF line endings on checkout.
+*.sln text eol=crlf
+*.vcproj text eol=crlf

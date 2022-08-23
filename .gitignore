@@ -1,0 +1,15 @@
+*.o
+*.d
+*.map
+*.nmap
+bk7231t_os/Debug
+bk7231t_os/.ver
+bk7231t_os/tools/generate/config.json
+bk7231t_os/tools/generate/*.cpr
+bk7231t_os/tools/generate/*.out
+bk7231t_os/tools/generate/*.bin
+!bk7231t_os/tools/generate/bootloader.bin
+!bk7231t_os/tools/generate/bootloader_enc.bin
+!bk7231t_os/tools/generate/package.bin
+qt_proj/
+toolchain/gcc-arm-none-eabi-4_9-2015q1
