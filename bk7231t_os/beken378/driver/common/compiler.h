@@ -29,5 +29,10 @@
 #define __PACKED16                __attribute__( ( packed ) )
 #define __PACKED                  __attribute__( ( packed ) )
 
+#ifndef likely
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+#endif
+
 #endif // _COMPILER_H_
 

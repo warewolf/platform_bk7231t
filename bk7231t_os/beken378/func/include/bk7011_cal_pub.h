@@ -137,6 +137,7 @@ extern UINT8 manual_cal_read_otp_flash(UINT32 addr, UINT32 len, UINT8 *buf);
 extern UINT32 manual_cal_load_default_txpwr_tab(UINT32 is_ready_flash);
 extern void manual_cal_set_dif_g_n40(UINT32 diff);
 extern void manual_cal_set_dif_g_n20(UINT32 diff);
+extern void manual_cal_set_dif_g_ble(int dif_ch0, int dif_ch19, int dif_ch39);
 extern void manual_cal_get_current_temperature(void);
 extern int manual_cal_write_macaddr_to_flash(UINT8 *mac_ptr);
 extern int manual_cal_get_macaddr_from_flash(UINT8 *mac_ptr);

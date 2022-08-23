@@ -135,12 +135,16 @@ void ble_switch_rf_to_wifi(void)
 {
     // if in ble dut mode, no need change back to wifi any more.
     // ble dut mode can not exit until power off
-  //  if (!is_rf_switch_to_ble() || power_save_if_rf_sleep())
+    // if (!is_rf_switch_to_ble() || power_save_if_rf_sleep())
   	if (!is_rf_switch_to_ble())
         return;
 
     GLOBAL_INT_DECLARATION();
     GLOBAL_INT_DISABLE();
+
+    sddev_control(SCTRL_DEV_NAME, CMD_BLE_RF_BIT_CLR, NULL);
+    ble_switch_mac_sleeped = 0;
+
 #if ATE_APP_FUN
     if(!get_ate_mode_state())
 #endif
@@ -150,10 +154,9 @@ void ble_switch_rf_to_wifi(void)
     
     rwnx_cal_ble_recover_rfconfig();
     
-    sddev_control(SCTRL_DEV_NAME, CMD_BLE_RF_BIT_CLR, NULL);
     extern void sctrl_set_rf_sleep(void);
     sctrl_set_rf_sleep();//after swtich wifi check if can stop rf
-	ble_switch_mac_sleeped = 0;
+
 	if(power_save_if_rf_sleep())
 	{
 		GLOBAL_INT_RESTORE();
@@ -168,7 +171,6 @@ void ble_switch_rf_to_wifi(void)
         }
     }
 
-
 	if (!power_save_if_rf_sleep())
 	{
         power_save_rf_ps_wkup_semlist_set();
@@ -178,7 +180,6 @@ void ble_switch_rf_to_wifi(void)
     //Re-enable MAC interrupts
     nxmac_enable_master_gen_int_en_setf(1);
     nxmac_enable_master_tx_rx_int_en_setf(1);
-
     //PS_DEBUG_RF_UP_TRIGER;
 }
 

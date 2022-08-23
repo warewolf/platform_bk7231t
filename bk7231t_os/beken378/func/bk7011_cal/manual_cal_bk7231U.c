@@ -46,6 +46,10 @@
 #define MOD_DIST_G_BW_N20                 (2)     // bk7231 is 2
 #define MOD_DIST_G_BW_N40                 (3)
 
+#define MOD_DIST_G_BW_BLE_CH0             (0)
+#define MOD_DIST_G_BW_BLE_CH19            (2)
+#define MOD_DIST_G_BW_BLE_CH39            (1)
+
 #define TXPWR_ELEM_INUSED                 (0)
 #define TXPWR_ELEM_UNUSED                 (1)
 
@@ -316,6 +320,10 @@ UINT32 g_cur_temp = DEFAULT_TXID_THERMAL;
 UINT32 g_cur_temp_flash = DEFAULT_TXID_THERMAL;
 UINT32 g_lpf_cal_i = DEFAULT_TXID_LPF_CAP_I, g_lpf_cal_q = DEFAULT_TXID_LPF_CAP_Q;
 UINT32 g_xtal = DEFAULT_TXID_XTAL;
+
+int g_dif_g_ble_ch0 = MOD_DIST_G_BW_BLE_CH0;
+int g_dif_g_ble_ch19 = MOD_DIST_G_BW_BLE_CH19;
+int g_dif_g_ble_ch39 = MOD_DIST_G_BW_BLE_CH39;
 
 #define CALI_STATUS_PASS       1
 #define CALI_STATUS_FAIL       0
@@ -606,7 +614,7 @@ int manual_cal_get_txpwr(UINT32 rate, UINT32 channel, UINT32 bandwidth, UINT32 *
     // for ble
     if(rate == EVM_DEFUALT_BLE_RATE)
     {
-        if(channel > BLE_2_4_G_CHANNEL_NUM) {
+        if(channel > (BLE_2_4_G_CHANNEL_NUM - 1)) {
             MCAL_WARN("ble wrong channel:%d\r\n", channel);
             return 0;
         }
@@ -705,7 +713,9 @@ void manual_cal_show_txpwr_tab(void)
     MCAL_PRT("\r\nsys temper:%d\r\n", g_cur_temp);
     MCAL_PRT("sys xtal:%d\r\n", g_xtal);
     MCAL_PRT("TSSI:%d\r\n", gtx_tssi_thred);
-	
+    MCAL_PRT("DIST_g n20:%d, n40:%d, ble-ch0:%d, ch19:%d, ch39:%d\r\n", 
+        g_dif_g_n20, g_dif_g_n40, g_dif_g_ble_ch0, g_dif_g_ble_ch19, g_dif_g_ble_ch39);
+    
     bk7011_cal_dcormod_show();
 }
 
@@ -762,6 +772,141 @@ static void manual_cal_do_fitting(TXPWR_PTR dst, TXPWR_PTR srclow, TXPWR_PTR src
     SET_TXPWR_FLAG(dst, TXPWR_ELEM_INUSED);
 }
 
+static void manual_cal_do_ble_fitting(void)
+{
+    int i = 0;
+    TXPWR_PTR tab_ptr = NULL;
+    // for ble
+    tab_ptr = gtxpwr_tab_ble;
+    if((GET_TXPWR_FLAG(&tab_ptr[0]) == TXPWR_ELEM_INUSED)       // ch0
+      ||(GET_TXPWR_FLAG(&tab_ptr[19]) == TXPWR_ELEM_INUSED)     // ch19
+      ||(GET_TXPWR_FLAG(&tab_ptr[39]) == TXPWR_ELEM_INUSED) )  // ch39
+    {  
+        UINT32 flag = 0;
+        TXPWR_PTR base = NULL;
+        MCAL_WARN("txpwr table for ble ch0/19/39 inused\r\n");
+
+        if(GET_TXPWR_FLAG(&tab_ptr[0]) == TXPWR_ELEM_INUSED)
+        {
+            flag |= 0x01;
+            base = &tab_ptr[0];
+        }
+        if(GET_TXPWR_FLAG(&tab_ptr[19]) == TXPWR_ELEM_INUSED)
+        {
+            flag |= 0x02;
+            base = &tab_ptr[19];
+        }
+        if(GET_TXPWR_FLAG(&tab_ptr[39]) == TXPWR_ELEM_INUSED)
+        {
+            flag |= 0x04;
+            base = &tab_ptr[39];
+        }
+        //printf("0x%x\r\n", flag);
+        if(flag != 0x7)
+        {
+            // only ch19 do fit
+            if(flag == 0x02)
+            {
+                // ch0 = ch19 + 4
+                TXPWR_PTR ptr;
+                base = &tab_ptr[19];
+                ptr = &tab_ptr[0];
+                SET_TXPWR_GAIN(ptr, GET_TXPWR_GAIN(base) + 4);
+                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_INUSED);
+
+                // fitting ch10, use ch0, ch19 
+                manual_cal_do_fitting(&tab_ptr[10], &tab_ptr[0], &tab_ptr[19]);
+
+                // fitting ch5, use ch0, ch10 
+                manual_cal_do_fitting(&tab_ptr[5], &tab_ptr[0], &tab_ptr[10]);
+
+                // fitting ch15, use ch10, ch19 
+                manual_cal_do_fitting(&tab_ptr[15], &tab_ptr[10], &tab_ptr[19]);
+                for(i=0; i<BLE_2_4_G_CHANNEL_NUM; i++) {
+                    if(i == 0)
+                        base = &tab_ptr[0];
+                    else if(i == 5)
+                        base = &tab_ptr[5];
+                    else if(i == 10)
+                        base = &tab_ptr[10];
+                    else if(i == 15)
+                        base = &tab_ptr[15];
+                    else if(i == 19) {
+                        base = &tab_ptr[19];
+                        continue;
+                    }
+                    
+                    // ch19 -ch39 are same with ch20
+                    os_memcpy(&tab_ptr[i], base, sizeof(TXPWR_ST));
+                    SET_TXPWR_FLAG(&tab_ptr[i], TXPWR_ELEM_UNUSED);
+                }            
+            }
+            else
+            {
+                // clear flag to default set
+                TXPWR_PTR ptr = &tab_ptr[0];
+                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_UNUSED);
+
+                ptr = &tab_ptr[19];
+                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_INUSED);
+
+                ptr = &tab_ptr[39];
+                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_UNUSED);
+            }
+        }
+        else
+        {
+            // fitting ch10, use ch0, ch19 
+            manual_cal_do_fitting(&tab_ptr[10], &tab_ptr[0], &tab_ptr[19]);
+
+            // fitting ch5, use ch0, ch10 
+            manual_cal_do_fitting(&tab_ptr[5], &tab_ptr[0], &tab_ptr[10]);
+
+            // fitting ch15, use ch10, ch19 
+            manual_cal_do_fitting(&tab_ptr[15], &tab_ptr[10], &tab_ptr[19]);
+            
+            // fitting ch30, use ch19, ch39 
+            manual_cal_do_fitting(&tab_ptr[30], &tab_ptr[19], &tab_ptr[39]);
+
+            // fitting ch25, use ch19, ch30 
+            manual_cal_do_fitting(&tab_ptr[25], &tab_ptr[19], &tab_ptr[30]);
+
+            // fitting ch35, use ch30, ch39 
+            manual_cal_do_fitting(&tab_ptr[35], &tab_ptr[30], &tab_ptr[39]);
+
+            for(i=0; i<BLE_2_4_G_CHANNEL_NUM; i++) {
+                if(i == 0)
+                    base = &tab_ptr[0];
+                else if(i == 5)
+                    base = &tab_ptr[5];
+                else if(i == 10)
+                    base = &tab_ptr[10];
+                else if(i == 15)
+                    base = &tab_ptr[15];
+                else if(i == 19) {
+                    base = &tab_ptr[19];
+                    continue;
+                }
+                else if(i == 25)
+                    base = &tab_ptr[25];
+                else if(i == 30)
+                    base = &tab_ptr[30];
+                else if(i == 35)
+                    base = &tab_ptr[35];
+                else if(i == 39)
+                    base = &tab_ptr[39];
+                
+                os_memcpy(&tab_ptr[i], base, sizeof(TXPWR_ST));
+                SET_TXPWR_FLAG(&tab_ptr[i], TXPWR_ELEM_UNUSED);
+            }
+        }
+    }
+    else
+    {
+        MCAL_WARN("txpwr table ble ch0/19/39 none one unused, use def\r\n");
+    }
+}
+
 unsigned char cal_11b_2_ble_flag = 0;
 void manual_cal_11b_2_ble(void)
 {	
@@ -769,22 +914,47 @@ void manual_cal_11b_2_ble(void)
 
     if(cal_11b_2_ble_flag == 0)
     {		
-        tab_ptr = gtxpwr_tab_b;	
+        tab_ptr = gtxpwr_tab_g;	
+        
         if((GET_TXPWR_FLAG(&tab_ptr[0]) == TXPWR_ELEM_INUSED)	
             &&(GET_TXPWR_FLAG(&tab_ptr[12]) == TXPWR_ELEM_INUSED)){ 
             unsigned char gain;	
-            gain = (GET_TXPWR_GAIN(&tab_ptr[0]) + GET_TXPWR_GAIN(&tab_ptr[12]))/2;	
-            if((gain > 20) && (gain <= 31)){
-                gain -= 4;
-            }
-            else  if((gain >= 15) && (gain <= 20)){
-                gain -= 2;
-            }
-            else{
-                gain -= 0;
-            }
+            
+            if((GET_TXPWR_FLAG(&tab_ptr[6]) == TXPWR_ELEM_INUSED))
+                gain = GET_TXPWR_GAIN(&tab_ptr[6]);
+            else
+                gain = (GET_TXPWR_GAIN(&tab_ptr[0]) + GET_TXPWR_GAIN(&tab_ptr[12]))/2;	
+            int idx = (int)gain;
+            idx += g_dif_g_ble_ch19;
+            if(idx > 31)
+                idx = 31;
+            else if(idx < 0)
+                idx = 0;
+            gain = (unsigned char)idx;
             SET_TXPWR_GAIN(&gtxpwr_tab_ble[19],gain);	
-            SET_TXPWR_FLAG(&gtxpwr_tab_ble[19],TXPWR_ELEM_INUSED);	   
+            SET_TXPWR_FLAG(&gtxpwr_tab_ble[19],TXPWR_ELEM_INUSED);	 
+
+            gain = GET_TXPWR_GAIN(&tab_ptr[0]);
+            idx = (int)gain;
+            idx += g_dif_g_ble_ch0;
+            if(idx > 31)
+                idx = 31;
+            else if(idx < 0)
+                idx = 0;
+            gain = (unsigned char)idx;
+            SET_TXPWR_GAIN(&gtxpwr_tab_ble[0],gain);	
+            SET_TXPWR_FLAG(&gtxpwr_tab_ble[0],TXPWR_ELEM_INUSED);
+
+            gain = GET_TXPWR_GAIN(&tab_ptr[12]);
+            idx = (int)gain;
+            idx += g_dif_g_ble_ch39;
+            if(idx > 31)
+                idx = 31;
+            else if(idx < 0)
+                idx = 0;
+            gain = (unsigned char)idx;
+            SET_TXPWR_GAIN(&gtxpwr_tab_ble[39],gain);	
+            SET_TXPWR_FLAG(&gtxpwr_tab_ble[39],TXPWR_ELEM_INUSED);	
         }	
     }
 }
@@ -940,135 +1110,7 @@ UINT32 manual_cal_fitting_txpwr_tab(void)
         }
     }
 
-    // for ble
-    tab_ptr = gtxpwr_tab_ble;
-    if((GET_TXPWR_FLAG(&tab_ptr[0]) == TXPWR_ELEM_INUSED)       // ch0
-      ||(GET_TXPWR_FLAG(&tab_ptr[19]) == TXPWR_ELEM_INUSED)     // ch19
-      ||(GET_TXPWR_FLAG(&tab_ptr[39]) == TXPWR_ELEM_INUSED) )  // ch39
-    {  
-        UINT32 flag = 0;
-        TXPWR_PTR base = NULL;
-        MCAL_WARN("txpwr table for ble ch0/19/39 inused\r\n");
-
-        if(GET_TXPWR_FLAG(&tab_ptr[0]) == TXPWR_ELEM_INUSED)
-        {
-            flag |= 0x01;
-            base = &tab_ptr[0];
-        }
-        if(GET_TXPWR_FLAG(&tab_ptr[19]) == TXPWR_ELEM_INUSED)
-        {
-            flag |= 0x02;
-            base = &tab_ptr[19];
-        }
-        if(GET_TXPWR_FLAG(&tab_ptr[39]) == TXPWR_ELEM_INUSED)
-        {
-            flag |= 0x04;
-            base = &tab_ptr[39];
-        }
-        printf("0x%x\r\n", flag);
-        if(flag != 0x7)
-        {
-            // only ch19 do fit
-            if(flag == 0x02)
-            {
-                // ch0 = ch19 + 4
-                TXPWR_PTR ptr;
-                base = &tab_ptr[19];
-                ptr = &tab_ptr[0];
-                SET_TXPWR_GAIN(ptr, GET_TXPWR_GAIN(base) + 4);
-                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_INUSED);
-
-                // fitting ch10, use ch0, ch19 
-                manual_cal_do_fitting(&tab_ptr[10], &tab_ptr[0], &tab_ptr[19]);
-
-                // fitting ch5, use ch0, ch10 
-                manual_cal_do_fitting(&tab_ptr[5], &tab_ptr[0], &tab_ptr[10]);
-
-                // fitting ch15, use ch10, ch19 
-                manual_cal_do_fitting(&tab_ptr[15], &tab_ptr[10], &tab_ptr[19]);
-                for(i=0; i<BLE_2_4_G_CHANNEL_NUM; i++) {
-                    if(i == 0)
-                        base = &tab_ptr[0];
-                    else if(i == 5)
-                        base = &tab_ptr[5];
-                    else if(i == 10)
-                        base = &tab_ptr[10];
-                    else if(i == 15)
-                        base = &tab_ptr[15];
-                    else if(i == 19) {
-                        base = &tab_ptr[19];
-                        continue;
-                    }
-                    
-                    // ch19 -ch39 are same with ch20
-                    os_memcpy(&tab_ptr[i], base, sizeof(TXPWR_ST));
-                    SET_TXPWR_FLAG(&tab_ptr[i], TXPWR_ELEM_UNUSED);
-                }            
-            }
-            else
-            {
-                // clear flag to default set
-                TXPWR_PTR ptr = &tab_ptr[0];
-                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_UNUSED);
-
-                ptr = &tab_ptr[19];
-                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_INUSED);
-
-                ptr = &tab_ptr[39];
-                SET_TXPWR_FLAG(ptr, TXPWR_ELEM_UNUSED);
-            }
-        }
-        else
-        {
-            // fitting ch10, use ch0, ch19 
-            manual_cal_do_fitting(&tab_ptr[10], &tab_ptr[0], &tab_ptr[19]);
-
-            // fitting ch5, use ch0, ch10 
-            manual_cal_do_fitting(&tab_ptr[5], &tab_ptr[0], &tab_ptr[10]);
-
-            // fitting ch15, use ch10, ch19 
-            manual_cal_do_fitting(&tab_ptr[15], &tab_ptr[10], &tab_ptr[19]);
-            
-            // fitting ch30, use ch19, ch39 
-            manual_cal_do_fitting(&tab_ptr[30], &tab_ptr[19], &tab_ptr[39]);
-
-            // fitting ch25, use ch19, ch30 
-            manual_cal_do_fitting(&tab_ptr[25], &tab_ptr[19], &tab_ptr[30]);
-
-            // fitting ch35, use ch30, ch39 
-            manual_cal_do_fitting(&tab_ptr[35], &tab_ptr[30], &tab_ptr[39]);
-
-            for(i=0; i<BLE_2_4_G_CHANNEL_NUM; i++) {
-                if(i == 0)
-                    base = &tab_ptr[0];
-                else if(i == 5)
-                    base = &tab_ptr[5];
-                else if(i == 10)
-                    base = &tab_ptr[10];
-                else if(i == 15)
-                    base = &tab_ptr[15];
-                else if(i == 19) {
-                    base = &tab_ptr[19];
-                    continue;
-                }
-                else if(i == 25)
-                    base = &tab_ptr[25];
-                else if(i == 30)
-                    base = &tab_ptr[30];
-                else if(i == 35)
-                    base = &tab_ptr[35];
-                else if(i == 39)
-                    base = &tab_ptr[39];
-                
-                os_memcpy(&tab_ptr[i], base, sizeof(TXPWR_ST));
-                SET_TXPWR_FLAG(&tab_ptr[i], TXPWR_ELEM_UNUSED);
-            }
-        }
-    }
-    else
-    {
-        MCAL_WARN("txpwr table ble ch0/19/39 none one unused, use def\r\n");
-    }
+    manual_cal_do_ble_fitting();
 
     return ret;
 }
@@ -1127,6 +1169,28 @@ void manual_cal_set_dif_g_n40(UINT32 diff)
     
     g_dif_g_n40 = (diff&GAIN_MASK);
     manual_cal_fit_txpwr_tab_n_40(g_dif_g_n40);
+}
+
+void manual_cal_set_dif_g_ble(int dif_ch0, int dif_ch19, int dif_ch39)
+{
+    if(dif_ch0 > 31)
+        dif_ch0 = 31;
+    else if(dif_ch0 < -31)
+        dif_ch0 = -31;
+
+    if(dif_ch19 > 31)
+        dif_ch19 = 31;
+    else if(dif_ch19 < -31)
+        dif_ch19 = -31;
+
+    if(dif_ch39 > 31)
+        dif_ch39 = 31;
+    else if(dif_ch39 < -31)
+        dif_ch39 = -31;
+
+    g_dif_g_ble_ch0 = dif_ch0;
+    g_dif_g_ble_ch19 = dif_ch19;
+    g_dif_g_ble_ch39 = dif_ch39;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1442,6 +1506,14 @@ UINT32 manual_cal_load_txpwr_tab_flash(void)
         MCAL_WARN("dif g and n40 ID in flash no found, use def:%d\r\n", g_dif_g_n40);
     }
 
+    #define USE_FITTING_TABLE        1
+    #if USE_FITTING_TABLE
+    {
+        bk_printf("ble use fit!\r\n");
+        manual_cal_11b_2_ble();
+        manual_cal_do_ble_fitting();
+    }
+    #else
     // for ble tx pwr
     if(is_ready_flash & TXPWR_TAB_BLE) {
         addr = manual_cal_search_txpwr_tab(TXPWR_TAB_BLE_ID, addr_start);
@@ -1452,6 +1524,7 @@ UINT32 manual_cal_load_txpwr_tab_flash(void)
             MCAL_WARN("txpwr tabe ble in flash no found\r\n");
         }
     }
+    #endif
     
     ddev_close(flash_handle);
     MCAL_PRT("read txpwr tab from flash success\r\n");

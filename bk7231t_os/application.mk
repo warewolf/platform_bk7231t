@@ -615,7 +615,10 @@ SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.cpp))
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.s)) 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.S)) 
 
-TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk -type d)
+#TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk -type d)
+SDK_INCLUDE_DIRS := $(shell find $(TOP_DIR)/sdk -name include -type d)
+TY_INC_DIRS += $(foreach dir,$(SDK_INCLUDE_DIRS),$(shell find $(dir) -type d))
+
 TY_INC_DIRS += $(shell find ../tuya_os_adapter/include -type d)
 TY_INC_DIRS += $(shell find ../tuya_common/include -type d)
 TY_INC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/include -type d)

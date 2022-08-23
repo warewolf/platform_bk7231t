@@ -164,4 +164,5 @@
 #define CFG_USE_BLE_PS                             1
 
 #define CFG_ENABLE_ATE_FEATURE                     0
+#define CFG_RWNX_QOS_MSDU						   1
 #endif // _SYS_CONFIG_H_

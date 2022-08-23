@@ -5,6 +5,10 @@
 #include "mem_pub.h"
 #include "txu_cntrl.h"
 #include "lwip/pbuf.h"
+#include "prot/ip4.h"
+#include "prot/ip6.h"
+#include "prot/ethernet.h"
+
 #include "arm_arch.h"
 
 #if CFG_GENERAL_DMA
@@ -503,6 +507,54 @@ void rwm_msdu_init(void)
     #endif
 }
 
+/*
+ * IEEE802.11-2016: Table 10-1—UP-to-AC mappings
+ */
+uint8_t ipv4_ieee8023_dscp(UINT8 *buf)
+{
+	uint8_t tos;
+	struct ip_hdr *hdr = (struct ip_hdr *)buf;
+
+	tos = IPH_TOS(hdr);
+
+	return (tos & 0xfc) >> 5;
+}
+
+/* extract flow control field */
+uint8_t ipv6_ieee8023_dscp(UINT8 *buf)
+{
+	uint8_t tos;
+	struct ip6_hdr *hdr = (struct ip_hdr *)buf;
+
+	tos = IP6H_FL(hdr);
+
+	return (tos & 0xfc) >> 5;
+}
+
+/*
+ * get user priority from @buf.
+ * ipv4 dscp/tos, ipv6 flow control. for eapol packets, disable qos.
+ */
+uint8_t classify8021d(UINT8 *buf)
+{
+#ifdef CFG_WFA_CERTIFICATION
+	struct eth_hdr *ethhdr = (struct eth_hdr *)buf;
+
+	switch (PP_HTONS(ethhdr->type)) {
+	case ETHTYPE_IP:
+		return ipv4_ieee8023_dscp(ethhdr + 1);
+	case ETHTYPE_IPV6:
+		return ipv6_ieee8023_dscp(ethhdr + 1);
+	case ETH_P_PAE:
+		return 7;	/* TID7 highest user priority */
+	default:
+		return 0;
+	}
+#else
+	return 4;		// TID4: mapped to AC_VI
+#endif
+}
+
 UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len, int sync, void *args)
 {
     UINT32 ret = 0;
@@ -562,6 +614,71 @@ void ieee80211_data_tx_cb(void *param)
 	rtos_set_semaphore(&cb->sema);
 }
 
+int sta_11n_nss(uint8_t *mcs_set)
+{
+	int i;
+	int nss = 0;	/* spartial stream num */
+
+	// Go through the MCS map to find out one valid mcs
+	for (i = 0; i < 4; i++) {	// 4 == sizeof(rc_ss->rate_map.ht)
+		if (mcs_set[i] != 0)
+			nss++;
+	}
+
+	return nss;
+}
+
+int qos_need_enabled(struct sta_info_tag *sta)
+{
+	int i;
+	struct mac_rateset *rate_set;
+	int rate_22mbps_found = 0;
+	int nss = 0;
+
+	if (!sta)
+		return 0;
+	if (!(sta->info.capa_flags & STA_QOS_CAPA))
+		return 0;
+
+#define CONFIG_WRT3200_ISSUE
+#ifdef CONFIG_WRT3200_ISSUE
+	/* workaround for WRT3200 */
+
+	/* find rate 22mbps */
+	rate_set = &sta->info.rate_set;
+	for (i = 0; i < rate_set->length; i++)	 {
+		if (rate_set->array[i] == 0x2c) {
+			rate_22mbps_found = 1;
+			break;
+		}
+	}
+
+	/* ignore rate doesn't contain 22Mbps */
+	if (!rate_22mbps_found)
+		return 0;
+
+	/* ignore 11AC */
+	if (sta->info.capa_flags & STA_VHT_CAPA)
+		return 0;
+
+	/* ignore non-HT */
+	if (!(sta->info.capa_flags & STA_HT_CAPA))
+		return 0;
+
+	/* ingore nss != 3*/
+	nss = sta_11n_nss(sta->info.ht_cap.mcs_rate);
+	if (nss != 3)
+		return 0;
+
+	/* ignore LDPC and DSSS/CCK in 40M not both enabled */
+	if (!((sta->info.ht_cap.ht_capa_info & MAC_HTCAPA_LDPC) && 
+		(sta->info.ht_cap.ht_capa_info & MAC_HTCAPA_DSSS_CCK_40)))
+		return 0;
+#endif
+
+	return 1;
+}
+
 UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
 {
     UINT8 tid;
@@ -572,6 +689,8 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
 
     ETH_HDR_PTR eth_hdr_ptr;
     struct txdesc *txdesc_new;
+	struct sta_info_tag *sta;
+	struct vif_info_tag *vif;
 
     if(!node) {
         #if NX_POWERSAVE
@@ -584,9 +703,38 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
     content_ptr = rwm_get_msdu_content_ptr(node);
     eth_hdr_ptr = (ETH_HDR_PTR)content_ptr;
 
-    tid = 0xff;
-
+#if CFG_RWNX_QOS_MSDU
+	vif = rwm_mgmt_vif_idx2ptr(node->vif_idx);
+	if (likely(vif->active)) {
+		sta = &sta_info_tab[vif->u.sta.ap_id];
+		if (qos_need_enabled(sta)) {
+			int i;
+			tid = classify8021d(eth_hdr_ptr);
+			/* check admission ctrl */
+			for (i = mac_tid2ac[tid]; i >= 0; i--)
+				if (!(vif->bss_info.edca_param.acm & BIT(i)))
+					break;
+			if (i < 0)
+				goto tx_exit;
+			queue_idx = i;	/* AC_* */
+		} else {
+			/*
+			 * non-WMM STA
+			 *
+			 * CWmin 15, CWmax 1023, AIFSN 2, TXOP 0. set these values when joining with this BSS.
+			 */
+			tid = 0xFF;
+			queue_idx = AC_VI;
+		}
+	} else {
+		tid = 0xFF;
+	    queue_idx = AC_VI;
+	}
+#else
+	tid = 0xff;
     queue_idx = AC_VI;
+#endif
+
     txdesc_new = tx_txdesc_prepare(queue_idx);
     if(TXDESC_STA_USED == txdesc_new->status)
     {

@@ -524,12 +524,29 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 		break;
 
 	case SM_DISASSOC_IND:
+		{
+			struct sm_fail_stat *status_ind;
+			
+			status_ind = (struct sm_fail_stat *)rx_msg->param;
+			os_null_printf("[wzl]SM_DISASSOC_IND:%d, 0x%x\r\n", (status_ind->status), fn);
+			switch (status_ind->status)
+			{
+				case WLAN_REASON_MICHAEL_MIC_FAILURE:
+					param = RW_EVT_STA_PASSWORD_WRONG;
+					break;
+				
+				default:
+					param = RW_EVT_STA_DISCONNECTED;
+					break;
+			}
+			mhdr_set_station_status(param);
+		}
+	
 		if(fn)
 		{
-			param = RW_EVT_STA_DISCONNECTED;
 			(*fn)(&param);
 		}
-		mhdr_set_station_status(RW_EVT_STA_DISCONNECTED);
+
 		break;
 		
 	case SM_AUTHEN_FAIL_IND:

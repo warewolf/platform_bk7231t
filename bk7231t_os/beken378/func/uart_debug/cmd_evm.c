@@ -302,15 +302,37 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
             }
 
             case 'd':{
+                #define DIST_N20        0
+                #define DIST_N40        1
+                #define DIST_BLE        2
+                
                 UINT32 n20_n40 = 0;
                 n20_n40 = os_strtoul(argv[arg_id + 1], NULL, 10);
-                dif_g = (os_strtoul(argv[arg_id + 2], NULL, 10));
-                os_printf("set dif g and n20: dif:%d\r\n", dif_g);
-                if(n20_n40)
+                if(n20_n40 == DIST_N40)
+                {
+                    dif_g = (os_strtoul(argv[arg_id + 2], NULL, 10));
+                    os_printf("set dif g and n40: dif:%d\r\n", dif_g);
                     manual_cal_set_dif_g_n40(dif_g);
-                else
+                }
+                else if(n20_n40 == DIST_N20)
+                {
+                    dif_g = (os_strtoul(argv[arg_id + 2], NULL, 10));
+                    os_printf("set dif g and n20: dif:%d\r\n", dif_g);
                     manual_cal_set_dif_g_n20(dif_g);
                 }
+                else if(n20_n40 == DIST_BLE)
+                {
+                    int dif_ch0 = 0, dif_ch19 = 0, dif_ch39 = 0; 
+                    dif_ch0  = (os_strtoul(argv[arg_id + 2], NULL, 10));
+                    dif_ch19 = (os_strtoul(argv[arg_id + 3], NULL, 10));
+                    dif_ch39 = (os_strtoul(argv[arg_id + 4], NULL, 10));
+                    
+                    os_printf("set dif ble- ch0:%d, ch19:%d, ch39:%d\r\n", 
+                        dif_ch0, dif_ch19, dif_ch39);
+                    manual_cal_set_dif_g_ble(dif_ch0, dif_ch19, dif_ch39);
+                }
+                }
+                
                 return 0;
                 break;
 
