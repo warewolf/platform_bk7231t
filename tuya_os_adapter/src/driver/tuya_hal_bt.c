@@ -28,7 +28,8 @@ bk_attm_desc_t btl_att_db[6] =
 	//  Level Characteristic Declaration
 	[1]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
 	//  Level Characteristic Value
-	[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
+	//[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
+	[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE)|BK_PERM_SET(WRITE_COMMAND, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
 	
 	[3]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
 	//  Level Characteristic Value
