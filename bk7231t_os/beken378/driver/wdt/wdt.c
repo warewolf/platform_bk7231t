@@ -6,6 +6,7 @@
 #include "icu_pub.h"
 
 #include "drv_model_pub.h"
+#include "start_type_pub.h"
 
 static SDD_OPERATIONS wdt_op = {
             wdt_ctrl
@@ -55,6 +56,8 @@ UINT32 wdt_ctrl(UINT32 cmd, void *param)
 			reg = WDT_2ND_KEY << WDT_KEY_POSI;
 			reg |= (g_wdt_period & WDT_PERIOD_MASK) << WDT_PERIOD_POSI;
 			REG_WRITE(WDT_CTRL_REG, reg);
+
+            bk_misc_update_set_type(RESET_SOURCE_WATCHDOG);
 			break;
 
 		case WCMD_SET_PERIOD:				

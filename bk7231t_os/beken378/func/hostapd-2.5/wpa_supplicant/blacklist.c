@@ -55,31 +55,8 @@ struct wpa_blacklist * wpa_blacklist_get(struct wpa_supplicant *wpa_s,
  */
 int wpa_blacklist_add(struct wpa_supplicant *wpa_s, const u8 *bssid)
 {
-	struct wpa_blacklist *e;
-
-	if (wpa_s == NULL || bssid == NULL)
-		return -1;
-
-	e = wpa_blacklist_get(wpa_s, bssid);
-	if (e) {
-		e->count++;
-		wpa_printf(MSG_DEBUG, "BSSID " MACSTR " blacklist count "
-			   "incremented to %d",
-			   MAC2STR(bssid), e->count);
-		return e->count;
-	}
-
-	e = os_zalloc(sizeof(*e));
-	if (e == NULL)
-		return -1;
-	os_memcpy(e->bssid, bssid, ETH_ALEN);
-	e->count = 1;
-	e->next = wpa_s->blacklist;
-	wpa_s->blacklist = e;
-	wpa_printf(MSG_DEBUG, "Added BSSID " MACSTR " into blacklist",
-		   MAC2STR(bssid));
-
-	return e->count;
+	wpa_dbg(wpa_s, MSG_DEBUG, "attempt to add blacklist, but ignore");
+	return -1;
 }
 
 

@@ -4,6 +4,7 @@
 #include "doubly_list.h"
 #include "tx_swdesc.h"
 #include "lwip/pbuf.h"
+#include "rtos_pub.h"
 #include "rwnx.h"
 
 #define MSDU_TX_MAX_CNT               (32)
@@ -23,6 +24,11 @@ typedef struct eth_hdr
     UINT16 e_proto;
 } __attribute__((packed)) ETH_HDR_T, *ETH_HDR_PTR;
 
+struct ieee80211_tx_cb {
+	beken_semaphore_t sema;
+	int result;
+};
+
 typedef struct _msdu_node_
 {
     LIST_HEADER_T hdr;
@@ -32,6 +38,8 @@ typedef struct _msdu_node_
 
     UINT8 vif_idx;
     UINT8 sta_idx;
+	void *args;
+	int sync;
 } MSDU_NODE_T, *MSDU_NODE_PTR;
 
 extern void rwm_push_rx_list(MSDU_NODE_T *node);

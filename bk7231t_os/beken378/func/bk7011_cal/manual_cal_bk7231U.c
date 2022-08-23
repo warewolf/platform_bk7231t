@@ -44,7 +44,7 @@
 #define MAX_RATE_FOR_N                    (135)   // MCS7
 
 #define MOD_DIST_G_BW_N20                 (2)     // bk7231 is 2
-#define MOD_DIST_G_BW_N40                 (2)
+#define MOD_DIST_G_BW_N40                 (3)
 
 #define TXPWR_ELEM_INUSED                 (0)
 #define TXPWR_ELEM_UNUSED                 (1)
@@ -63,54 +63,6 @@
 #define MCAL_WARN     null_prf
 #define MCAL_FATAL    null_prf
 #endif
-
-
-#define BK_FLASH_OPT_TLV_HEADER           (0x00564c54)   // ASIC TLV
-typedef enum{
-    TXID                        = 0x11111100,
-    TXPWR_TAB_TAB               = 0x22222200,
-    TXEND                       = 0xeeeeeeee,
-    TXNON                       = 0xffffffff
-}TXSTRUCT;
-
-#define DEFAULT_TXID_ID           (12345678)
-#define DEFAULT_TXID_THERMAL      (280) //180430,7231:315,7231U:340
-#define DEFAULT_TXID_CHANNEL      (22222222)
-#define DEFAULT_TXID_LPF_CAP_I    (0x80)
-#define DEFAULT_TXID_LPF_CAP_Q    (0x80)
-typedef enum{
-    TXID_ID                     = TXID+1,
-    TXID_MAC,
-    TXID_THERMAL,
-    TXID_CHANNEL,
-    TXID_XTAL,
-    TXID_ADC,    
-    TXID_LPFCAP,
-    TXID_END,
-    TXID_NON                    = TXID+0xFF
-}TXIDList;
-
-typedef enum{
-    TXPWR_ENABLE_ID             = TXPWR_TAB_TAB+1,
-    TXPWR_TAB_B_ID,
-    TXPWR_TAB_G_ID,
-    TXPWR_TAB_N_ID,
-    TXPWR_TAB_DIF_GN20_ID,
-    TXPWR_TAB_DIF_GN40_ID,
-    TXPWR_TAB_BLE_ID,
-    TXPWR_TAB_CALI_STATUTS,
-    TXPWR_END,
-    TXPWR_NON                   = TXPWR_TAB_TAB+0xFF
-}TXPWR_ELEM_ID;
-
-typedef enum {
-    TXPWR_NONE_RD               = 0u,
-    TXPWR_TAB_B_RD              = 0x1u,
-    TXPWR_TAB_G_RD              = 0x2u,
-    TXPWR_TAB_N_RD              = 0x4u,
-    TXPWR_TAB_BLE               = 0x8u,
-} TXPWR_IS_RD;
-
 
 /* bit[7]: TXPWR flag 
  *          0:  invalid
@@ -177,6 +129,11 @@ typedef struct tag_lpf_iq_st {
     UINT32 lpf_i;
     UINT32 lpf_q;    
 } __attribute__((packed)) TAG_LPF_IQ_ST, *TAG_LPF_IQ_PTR;
+
+typedef struct tag_rx_dc_st {
+    TXPWR_ELEM_ST head;
+    UINT32 value[8]; 
+} TAG_RX_DC_ST, *TAG_RX_DC_PTR;
 
 #if TXPWR_DEFAULT_TAB
 #if CFG_SUPPORT_LOW_MAX_CURRENT //Max default work current<250mA@3.3V
@@ -394,7 +351,9 @@ extern unsigned char cal_11b_2_ble_flag;
 
 #define RF_CALI_FLAG_SET0        (0x1)
 #define RF_CALI_FLAG_SET1        (0x2)
+#define RF_CALI_MODE_SET0        (0x4)
 #define RF_CALI_FLAG             (RF_CALI_FLAG_SET0 | RF_CALI_FLAG_SET1)
+#define RF_CALI_MASK             (0x7)
 UINT32 g_rfcali_mode = 0;
 
 void manual_cal_set_setp0(void)
@@ -407,9 +366,15 @@ void manual_cal_set_setp1(void)
     g_rfcali_mode |= RF_CALI_FLAG_SET1;
 }
 
+void manual_cal_set_rfcal_step0(void)
+{
+    g_rfcali_mode &= ~RF_CALI_MASK;
+    g_rfcali_mode |= RF_CALI_MODE_SET0;
+}
+
 void manual_cal_clear_setp(void)
 {
-    g_rfcali_mode &= ~RF_CALI_FLAG;
+    g_rfcali_mode &= ~RF_CALI_MASK;
 }
 
 static UINT32 manual_cal_is_in_rfcali_mode(void)
@@ -418,10 +383,35 @@ static UINT32 manual_cal_is_in_rfcali_mode(void)
     return ((g_rfcali_mode & RF_CALI_FLAG) == RF_CALI_FLAG) ? 1 : 0;
 }
 
-static UINT32 manual_cal_is_in_rftest_mode(void)
+UINT32 manual_cal_is_in_rftest_mode(void)
 {
-    // only include rf test
-    return ((g_rfcali_mode & RF_CALI_FLAG) == RF_CALI_FLAG_SET1) ? 1 : 0;
+    if(g_rfcali_mode == 0)
+    {
+        // no thing happened, do "txevm" to send pkt, use vitual 
+        return 1;
+    }
+    else if((g_rfcali_mode & RF_CALI_MASK) == RF_CALI_MASK)
+    {
+        // rfcali mode after save cali result, do test 
+        return 1;
+    }
+    else
+    {
+        // rfcali mode, before save result,need use ture value
+        // such as txevm -g 0,  
+        return 0;
+    }
+}
+
+UINT32 g_cmtag_flag = LOAD_FROM_CALI;
+int manual_set_cmtag(UINT32 status)
+{
+    g_cmtag_flag = status;
+}
+
+int manual_cal_need_load_cmtag_from_flash(void)
+{
+    return (g_cmtag_flag == LOAD_FROM_FLASH)? 1 : 0;
 }
 
 void manual_cal_save_txpwr(UINT32 rate, UINT32 channel, UINT32 pwr_gain)
@@ -2379,6 +2369,372 @@ init_temp:
     MCAL_FATAL("temp in flash is:%d\r\n", tem_in_flash);
     return tem_in_flash;
 }
+
+int manual_cal_save_cailmain_tx_tab_to_flash(void)
+{
+    extern INT32 gtx_dcorMod;
+    extern INT32 gtx_dcorPA;
+    extern INT32 gtx_pre_gain;
+    extern INT32 gtx_i_dc_comp;
+    extern INT32 gtx_q_dc_comp;
+    extern INT32 gtx_i_gain_comp;
+    extern INT32 gtx_q_gain_comp;
+    extern INT32 gtx_ifilter_corner;
+    extern INT32 gtx_qfilter_corner;
+    extern INT32 gtx_phase_comp;
+    extern INT32 gtx_phase_ty2;
+    
+    UINT32 len = 0, txpwr_len = 0, flash_len = 0;
+    UINT8 *buf = NULL, *txpwr_buf = NULL;;
+    TAG_TXPWR_ST tag_txpwr;
+    TAG_TXPWR_PTR tag_txpwr_ptr = NULL;
+    TAG_COMM_ST tag_comm;
+    TAG_COMM_PTR tag_comm_ptr = NULL;
+
+    UINT32 status, addr, addr_start;
+    DD_HANDLE flash_handle;
+    TXPWR_ELEM_ST head;
+	#if CFG_SUPPORT_ALIOS
+	hal_logic_partition_t *pt = hal_flash_get_info(HAL_PARTITION_RF_FIRMWARE);
+	#else
+	bk_logic_partition_t *pt = bk_flash_get_info(BK_PARTITION_RF_FIRMWARE);
+	#endif
+
+    // alloc all memery at onece, so we no need to change the size of buf in combin function
+    txpwr_len = sizeof(TAG_TXPWR_ST)    // head
+            + sizeof(TAG_COMM_ST)       // gtx_dcorMod
+            + sizeof(TAG_COMM_ST)       // gtx_dcorPA
+            + sizeof(TAG_COMM_ST)       // gtx_pre_gain
+            + sizeof(TAG_COMM_ST)       // gtx_i_dc_comp
+            + sizeof(TAG_COMM_ST)       // gtx_q_dc_comp
+            + sizeof(TAG_COMM_ST)       // gtx_i_gain_comp
+            + sizeof(TAG_COMM_ST)       // gtx_q_gain_comp
+            + sizeof(TAG_COMM_ST)       // gtx_ifilter_corner
+            + sizeof(TAG_COMM_ST)       // gtx_qfilter_corner
+            + sizeof(TAG_COMM_ST)       // gtx_phase_comp
+            + sizeof(TAG_COMM_ST);      // gtx_phase_ty2
+    
+    // read flash, then combin the table in flash
+    flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
+    status = manual_cal_search_opt_tab(&flash_len);
+    // Has TLV Header?
+    if(status) {
+        addr_start = manual_cal_search_txpwr_tab(CALI_MAIN_TX, pt->partition_start_addr);//TXPWR_TAB_FLASH_ADDR); 
+        if(!addr_start) {
+            // no CALI_MAIN_TX, but has any other id, so attch CALI_MAIN_TX after the table
+            len = flash_len + txpwr_len;
+            buf = (UINT8*)os_malloc(len); 
+            if(!buf) {
+                MCAL_FATAL("no memory for save_cailmain_tx_tab\r\n");
+                ddev_close(flash_handle);
+                return 0;
+            }
+            // copy flash
+            ddev_read(flash_handle, (char *)buf, flash_len, pt->partition_start_addr);//TXPWR_TAB_FLASH_ADDR);
+            ddev_close(flash_handle);
+
+            // updata new TLV header
+            tag_txpwr_ptr = (TAG_TXPWR_PTR)buf;
+            tag_txpwr.head.type= BK_FLASH_OPT_TLV_HEADER;
+            tag_txpwr.head.len = len - sizeof(TAG_TXPWR_ST);;
+            os_memcpy(tag_txpwr_ptr, &tag_txpwr, sizeof(TAG_TXPWR_ST));
+
+            txpwr_buf = (UINT8 *)(buf + flash_len);
+            addr_start = pt->partition_start_addr;//TXPWR_TAB_FLASH_ADDR;
+        }else {
+            // CALI_MAIN_TX is exist, and found start addr.
+            len = txpwr_len;
+            txpwr_buf = buf = (UINT8*)os_malloc(txpwr_len);
+            if(!buf) {
+                MCAL_FATAL("no memory for txpwr tab save to flash\r\n");
+                ddev_close(flash_handle);
+                return 0;
+            }
+        }        
+    } else {
+        // nothing in flash, write TLV with chipid
+        MCAL_WARN("NO BK_FLASH_OPT_TLV_HEADER found, save_cailmain_tx_tab failed\r\n");
+        ddev_close(flash_handle);
+        return 0;
+    }
+    
+    ddev_close(flash_handle);
+    
+    // for tag CALI_MAIN_TX
+    tag_txpwr_ptr = (TAG_TXPWR_PTR)txpwr_buf;
+    tag_txpwr.head.type = CALI_MAIN_TX;
+    tag_txpwr.head.len = txpwr_len - sizeof(TAG_TXPWR_ST);
+    os_memcpy(tag_txpwr_ptr, &tag_txpwr, sizeof(TAG_TXPWR_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_TXPWR_ST));
+    
+    // for tag gtx_dcorMod
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_DCOR_MOD;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_dcorMod;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_dcorPA
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_DCOR_PA;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_dcorPA;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_pre_gain
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_PREGAIN;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_pre_gain;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST)); 
+
+    // for tag gtx_i_dc_comp
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_I_DC_COMP;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_i_dc_comp;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_q_dc_comp
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_Q_DC_COMP;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_q_dc_comp;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_i_gain_comp
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_I_GAIN_COMP;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_i_gain_comp;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_q_gain_comp
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_Q_GAIN_COMP;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_q_gain_comp;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_ifilter_corner
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_I_FILTER_CORNER;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_ifilter_corner;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_qfilter_corner
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_Q_FILTER_CORNER;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_qfilter_corner;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_phase_comp
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_PHASE_COMP;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_phase_comp;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag gtx_phase_ty2
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_TX_PHASE_TY2;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)gtx_phase_ty2;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+    
+    addr_start -= pt->partition_start_addr;//TXPWR_TAB_FLASH_ADDR;
+    manual_cal_update_flash_area(addr_start, (char *)buf, len);
+    os_free(buf);
+    
+    return 1;
+}
+
+int manual_cal_save_cailmain_rx_tab_to_flash(void)
+{
+    extern INT32 g_rx_dc_gain_tab[8];
+    extern INT32 grx_amp_err_wr;
+    extern INT32 grx_phase_err_wr;
+    
+    UINT32 len = 0, txpwr_len = 0, flash_len = 0;
+    UINT8 *buf = NULL, *txpwr_buf = NULL;;
+    TAG_TXPWR_ST tag_txpwr;
+    TAG_TXPWR_PTR tag_txpwr_ptr = NULL;
+    TAG_COMM_ST tag_comm;
+    TAG_COMM_PTR tag_comm_ptr = NULL;
+    TAG_RX_DC_ST tag_rx_dc;
+    TAG_RX_DC_PTR tag_rx_dc_ptr = NULL;
+
+    UINT32 status, addr, addr_start;
+    DD_HANDLE flash_handle;
+    TXPWR_ELEM_ST head;
+	#if CFG_SUPPORT_ALIOS
+	hal_logic_partition_t *pt = hal_flash_get_info(HAL_PARTITION_RF_FIRMWARE);
+	#else
+	bk_logic_partition_t *pt = bk_flash_get_info(BK_PARTITION_RF_FIRMWARE);
+	#endif
+
+    // alloc all memery at onece, so we no need to change the size of buf in combin function
+    txpwr_len = sizeof(TAG_TXPWR_ST)    // head
+            + sizeof(TAG_RX_DC_ST)      // g_rx_dc_gain_tab 0 -7
+            + sizeof(TAG_COMM_ST)       // grx_amp_err_wr
+            + sizeof(TAG_COMM_ST);      // grx_phase_err_wr
+    
+    // read flash, then combin the table in flash
+    flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
+    status = manual_cal_search_opt_tab(&flash_len);
+    // Has TLV Header?
+    if(status) {
+        addr_start = manual_cal_search_txpwr_tab(CALI_MAIN_RX, pt->partition_start_addr);//TXPWR_TAB_FLASH_ADDR); 
+        if(!addr_start) {
+            // no CALI_MAIN_RX, but has any other id, so attch CALI_MAIN_TX after the table
+            len = flash_len + txpwr_len;
+            buf = (UINT8*)os_malloc(len); 
+            if(!buf) {
+                MCAL_FATAL("no memory for save_cailmain_rx_tab\r\n");
+                ddev_close(flash_handle);
+                return 0;
+            }
+            // copy flash
+            ddev_read(flash_handle, (char *)buf, flash_len, pt->partition_start_addr);//TXPWR_TAB_FLASH_ADDR);
+            ddev_close(flash_handle);
+
+            // updata new TLV header
+            tag_txpwr_ptr = (TAG_TXPWR_PTR)buf;
+            tag_txpwr.head.type= BK_FLASH_OPT_TLV_HEADER;
+            tag_txpwr.head.len = len - sizeof(TAG_TXPWR_ST);;
+            os_memcpy(tag_txpwr_ptr, &tag_txpwr, sizeof(TAG_TXPWR_ST));
+
+            txpwr_buf = (UINT8 *)(buf + flash_len);
+            addr_start = pt->partition_start_addr;//TXPWR_TAB_FLASH_ADDR;
+        }else {
+            // CALI_MAIN_RX is exist, and found start addr.
+            len = txpwr_len;
+            txpwr_buf = buf = (UINT8*)os_malloc(txpwr_len);
+            if(!buf) {
+                MCAL_FATAL("no memory for txpwr tab save to flash\r\n");
+                ddev_close(flash_handle);
+                return 0;
+            }
+        }        
+    } else {
+        // nothing in flash, write TLV with chipid
+        MCAL_WARN("NO BK_FLASH_OPT_TLV_HEADER found, save_cailmain_rx_tab failed\r\n");
+        ddev_close(flash_handle);
+        return 0;
+    }
+    
+    ddev_close(flash_handle);
+    
+    // for tag CALI_MAIN_TX
+    tag_txpwr_ptr = (TAG_TXPWR_PTR)txpwr_buf;
+    tag_txpwr.head.type = CALI_MAIN_RX;
+    tag_txpwr.head.len = txpwr_len - sizeof(TAG_TXPWR_ST);
+    os_memcpy(tag_txpwr_ptr, &tag_txpwr, sizeof(TAG_TXPWR_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_TXPWR_ST));
+    
+    // for tag gtx_dcorMod
+    tag_rx_dc_ptr = (TAG_RX_DC_PTR)(txpwr_buf);
+    tag_rx_dc.head.type = CM_RX_DC_GAIN_TAB;
+    tag_rx_dc.head.len = sizeof(tag_rx_dc.value);
+    tag_rx_dc.value[0] = g_rx_dc_gain_tab[0];
+    tag_rx_dc.value[1] = g_rx_dc_gain_tab[1];
+    tag_rx_dc.value[2] = g_rx_dc_gain_tab[2];
+    tag_rx_dc.value[3] = g_rx_dc_gain_tab[3];
+    tag_rx_dc.value[4] = g_rx_dc_gain_tab[4];
+    tag_rx_dc.value[5] = g_rx_dc_gain_tab[5];
+    tag_rx_dc.value[6] = g_rx_dc_gain_tab[6];
+    tag_rx_dc.value[7] = g_rx_dc_gain_tab[7];
+    os_memcpy(tag_rx_dc_ptr, &tag_rx_dc, sizeof(TAG_RX_DC_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_RX_DC_ST));
+
+    // for tag grx_amp_err_wr
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_RX_AMP_ERR_WR;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)grx_amp_err_wr;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST));
+
+    // for tag grx_phase_err_wr
+    tag_comm_ptr = (TAG_COMM_PTR)(txpwr_buf);
+    tag_comm.head.type = CM_RX_PHASE_ERR_WR;
+    tag_comm.head.len = sizeof(tag_comm.value);
+    tag_comm.value = (UINT32)grx_phase_err_wr;
+    os_memcpy(tag_comm_ptr, &tag_comm, sizeof(TAG_COMM_ST));
+    txpwr_buf = (UINT8*)(txpwr_buf + sizeof(TAG_COMM_ST)); 
+    
+    addr_start -= pt->partition_start_addr;//TXPWR_TAB_FLASH_ADDR;
+    manual_cal_update_flash_area(addr_start, (char *)buf, len);
+    os_free(buf);
+    
+    return 1;
+}
+
+int manual_cal_load_calimain_tag_from_flash(UINT32 tag, int *tag_addr, int tag_size)
+{
+    UINT32 status, addr, addr_start;
+    DD_HANDLE flash_handle;
+    TXPWR_ELEM_ST head;
+	#if CFG_SUPPORT_ALIOS
+	hal_logic_partition_t *pt = hal_flash_get_info(HAL_PARTITION_RF_FIRMWARE);
+	#else
+	bk_logic_partition_t *pt = bk_flash_get_info(BK_PARTITION_RF_FIRMWARE);
+	#endif
+
+    status = manual_cal_search_opt_tab(&addr);
+    if(!status) {
+        // no tlv in flash
+        MCAL_PRT("NO TLV tag in flash \r\n");
+        return -1;
+    }
+    
+    if((tag >= CM_TX_DCOR_MOD) && (tag < CM_TX_END))
+    {
+        addr_start = manual_cal_search_txpwr_tab(CALI_MAIN_TX, pt->partition_start_addr);
+    } 
+    else if((tag >= CM_RX_DC_GAIN_TAB) && (tag < CM_RX_END))
+    {
+        addr_start = manual_cal_search_txpwr_tab(CALI_MAIN_RX, pt->partition_start_addr);
+    }
+    else
+    {
+        MCAL_PRT("not a CALI_MAIN_tag \r\n");
+        return 0;
+    }
+    
+    if(!addr_start) {
+        MCAL_PRT("NO CALI_MAIN_tag in flash \r\n");
+        return -2;
+    }
+    
+    addr = manual_cal_search_txpwr_tab(tag, addr_start);  
+    if(!addr) {
+        MCAL_PRT("NO %x tag in flash\r\n", tag);
+        return -3; 
+    } else {
+        flash_handle = ddev_open(FLASH_DEV_NAME, &status, 0);
+        ddev_read(flash_handle, (char *)&head, sizeof(TXPWR_ELEM_ST), addr);
+        if((tag_addr) && (tag_size >= head.len))
+        {
+            ddev_read(flash_handle, (char *)tag_addr, head.len, addr + sizeof(TXPWR_ELEM_ST));
+        }
+        return 1; 
+    }
+}
+
 #endif  // CFG_SUPPORT_MANUAL_CALI
 
 

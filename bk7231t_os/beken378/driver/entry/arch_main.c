@@ -92,6 +92,8 @@ void entry_main(void)
     #if CFG_SUPPORT_BOOTLOADER
     entry_set_world_flag();
     #endif
+
+    bk_misc_init_start_type();
     
     /* step 1: driver layer initialization*/
     driver_init();

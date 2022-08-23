@@ -36,10 +36,12 @@ void *wpa_hostapd_param = NULL;
 beken_queue_t wpah_queue = NULL;
 static struct hapd_global s_hapd_global;
 struct hapd_interfaces g_hapd_interfaces;
+uint32_t hostapd_exit_flag = 0;
 
 char *bss_iface = "wlan0";
 
 extern int ap_channel_switch(struct hostapd_iface *ap_iface, int new_freq);
+extern void wpa_hostapd_queue_poll(uint32_t param);
 
 void hostapd_cfg_defaults_bss(struct hostapd_bss_config *bss)
 {
@@ -461,7 +463,36 @@ static void hostapd_periodic(void *eloop_ctx, void *timeout_ctx)
 
 int hostapd_main_exit(void)
 {
+	hostapd_exit_flag = 1;
+
+	wpa_hostapd_queue_poll(0xff);
+	while(hostapd_exit_flag)
+	{
+		os_printf("hostapd_main_exiting\r\n");
+		rtos_delay_milliseconds(10);
+	}
+	
+	return 0;
+}
+
+int hostapd_exit_done(void)
+{
+	hostapd_exit_flag = 0;
+	os_printf("hostapd_exit_done\r\n");
+	
+	return 0;
+}
+
+int hostapd_is_exiting(void)
+{
+	return hostapd_exit_flag;
+}
+
+int hostapd_exit_handler(void)
+{
 	size_t i;
+
+	os_printf("hostapd_exit_handler\r\n");
 
 	if(g_hapd_interfaces.count == 0)
 	{
@@ -514,7 +545,6 @@ int hostapd_main_entry(int argc, char *argv[])
 	}
 
 	os_memset(&g_hapd_interfaces, 0, sizeof(g_hapd_interfaces));
-	//g_hapd_interfaces.reload_config  = hostapd_reload_config;
 	g_hapd_interfaces.config_read_cb = hostapd_config_read;
 	g_hapd_interfaces.for_each_interface = hostapd_for_each_interface;
 	g_hapd_interfaces.ctrl_iface_init    = 0;

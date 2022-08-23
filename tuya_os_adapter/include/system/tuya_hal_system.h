@@ -41,6 +41,18 @@ typedef enum {
     ((S) == TUYA_RESET_REASON_DEEPSLEEP ? "TUYA_RESET_REASON_DEEPSLEEP" : \
 "Unknown")))))
 
+typedef enum {
+    TY_RST_POWER_OFF = 0,
+    TY_RST_HARDWARE_WATCHDOG,
+    TY_RST_FATAL_EXCEPTION,
+    TY_RST_SOFTWARE_WATCHDOG,
+    TY_RST_SOFTWARE,
+    TY_RST_DEEPSLEEP,
+    TY_RST_HARDWARE,
+    TY_RST_OTHER = 0xAA,
+    TY_RST_UNSUPPORT = 0xFF,
+} TY_RST_REASON_E;
+
 /**
  * @brief tuya_hal_get_systemtickcount用于获取系统运行ticket 
  * 		count
@@ -106,7 +118,7 @@ char *tuya_hal_get_serialno(void);
  * 
  * @return char* 硬件重启原因
  */
-char *tuya_hal_system_get_rst_info(void);
+TY_RST_REASON_E tuya_hal_system_get_rst_info(void);
 
 /**
  * @brief tuya_hal_random用于获取随机数

@@ -6,6 +6,8 @@
 #include "rtos_pub.h"
 #include "rtos_error.h"
 #include "wlan_ui_pub.h"
+#include "ieee802_11_defs.h"
+
 #if RL_SUPPORT_FAST_CONNECT
 #include "drv_model_pub.h"
 #include "flash_pub.h"
@@ -13,7 +15,7 @@
 #endif
 
 #if CFG_ROLE_LAUNCH
-RL_T g_role_launch = {0};
+RL_T g_role_launch = {{0}};
 RL_SOCKET_T g_rl_socket = {0};
 RL_SOCKET_CACHE_T g_sta_cache = {0};
 
@@ -35,11 +37,18 @@ static void rl_write_bssid_info(void)
 	RL_BSSID_INFO_T bssid_info;
 	LinkStatusTypeDef link_status;
 	DD_HANDLE flash_hdl;
+	uint32_t ssid_len;
 
 	os_memset(&link_status, 0, sizeof(link_status));
 	bk_wlan_get_link_status(&link_status);
 	os_memset(&bssid_info, 0, sizeof(bssid_info));
-	os_strcpy(bssid_info.ssid, link_status.ssid);
+
+	ssid_len = os_strlen(link_status.ssid);
+	if(ssid_len > SSID_MAX_LEN)
+	{
+		ssid_len = SSID_MAX_LEN;
+	}
+	os_strncpy(bssid_info.ssid, link_status.ssid, ssid_len);
 	os_memcpy(bssid_info.bssid, link_status.bssid, 6);
 	bssid_info.security = link_status.security;
 	bssid_info.channel = link_status.channel;
@@ -93,8 +102,8 @@ static void rl_sta_fast_connect(RL_BSSID_INFO_PTR bssid_info)
 	}
 	else
 	{
-	os_strcpy((char*)inNetworkInitParaAdv.key, bssid_info->psk);
-	inNetworkInitParaAdv.key_len = os_strlen(bssid_info->psk);
+		os_strcpy((char*)inNetworkInitParaAdv.key, bssid_info->psk);
+		inNetworkInitParaAdv.key_len = os_strlen(bssid_info->psk);
 	}
 	inNetworkInitParaAdv.dhcp_mode = DHCP_CLIENT;
 
@@ -164,7 +173,6 @@ uint32_t rl_launch_sta(void)
         }
     }
     
-launch_exit:    
     return ret;
 }
 
@@ -235,7 +243,6 @@ uint32_t rl_launch_ap(void)
         }
     }
     
-launch_exit:    
     return ret;
 }
 
@@ -293,7 +300,7 @@ uint32_t _sta_request_enter(LAUNCH_REQ *param, FUNC_1PARAM_PTR completion)
     }
 	else
 	{
-		os_printf("cmd queue fill!\n");
+		os_printf("cmd queue fill:%d\n", rl_pre_sta_get_status());
         rl_start();
 	}
 
@@ -386,7 +393,7 @@ void rl_enter_handler(void *left, void *right)
 
 	if(hit_sta)
 	{
-		JL_PRT("_sta_request_enter\r\n");
+		JL_PRT("_sta_request_enter:0x%x :0x%x \r\n", g_role_launch.jl_previous_sta, g_role_launch.jl_following_sta);
 		ret = _sta_request_enter(sta_param, sta_completion);
 		if(ret)
 		{
@@ -698,6 +705,11 @@ uint32_t rl_pre_ap_set_status(uint32_t status)
     return cancel;
 }
 
+uint32_t rl_pre_sta_get_cancel(void)
+{
+    return g_role_launch.pre_sta_cancel;
+}
+
 void rl_pre_sta_set_cancel(void)
 {
     g_role_launch.pre_sta_cancel = 1;
@@ -745,6 +757,7 @@ void rl_sta_request_start(LAUNCH_REQ *req)
     extern void demo_scan_app_init(void);
 #if RL_SUPPORT_FAST_CONNECT
 	RL_BSSID_INFO_T bssid_info;
+	uint32_t ssid_len;
 #endif
 
     ASSERT(req);
@@ -757,7 +770,16 @@ void rl_sta_request_start(LAUNCH_REQ *req)
 			os_memset(&g_rl_sta_key, 0, sizeof(g_rl_sta_key));
 			os_strcpy(g_rl_sta_key, req->descr.wifi_key);
 			rl_read_bssid_info(&bssid_info);
-			if(os_strcmp(req->descr.wifi_ssid, bssid_info.ssid) == 0
+
+			uint32_t req_ssid_len = os_strlen(req->descr.wifi_ssid);
+			ssid_len = os_strlen(bssid_info.ssid);
+
+			ssid_len = (req_ssid_len > ssid_len)? req_ssid_len : ssid_len;
+			if(ssid_len > SSID_MAX_LEN)
+			{
+				ssid_len = SSID_MAX_LEN;
+			}
+			if(os_memcmp(req->descr.wifi_ssid, bssid_info.ssid, ssid_len) == 0
 				&& os_strcmp(req->descr.wifi_key, bssid_info.pwd) == 0)
 			{
 				bk_printf("fast_connect\r\n");

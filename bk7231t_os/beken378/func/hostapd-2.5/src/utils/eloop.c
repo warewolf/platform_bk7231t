@@ -662,6 +662,18 @@ void eloop_run(void)
 				break;
 		}
 
+		if(hostapd_is_exiting())
+		{
+			hostapd_exit_handler();
+			hostapd_exit_done();
+		}
+		
+		if(supplicant_is_exiting())
+		{
+			supplicant_exit_handler();
+			supplicant_exit_done();
+		}
+
 		timeout = dl_list_first(&eloop.timeout, struct eloop_timeout,
 					list);
 		if (timeout) {

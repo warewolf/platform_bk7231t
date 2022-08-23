@@ -4,13 +4,13 @@
 #include "str_pub.h"
 #include "mem_pub.h"
 #include "txu_cntrl.h"
-
 #include "lwip/pbuf.h"
-
 #include "arm_arch.h"
+
 #if CFG_GENERAL_DMA
 #include "general_dma_pub.h"
 #endif
+
 #include "param_config.h"
 #include "fake_clock_pub.h"
 #include "power_save_pub.h"
@@ -97,6 +97,11 @@ void rwm_tx_confirm(void *param)
 	if(txdesc && txdesc->host.msdu_node)
 	{
 		os_null_printf("flush_desc:0x%x\r\n", txdesc->host.msdu_node);
+
+		if(txdesc->host.callback)
+		{
+			(*txdesc->host.callback)(txdesc->host.param);
+		}
 		
 		os_free(txdesc->host.msdu_node);
 		txdesc->host.msdu_node = NULL;
@@ -456,7 +461,6 @@ void rwm_msdu_ps_change_ind_handler(void *msg)
     
     if((ind->ps_state == PS_MODE_OFF) && node_left) {
         // trigger txing sending
-       // os_printf("ps off, trigger txing sending %d\r\n", node_left);
         bmsg_txing_sender(ind->sta_idx);
         
         if(rtos_is_timer_running(&g_ap_ps.sta_ps[ind->sta_idx].timer)) {
@@ -464,15 +468,12 @@ void rwm_msdu_ps_change_ind_handler(void *msg)
             ASSERT(0 == ret);
         }
     } else if((ind->ps_state == PS_MODE_ON) && node_left)  {
-
-        //os_printf("ps_change on:%d\r\n", node_left);
         // do something
         if(!rtos_is_timer_running(&g_ap_ps.sta_ps[ind->sta_idx].timer)) {
             ret = rtos_start_timer(&g_ap_ps.sta_ps[ind->sta_idx].timer);
 	        ASSERT(0 == ret);
         }
     }
-
 }
 
 void rwm_msdu_ap_ps_timeout(void *data)
@@ -481,7 +482,6 @@ void rwm_msdu_ap_ps_timeout(void *data)
 
     rwm_flush_txing_list(sta_idx);
 }
-
 #endif
 
 void rwm_msdu_init(void)
@@ -502,7 +502,8 @@ void rwm_msdu_init(void)
     }
     #endif
 }
-UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len)
+
+UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len, int sync, void *args)
 {
     UINT32 ret = 0;
     MSDU_NODE_T *node;
@@ -523,23 +524,48 @@ UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len)
 
     eth_hdr_ptr = (ETH_HDR_PTR)buf;
     node->vif_idx = vif_idx;
+	node->sync = sync;
+	node->args = args;
     node->sta_idx = rwm_mgmt_tx_get_staidx(vif_idx,
                              &eth_hdr_ptr->e_dest);
 
 #if CFG_USE_AP_PS
-    rwm_ps_tranfer_node(node);
+    ret = rwm_ps_tranfer_node(node);
 #else
-    rwm_transfer_node(node, 0);
+    ret = rwm_transfer_node(node, 0);
 #endif
 
 tx_exit:
     return ret;
 }
 
+void ieee80211_data_tx_cb(void *param)
+{
+	struct txdesc *txdesc_new = (struct txdesc *)param;
+	MSDU_NODE_T *node = (MSDU_NODE_T *)txdesc_new->host.msdu_node;
+	struct tx_hd *txhd = &txdesc_new->lmac.hw_desc->thd;
+	struct ieee80211_tx_cb *cb = (struct ieee80211_tx_cb *)node->args;
+	uint32_t status = txhd->statinfo;
+
+	if(0 == node)
+	{
+		os_printf("zero_node\r\n");
+		return;
+	}
+	
+	if (status & FRAME_SUCCESSFUL_TX_BIT /*DESC_DONE_SW_TX_BIT*/) {
+		cb->result = RW_SUCCESS;
+	} else {
+		cb->result = RW_FAILURE;
+	}
+
+	rtos_set_semaphore(&cb->sema);
+}
+
 UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
 {
     UINT8 tid;
-    UINT32 ret = 0;
+    UINT32 ret = RW_FAILURE;
     UINT8 *content_ptr;
 
     UINT32 queue_idx;
@@ -592,8 +618,18 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
     txdesc_new->host.tid              = tid;
 
     txdesc_new->host.vif_idx          = node->vif_idx;
-    txdesc_new->host.staid            = node->sta_idx;  
-	txdesc_new->host.msdu_node        = (void *)node;
+    txdesc_new->host.staid            = node->sta_idx;   
+	txdesc_new->host.msdu_node		  = (void *)node;
+
+	if (node->sync) 
+	{
+		txdesc_new->host.callback		  = (mgmt_tx_cb_t)ieee80211_data_tx_cb;
+		txdesc_new->host.param			  = (void *)txdesc_new;
+	} 
+	else 
+	{
+		txdesc_new->host.callback = 0;
+	}
 
     txdesc_new->lmac.agg_desc = NULL;
     txdesc_new->lmac.hw_desc->cfm.status = 0;

@@ -31,10 +31,10 @@ xTaskHandle wpas_thread_handle = NULL;
 extern xTaskHandle  hostapd_thread_handle;
 #endif
 uint32_t wpas_stack_size = 3500;
-beken_semaphore_t wpas_sema = NULL;
 extern beken_semaphore_t wpa_hostapd_sema;
 struct wpa_ssid_value *wpas_connect_ssid = 0;
 struct wpa_interface *wpas_ifaces = 0;
+uint32_t supplicant_exit_flag = 0;
 
 extern beken_queue_t wpah_queue;
 
@@ -58,7 +58,34 @@ int wpa_get_psk(char *psk)
     return 0;
 }
 
+int supplicant_exit_done(void)
+{
+	supplicant_exit_flag = 0;
+	os_printf("supplicant_exit_done\r\n");
+	
+	return 0;
+}
+
+int supplicant_is_exiting(void)
+{
+	return supplicant_exit_flag;
+}
+
 int supplicant_main_exit(void)
+{
+	supplicant_exit_flag = 1;
+
+	wpa_hostapd_queue_poll(0xff);
+	while(supplicant_exit_flag)
+	{
+		os_printf("supplicant_main_exiting\r\n");
+		rtos_delay_milliseconds(10);
+	}
+
+	return 0;
+}
+
+int supplicant_exit_handler(void)
 {
 	if (wpa_global_ptr == NULL)
 		return 0;
@@ -238,28 +265,6 @@ void wpas_thread_stop(void)
 	while(wpas_thread_handle != NULL) {
 		rtos_delay_milliseconds(10);
 	}
-}
-
-void wpa_supplicant_poll(void *param)
-{
-    OSStatus ret;
-
-	if(wpas_sema)
-	{
-    	ret = rtos_set_semaphore(&wpas_sema);
-	}
-
-	(void)ret;
-}
-
-int wpa_sem_wait(uint32_t ms)
-{
-	if(NULL == wpas_sema)
-	{
-		return kTimeoutErr;
-	}
-	
-	return rtos_get_semaphore(&wpas_sema, ms);
 }
 
 u8* wpas_get_sta_psk(void)

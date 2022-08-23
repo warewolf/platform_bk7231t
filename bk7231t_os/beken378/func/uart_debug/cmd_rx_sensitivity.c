@@ -296,11 +296,10 @@ int do_rx_sensitivity(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
             rwnx_cal_set_reg_adda_ldo(0);
         else
             rwnx_cal_set_reg_adda_ldo(3);
-
-#if (CFG_SOC_NAME == SOC_BK7231U)
+        
         rwnx_cal_set_reg_rx_ldo();
-#endif
         bk7011_max_rxsens_setting();
+        rwnx_cal_dis_extra_txpa();
         
         if(mode == 1)
         {

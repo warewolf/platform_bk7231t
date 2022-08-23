@@ -84,7 +84,7 @@ static int wpa_ether_send(struct wpa_supplicant *wpa_s, const u8 *dest,
 #endif /* CONFIG_TESTING_OPTIONS */
 
 	if (wpa_s->l2) {
-		return l2_packet_send(wpa_s->l2, dest, proto, buf, len);
+		return l2_packet_send_sync(wpa_s->l2, dest, proto, buf, len);
 	}
 
 	return -1;

@@ -221,7 +221,7 @@ void ble_switch_rf_to_ble(void)
         return;
     }
 
-	if (ps_get_sleep_prevent())
+	if (ps_get_sleep_prevent() & 0x37)
     {
     	GLOBAL_INT_RESTORE();
         return;

@@ -16,7 +16,7 @@
 #else
 #define PS_PRT                 os_null_printf
 #define PS_WPRT                os_null_printf
-#define PS_DBG                 os_printf
+#define PS_DBG                 os_null_printf
 
 #endif
 
@@ -117,6 +117,7 @@ extern bool power_save_rf_sleep_check( void );
 extern void ps_set_key_prevent(void);
 extern void ps_clear_key_prevent(void);
 extern void ps_set_data_prevent(void);
+extern void ps_clear_prevent(void);
 extern void txl_cntrl_dec_pck_cnt(void);
 extern void txl_cntrl_inc_pck_cnt(void);
 extern int bmsg_is_empty(void);

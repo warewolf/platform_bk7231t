@@ -624,6 +624,7 @@ enum mac_ht_oper_prot_val
 #define MAC_AUTH_STATUS_OFT               4   // Order 3
 #define MAC_AUTH_CHALLENGE_OFT            6   // Order 4
 #define MAC_AUTH_CHALLENGE_LEN          128
+#define MAC_AUTH_CHALLENGE_TAG			16
 //challenge text IE size
 #define CHALLENGE_TEXT_SIZE             130
 

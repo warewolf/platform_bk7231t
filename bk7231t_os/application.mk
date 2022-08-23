@@ -362,6 +362,7 @@ SRC_C += ./beken378/func/lwip_intf/dhcpd/dhcp-server.c
 SRC_C += ./beken378/func/lwip_intf/dhcpd/dhcp-server-main.c
 SRC_C += ./beken378/func/misc/fake_clock.c
 SRC_C += ./beken378/func/misc/target_util.c
+SRC_C += ./beken378/func/misc/start_type.c
 SRC_C += ./beken378/func/power_save/power_save.c
 SRC_C += ./beken378/func/power_save/manual_ps.c
 SRC_C += ./beken378/func/power_save/mcu_ps.c

@@ -102,9 +102,9 @@ static UINT32 gst_sar_adc = CAL_DELAY05US;
 #define TRX_REG_0XD_VAL         0xDDF90339
 #define TSSI_POUT_TH            0x60
 #elif (BOARD == BK7231U_BOARD)
-#define TRX_REG_0XA_VAL         0x036F2015//0x0036A2075
+#define TRX_REG_0XA_VAL         0x036F2075//0x036A2075
 #define TRX_REG_0XB_VAL         0xA7248F37//0x45248437
-#define TRX_REG_0XC_VAL         0x00228755
+#define TRX_REG_0XC_VAL         0x0022A755
 #define TRX_REG_0XD_VAL         0xDDF90339
 #define TSSI_POUT_TH            0x54   ///0x50
 #endif
@@ -235,7 +235,7 @@ int gtx_phase_comp_array[CALIBRATE_TIMES];*/
     0x1804AA47,                      /* 05-R0x05, //       */ \
     0x5FA44100,                      /* 06-R0x06, //       */ \
     0x000020F5,                      /* 07-R0x07, // 00F5:4th;20F5:2nd      */ \
-    0x0722E89E,                      /* 08-R0x08, //   0x072A289E    */ \
+    0x0728289E,                      /* 08-R0x08, //   0x072A289E    */ \
     0x000163AF,                      /* 09-R0x09, //       */ \
     TRX_REG_0XA_VAL,                 /* 10-R0x0A, //       */ \
     TRX_REG_0XB_VAL,                 /* 11-R0x0B, //       */ \
@@ -364,6 +364,29 @@ INT32 gtx_phase_imb_cal_mode = TX_PHASE_IMB_CAL;
 INT32 gtx_band = 0x4a;
 static UINT32 is_tpc_used = 0;
 
+typedef enum{
+    CM_TX_DCOR_MOD_FLAG              = 0,
+    CM_TX_DCOR_PA_FLAG,              // 1
+    CM_TX_PREGAIN_FLAG,              // 2
+    CM_TX_I_DC_COMP_FLAG,            // 3
+    CM_TX_Q_DC_COMP_FLAG,            // 4
+    CM_TX_I_GAIN_COMP_FLAG,          // 5
+    CM_TX_Q_GAIN_COMP_FLAG,          // 6
+    CM_TX_I_FILTER_CORNER_FLAG,      // 7
+    CM_TX_Q_FILTER_CORNER_FLAG,      // 8
+    CM_TX_PHASE_COMP_FLAG,           // 9
+    CM_TX_PHASE_TY2_FLAG,            // 10
+    CM_RX_DC_GAIN_TAB_FLAG,          // 11
+    CM_RX_AMP_ERR_WR_FLAG,           // 12
+    CM_RX_PHASE_ERR_WR_FLAG,         // 13
+}CM_FLAG;
+
+static UINT32 cali_main_flags = 0;
+#define CM_SET_FLAG_BIT(bit)      cali_main_flags |= (1 << (bit))
+#define CM_CLR_FLAG_BIT(bit)      cali_main_flags &= ~(1 << (bit))
+#define CM_CLR_FLAG_ALLBIT()      cali_main_flags = 0
+#define CM_FLAG_IS_SET()          (cali_main_flags != 0)?  1 : 0
+
 struct cal_pwr_st 
 {
     UINT8 idx;
@@ -408,113 +431,112 @@ INT32 gtx_tssi_thred = TSSI_POUT_TH;
      .rega_0_1   = ra_0_1,       \
 } 
 
-
-PWR_REGS cfg_tab_b[32] = {
-    // pregain REGB<31:28> REGC<10:8> REGC<6:4> REGC<2:0> REGA<13:8> REGA<7:4> REGA<1:0>
-	PWRI(  0x1C	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 0 
-	PWRI(  0x19 ,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 1 
-	PWRI(  0x16 ,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 2 
-	PWRI(  0x13 ,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 3 
-	PWRI(  0x10 ,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 4 
-	PWRI(  0xD	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 5 
-	PWRI(  0xA	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 6 
-	PWRI(  0x7	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 7 
-	PWRI(  0x4	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 8 
-	PWRI(  0x1	,      0xA,       7,        3,         2,      0x20,     0x0,     0x2   ),   // 9
-	PWRI(  0x12 ,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 10
-	PWRI(  0xF	,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 11
-	PWRI(  0xC	,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 12
-	PWRI(  0x9	,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 13
-	PWRI(  0x6	,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 14
-	PWRI(  0x3	,      0xA,       7,        4,         3,      0x20,     0x0,     0x2   ),   // 15
-	PWRI(  0x1E ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 16
-	PWRI(  0x1C ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 17
-	PWRI(  0x1A ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 18
-	PWRI(  0x18 ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 19
-	PWRI(  0x16 ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 20
-	PWRI(  0x14 ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 21
-	PWRI(  0x12 ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 22
-	PWRI(  0x10 ,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 23
-	PWRI(  0xE	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 24
-	PWRI(  0xC	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 25
-	PWRI(  0x9	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 26
-	PWRI(  0x6	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 27
-	PWRI(  0x3	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 28
-	PWRI(  0x0	,      0xA,       7,        5,         5,      0x20,     0x0,     0x2   ),   // 29
-	PWRI(  0x0	,      0xA,       7,        6,         5,      0x20,     0x0,     0x2   ),   // 30  
-	PWRI(  0x0	,      0xA,       7,        6,         6,      0x20,     0x0,     0x2   ),   // 31
+PWR_REGS cfg_tab_b[32] = {                                                                       
+      // pregain REGB<31:28> REGC<10:8> REGC<6:4> REGC<2:0> REGA<13:8> REGA<7:4> REGA<1:0>       
+    PWRI( 0x16 ,      0xA,       7,        3,         1,      0x20,     0x7,     0x1   ),   // 0 
+    PWRI( 0x13 ,      0xA,       7,        3,         1,      0x20,     0x7,     0x1   ),   // 1 
+    PWRI( 0x10 ,      0xA,       7,        3,         1,      0x20,     0x7,     0x1   ),   // 2 
+    PWRI( 0x19 ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 3 
+    PWRI( 0x16 ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 4 
+    PWRI( 0x13 ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 5 
+    PWRI( 0x10 ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 6 
+    PWRI( 0xD  ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 7 
+    PWRI( 0xA  ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 8 
+    PWRI( 0x7  ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 9 
+    PWRI( 0x4  ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 10
+    PWRI( 0x1  ,      0xA,       7,        3,         2,      0x20,     0x7,     0x1   ),   // 11
+    PWRI( 0x12 ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 12
+    PWRI( 0xF  ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 13
+    PWRI( 0xC  ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 14
+    PWRI( 0x9  ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 15
+    PWRI( 0x6  ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 16
+    PWRI( 0x3  ,      0xA,       7,        4,         3,      0x20,     0x7,     0x1   ),   // 17
+    PWRI( 0x1E ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 18
+    PWRI( 0x1C ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 19
+    PWRI( 0x1A ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 20
+    PWRI( 0x18 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 21
+    PWRI( 0x16 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 22
+    PWRI( 0x14 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 23
+    PWRI( 0x12 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 24
+    PWRI( 0x10 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 25
+    PWRI( 0xE  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 26
+    PWRI( 0xC  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 27
+    PWRI( 0x9  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 28
+    PWRI( 0x6  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 29
+    PWRI( 0x3  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 30
+    PWRI( 0x0  ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 31
 };
 
 PWR_REGS cfg_tab_g[32] = {                                                             
     // pregain REGB<31:28> REGC<10:8> REGC<6:4> REGC<2:0> REGA<13:8> REGA<7:4> REGA<1:0>
-	PWRI(  0x1E ,     0xA,       7,        4,         4,      0x20,       0x1,     0x1   ),   // 0 
-	PWRI(  0x1B ,     0xA,       7,        4,         4,      0x20,       0x1,     0x1   ),   // 1 
-	PWRI(  0x1F ,     0xA,       7,        5,         4,      0x20,       0x1,     0x1   ),   // 2 
-	PWRI(  0x1C ,     0xA,       7,        5,         4,      0x20,       0x1,     0x1   ),   // 3 
-	PWRI(  0x19 ,     0xA,       7,        5,         4,      0x20,       0x1,     0x1   ),   // 4 
-	PWRI(  0x16 ,     0xA,       7,        5,         4,      0x20,       0x1,     0x1   ),   // 5
-	PWRI(  0x1E ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 6 
-	PWRI(  0x1B ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 7 
-	PWRI(  0x18 ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 8 
-	PWRI(  0x15 ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 9
-	PWRI(  0x12 ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 10
-	PWRI(  0x10 ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 11
-	PWRI(  0xE	,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 12
-	PWRI(  0xC  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 13
-	PWRI(  0xA  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 14
-	PWRI(  0x8  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 15
-	PWRI(  0x6  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 16
-	PWRI(  0x4  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 17
-	PWRI(  0x2  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 18
-	PWRI(  0x0  ,     0xA,       7,        5,         5,      0x20,       0x1,     0x1   ),   // 19
-	PWRI(  0x8  ,     0x8,       7,        6,         5,      0x20,       0x1,     0x1   ),   // 20
-	PWRI(  0x6  ,     0x8,       7,        6,         5,      0x20,       0x1,     0x1   ),   // 21
-	PWRI(  0x4  ,     0x8,       7,        6,         5,      0x20,       0x1,     0x1   ),   // 22
-	PWRI(  0x2  ,     0x8,       7,        6,         5,      0x20,       0x1,     0x1   ),   // 23
-	PWRI(  0x0  ,     0x8,       7,        6,         5,      0x20,       0x1,     0x1   ),   // 24
-	PWRI(  0xA  ,     0x8,       7,        6,         6,      0x20,       0x1,     0x1   ),   // 25
-	PWRI(  0x7  ,     0x8,       7,        6,         6,      0x20,       0x1,     0x1   ),   // 26
-	PWRI(  0x5  ,     0x8,       7,        6,         6,      0x20,       0x1,     0x1   ),   // 27
-	PWRI(  0x2  ,     0x8,       7,        6,         6,      0x20,       0x1,     0x1   ),   // 28
-	PWRI(  0x0  ,     0x8,       7,        6,         6,      0x20,       0x1,     0x1   ),   // 29
-	PWRI(  0x0  ,     0x9,       7,        7,         6,      0x20,       0x1,     0x1   ),   // 30  
-	PWRI(  0x0  ,     0x6,       7,        7,         6,      0x20,       0x1,     0x1   ),   // 31
+    PWRI( 0x18,      0xA,       7,        5,         2,      0x20,     0x7,     0x1   ),   // 0 
+    PWRI( 0x15,      0xA,       7,        5,         2,      0x20,     0x7,     0x1   ),   // 1 
+    PWRI( 0x1E,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 2 
+    PWRI( 0x1B,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 3 
+    PWRI( 0x18,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 4 
+    PWRI( 0x15,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 5 
+    PWRI( 0x12,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 6 
+    PWRI( 0xF ,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 7 
+    PWRI( 0xC ,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 8 
+    PWRI( 0x9 ,      0xA,       7,        5,         3,      0x20,     0x7,     0x1   ),   // 9 
+    PWRI( 0x1F,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 10
+    PWRI( 0x1D,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 11
+    PWRI( 0x1A,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 12
+    PWRI( 0x17,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 13
+    PWRI( 0x14,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 14
+    PWRI( 0x11,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 15
+    PWRI( 0xE ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 16
+    PWRI( 0xB ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 17
+    PWRI( 0x8 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 18
+    PWRI( 0x5 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 19
+    PWRI( 0x2 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 20
+    PWRI( 0x0 ,      0xA,       7,        5,         5,      0x20,     0x7,     0x1   ),   // 21
+    PWRI( 0xF ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 22
+    PWRI( 0xC ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 23
+    PWRI( 0x9 ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 24
+    PWRI( 0x6 ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 25
+    PWRI( 0x3 ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 26
+    PWRI( 0x0 ,      0xA,       7,        6,         6,      0x20,     0x7,     0x1   ),   // 27
+    PWRI( 0xC ,      0xA,       7,        7,         6,      0x20,     0x7,     0x2   ),   // 28
+    PWRI( 0x9 ,      0xA,       7,        7,         6,      0x20,     0x7,     0x2   ),   // 29
+    PWRI( 0x6 ,      0xA,       7,        7,         6,      0x20,     0x7,     0x2   ),   // 30
+    PWRI( 0x3 ,      0xA,       7,        7,         6,      0x20,     0x7,     0x2   ),   // 31
 };
 
 PWR_REGS cfg_tab_ble[32] = {
     // pregain REGB<31:28> REGC<11:8> REGC<7:4> REGC<3:0> REGA<13:8> REGA<7:4> REGA<1:0>
-	PWRI(  0x1F ,      0xF,       1,        0,         0,      0x20,       0x0,     0x2   ),   // 0 
-	PWRI(  0x18 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 1 
-	PWRI(  0x15 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 2
-	PWRI(  0x12 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 3 
-	PWRI(  0xF	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 4 
-	PWRI(  0xC	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 5 
-	PWRI(  0x9	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 6 
-	PWRI(  0x6	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 7 
-	PWRI(  0x3	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 8 
-	PWRI(  0x0	,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 9
-	PWRI(  0x1F ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 10
-	PWRI(  0x1C ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 11
-	PWRI(  0x19 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 12
-	PWRI(  0x16 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 13
-	PWRI(  0x14 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 14
-	PWRI(  0x12 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 15
-	PWRI(  0x10 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 16
-	PWRI(  0xE	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 17
-	PWRI(  0xC	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 18
-	PWRI(  0xA	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 19
-	PWRI(  0x8	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 20
-	PWRI(  0x6	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 21
-	PWRI(  0x4	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 22
-	PWRI(  0x2	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 23
-	PWRI(  0x0	,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 24
-	PWRI(  0x11 ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 25
-	PWRI(  0xF	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 26
-	PWRI(  0xC	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 27
-	PWRI(  0x9	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 28
-	PWRI(  0x6	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 29
-	PWRI(  0x3	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 30
-	PWRI(  0x0	,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 31
+	PWRI(  0x1F,      0xF,       1,        0,         0,      0x20,       0x0,     0x2   ),   // 0 
+	PWRI(  0x1E,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 1 
+	PWRI(  0x1B,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 2
+	PWRI(  0x18,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 3 
+	PWRI(  0x15,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 4 
+	PWRI(  0x12,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 5 
+	PWRI(  0xF ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 6 
+	PWRI(  0xC ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 7 
+	PWRI(  0x9 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 8 
+	PWRI(  0x6 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 9
+	PWRI(  0x3 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 10
+	PWRI(  0x0 ,      0xA,       1,        3,         3,      0x20,       0x0,     0x2   ),   // 11
+	PWRI(  0x1F,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 12
+	PWRI(  0x1C,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 13
+	PWRI(  0x19,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 14
+	PWRI(  0x16,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 15
+	PWRI(  0x13,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 16
+	PWRI(  0x11,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 17
+	PWRI(  0xE ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 18
+	PWRI(  0xC ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 19
+	PWRI(  0x9 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 20
+	PWRI(  0x7 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 21
+	PWRI(  0x4 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 22
+	PWRI(  0x2 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 23
+	PWRI(  0x0 ,      0xA,       1,        5,         5,      0x20,       0x0,     0x2   ),   // 24
+	PWRI(  0x11,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 25
+	PWRI(  0xF ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 26
+	PWRI(  0xC ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 27
+	PWRI(  0x9 ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 28
+	PWRI(  0x6 ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 29
+	PWRI(  0x3 ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 30
+	PWRI(  0x0 ,      0xA,       2,        4,         5,      0x20,       0x0,     0x2   ),   // 31
 };
 
 #define TCP_PAMAP_TAB_LEN               (16)
@@ -534,44 +556,44 @@ PWR_REGS cfg_tab_ble[32] = {
 
 const PWR_REGS_TPC cfg_tab_tpc[TCP_PAMAP_TAB_LEN] = {    
     // REGB<31:28> REGC<3:0> REGC<7:4> REGC<11:8>  value  
-    TPCI(  0xA,	      2,	      3,         7),   // 0 
-    TPCI(  0x8,	      2,	      3,         7),   // 1 
-    TPCI(  0x8,	      3,	      2,         7),   // 2 
-    TPCI(  0xC,	      3,	      4,         7),   // 3 
-    TPCI(  0xA,	      3,	      4,         7),   // 4 
-    TPCI(  0x8,	      3,	      4,         7),   // 5 
-    TPCI(  0xC,	      4,	      4,         7),   // 6 
-    TPCI(  0xA,	      4,	      4,         7),   // 7 
+    TPCI(  0xC,	      2,	      3,         7),   // 0
+    TPCI(  0xA,	      2,	      3,         7),   // 1 
+    TPCI(  0x8,	      2,	      3,         7),   // 2 
+    TPCI(  0xB,	      3,	      3,         7),   // 3 
+    TPCI(  0x9,	      3,	      3,         7),   // 4 
+    TPCI(  0xC,	      3,	      5,         7),   // 5 
+    TPCI(  0xA,	      3,	      5,         7),   // 6 
+    TPCI(  0x8,	      3,	      5,         7),   // 7 
     TPCI(  0xB,	      4,	      5,         7),   // 8 
     TPCI(  0x9,	      4,	      5,         7),   // 9 
-    TPCI(  0x9,	      5,	      4,         7),   // 10
+    TPCI(  0x7,	      4,	      5,         7),   // 10
     TPCI(  0xA,	      5,	      5,         7),   // 11
     TPCI(  0x8,	      5,	      5,         7),   // 12
-    TPCI(  0x9,	      5,	      6,         7),   // 13
-    TPCI(  0x7,	      5,	      6,         7),   // 14
-    TPCI(  0x9,	      6,	      6,         7),   // 15
+    TPCI(  0x6,	      5,	      5,         7),   // 13
+    TPCI(  0x9,	      6,	      5,         7),   // 14
+    TPCI(  0x7,	      6,	      5,         7),   // 15
 };
 
 const UINT8 b_map[32] = {
-    0,  0,  0,  0,   // 0 - 3
-    0,  0,  1,  1,   // 4 - 7
-    2,  2,  3,  3,   // 8 - 11
-    4,  4,  5,  6,   // 12 - 15
-    6,  7,  7,  8,   // 16 - 19
-    8,  9,  9,  9,   // 20 - 23
-    10, 10, 11, 11,   // 24 - 27
-    12, 12, 13, 14,   // 28 - 31
+    2,  3,  3,  4,   // 0 - 3
+    4,  5,  5,  6,   // 4 - 7
+    7,  7,  8,  8,   // 8 - 11
+    9,  9,  10,  10,   // 12 - 15
+    11,  11,  12,  12,   // 16 - 19
+    12,  13,  13,  13,   // 20 - 23
+    14,  14,  14, 14,   // 24 - 27
+    15, 15, 15, 15,   // 28 - 31
 };
 
 const UINT8 gn_map[32] = {
-    0,  0,  0,  1,   // 0 - 3
-    2,  2,  3,  3,   // 4 - 7
-    4,  5,  6,  6,   // 8 - 11
-    7,  8,  8,  9,   // 12 - 15
-    9, 10, 10, 11,   // 16 - 19
-   11, 11, 12, 12,   // 20 - 23
-   13, 13, 14, 14,   // 24 - 27
-   15, 15, 15, 15,   // 28 - 31
+    0,  0,  0,  0,   // 0 - 3
+    1,  2,  2,  3,   // 4 - 7
+    4,  4,  4,  5,   // 8 - 11
+    5,  6,  7,  7,   // 12 - 15
+    8,  9,  10,  10,   // 16 - 19
+    11,  12,  12,  12,   // 20 - 23
+    13,  13,  14, 14,   // 24 - 27
+    14, 15, 15, 15,   // 28 - 31
 };
 
 struct BK7011RCBEKEN_TypeDef BK7011RCBEKEN =
@@ -1548,18 +1570,21 @@ void rwnx_cal_read_current_cal_result(void)
 #endif
     {
         CAL_FATAL("*********** finally result **********\r\n");
-        CAL_FATAL("gbias_after_cal: 0x%x\r\n", gbias_after_cal);
-        CAL_FATAL("gav_tssi: 0x%x\r\n", gav_tssi);
-        CAL_FATAL("gtx_q_dc_comp:0x%x\r\n", gtx_q_dc_comp);
-        CAL_FATAL("gtx_i_dc_comp:0x%x\r\n", gtx_i_dc_comp);
-        CAL_FATAL("gtx_i_gain_comp:%d\r\n", gtx_i_gain_comp);
-        CAL_FATAL("gtx_q_gain_comp:%d\r\n", gtx_q_gain_comp);
-        CAL_FATAL("gtx_phase_comp:%d\r\n", gtx_phase_comp);
-        CAL_FATAL("gtx_phase_ty2:%d\r\n", gtx_phase_ty2);
+        CAL_FATAL("gtx_dcorMod            : 0x%x\r\n", gtx_dcorMod);
+        CAL_FATAL("gtx_dcorPA             : 0x%x\r\n", gtx_dcorPA);
+        CAL_FATAL("gtx_pre_gain           : 0x%x\r\n", gtx_pre_gain);
+        CAL_FATAL("gtx_i_dc_comp          : 0x%x\r\n", gtx_i_dc_comp);
+        CAL_FATAL("gtx_q_dc_comp          : 0x%x\r\n", gtx_q_dc_comp);
+        CAL_FATAL("gtx_i_gain_comp        : 0x%x\r\n", gtx_i_gain_comp);
+        CAL_FATAL("gtx_q_gain_comp        : 0x%x\r\n", gtx_q_gain_comp);
         CAL_FATAL("gtx_ifilter_corner over: 0x%x\r\n", gtx_ifilter_corner);
         CAL_FATAL("gtx_qfilter_corner over: 0x%x\r\n", gtx_qfilter_corner);
-        CAL_FATAL("gtx_dcorMod:0x%x, gtx_dcorPA:0x%x\r\n", gtx_dcorMod, gtx_dcorPA);
-        CAL_FATAL("gtx_pre_gain:0x%x\r\n", gtx_pre_gain);
+        CAL_FATAL("gtx_phase_comp         : 0x%x\r\n", gtx_phase_comp);
+        CAL_FATAL("gtx_phase_ty2          : 0x%x\r\n", gtx_phase_ty2);
+        
+        CAL_FATAL("gbias_after_cal        : 0x%x\r\n", gbias_after_cal);
+        CAL_FATAL("gav_tssi               : 0x%x\r\n", gav_tssi);
+
         CAL_FATAL("g_rx_dc_gain_tab 0 over: 0x%x\r\n", g_rx_dc_gain_tab[0]);
         CAL_FATAL("g_rx_dc_gain_tab 1 over: 0x%x\r\n", g_rx_dc_gain_tab[1]);
         CAL_FATAL("g_rx_dc_gain_tab 2 over: 0x%x\r\n", g_rx_dc_gain_tab[2]);
@@ -1568,9 +1593,8 @@ void rwnx_cal_read_current_cal_result(void)
         CAL_FATAL("g_rx_dc_gain_tab 5 over: 0x%x\r\n", g_rx_dc_gain_tab[5]);
         CAL_FATAL("g_rx_dc_gain_tab 6 over: 0x%x\r\n", g_rx_dc_gain_tab[6]);
         CAL_FATAL("g_rx_dc_gain_tab 7 over: 0x%x\r\n", g_rx_dc_gain_tab[7]);
-
-        CAL_FATAL("grx_amp_err_wr:0x%03x\r\n", grx_amp_err_wr);
-        CAL_FATAL("grx_phase_err_wr:0x%03x\r\n", grx_phase_err_wr);
+        CAL_FATAL("grx_amp_err_wr         : 0x%03x\r\n", grx_amp_err_wr);
+        CAL_FATAL("grx_phase_err_wr       : 0x%03x\r\n", grx_phase_err_wr);
         CAL_FATAL("**************************************\r\n");
     }
 }
@@ -1701,8 +1725,20 @@ void rwnx_cal_set_txpwr_by_rate(INT32 rate, UINT32 test_mode)
     }
 
     manual_cal_get_dbm_by_rate(rate, bandwidth);
-
-    ret = manual_cal_get_pwr_idx_shift(rate, bandwidth, &pwr_gain);
+    
+    if(test_mode == 0)
+    {
+        ret = manual_cal_get_pwr_idx_shift(rate, bandwidth, &pwr_gain);
+    }
+    else
+    {
+        ret = 2;
+        if((bandwidth == PHY_CHNL_BW_20) && (rate <= 3))
+        {
+            ret = 1;
+        }
+    }
+    
     if(!ret ){
         // unable get txpwr from manual cal
         return;
@@ -1711,7 +1747,7 @@ void rwnx_cal_set_txpwr_by_rate(INT32 rate, UINT32 test_mode)
     } else if(ret == 2) {
         rwnx_cal_set_txpwr(pwr_gain, EVM_DEFUALT_RATE);
     }
-
+    
     //if(rate <= 3) 
     if((rate <= 4) || (rate == 128))
     {
@@ -1729,28 +1765,7 @@ void rwnx_cal_set_txpwr_by_rate(INT32 rate, UINT32 test_mode)
         //BK7011TRX.REG0x6->value = bk7011_trx_val[6];
         //CAL_WR_TRXREGS(0x6);       
     }
-       
-    if(test_mode)
-    {
-		#if 0
-        os_printf("add extral movement in test\r\n"); 
 
-         #if CFG_USE_TEMPERATURE_DETECT
-         temp_detect_uninit();
-         #endif
-
-        BK7011TRX.REG0xB->bits.gctrlmod30 = 0xF;
-        CAL_WR_TRXREGS(0xB);   
-
-        if(rate <= 3) {
-            BK7011TRX.REG0xB->bits.gctrlmod30 = 0xC;
-            CAL_WR_TRXREGS(0xB);  
-        } 
-		#endif
-    } else {
-        BK7011TRX.REG0xB->value = bk7011_trx_val[11];
-        CAL_WR_TRXREGS(0xB);   
-    }
 #endif
 }
 
@@ -1989,6 +2004,19 @@ void rwnx_cal_set_reg_adda_ldo(UINT32 val)
 	
     BK7011TRX.REG0x12->bits.ldoadda = val;
     CAL_WR_TRXREGS(0x12);
+}
+
+void rwnx_cal_en_extra_txpa(void)
+{
+    BK7011TRX.REG0x10->value = BK7011TRXONLY.REG0xD->value;
+    BK7011TRX.REG0x10->bits.entxfebias = 0;
+    CAL_WR_TRXREGS(0x10);
+}
+
+void rwnx_cal_dis_extra_txpa(void)
+{
+    BK7011TRX.REG0x10->value = bk7011_trx_val[16];
+    CAL_WR_TRXREGS(0x10);
 }
 
 void rwnx_cal_set_reg_rx_ldo(void)
@@ -2336,8 +2364,8 @@ void rwnx_cal_do_temp_detect(UINT16 cur_val, UINT16 thre, UINT16 *last)
     {
         #if CFG_TEMP_DETECT_VERSION == CFG_TEMP_DETECT_VERSION1
 		#if CFG_TEMP_DIFF_PWR_FREQOFFSET
-		BK7011TRX.REG0xC->bits.dcorPA30 = tmp_pwr_ptr->trx0x0c_12_15;
-		CAL_WR_TRXREGS(0xC);
+		//BK7011TRX.REG0xC->bits.dcorPA30 = tmp_pwr_ptr->trx0x0c_12_15;
+		//CAL_WR_TRXREGS(0xC);
         
 		manual_cal_do_xtal_temp_delta_set(tmp_pwr_ptr->xtal_c_dlta);
         manual_cal_do_xtal_cali(cur_val, 0, 0, 0);
@@ -2361,7 +2389,7 @@ void rwnx_tx_cal_save_cal_result(void)
     // Manual calibration not used PA & MOD, but use pre_gain
     #if CFG_SUPPORT_MANUAL_CALI 
     gtx_dcorMod = 0x8;
-    gtx_dcorPA = 0x8;
+    gtx_dcorPA = 0xA;
     #if CFG_USE_TEMPERATURE_DETECT
     manual_cal_tmp_pwr_init_reg(gtx_dcorMod, gtx_dcorPA);
     #endif  // CFG_USE_TEMPERATURE_DETECT
@@ -4776,6 +4804,60 @@ INT32 bk7011_cal_tx_filter_corner(INT32 *val)
     INT16 high, low;
     INT32 index = 0, gold_index = 0;
 
+    do 
+    {
+        int ret_i, tx_ifilter, ret_q, tx_qfilter;
+
+        if(manual_cal_need_load_cmtag_from_flash() == 0)
+        {
+            break;
+        }
+        
+        ret_i = manual_cal_load_calimain_tag_from_flash(CM_TX_I_FILTER_CORNER, &tx_ifilter, sizeof(int));
+        ret_q = manual_cal_load_calimain_tag_from_flash(CM_TX_Q_FILTER_CORNER, &tx_qfilter, sizeof(int));
+
+        if((ret_i == 1) && (ret_q == 1))
+        {
+            // found in flash
+            CAL_WARN("gtx_ifilter_corner in flash: 0x%x\r\n", tx_ifilter);
+            CAL_WARN("gtx_qfilter_corner in flash: 0x%x\r\n", tx_qfilter);
+        }
+        else if((ret_i == 0) || (ret_q == 0))
+        {
+            // tag not valid
+            break;
+        }
+        // ret < 0, means not found in flash
+        else if((ret_i == -1) || (ret_q == -1))
+        {
+            // not tlv in flash
+            manual_set_cmtag(LOAD_FROM_CALI);
+            break;
+        }
+        else if((ret_i <= -2) || (ret_q <= -2))
+        {
+            // has tlv, but no CALI_MAIN_TX tag
+            #if 1
+            CM_SET_FLAG_BIT(CM_TX_I_FILTER_CORNER_FLAG);
+            CM_SET_FLAG_BIT(CM_TX_Q_FILTER_CORNER_FLAG);
+            break;
+            #else
+            tx_ifilter = 0xd;
+            tx_ifilter = 0xd;
+            CAL_FATAL("gtx_ifilter_corner default: 0x%x\r\n", tx_ifilter);
+            CAL_FATAL("gtx_qfilter_corner default: 0x%x\r\n", tx_qfilter);
+            #endif
+        }
+  
+        gtx_ifilter_corner = tx_ifilter;
+        gtx_qfilter_corner = tx_qfilter;
+        BK7011TRX.REG0x6->bits.lpfcapcali50 = gtx_ifilter_corner;
+        BK7011TRX.REG0x6->bits.lpfcapcalq50 = gtx_qfilter_corner;
+        CAL_WR_TRXREGS(0x6);
+
+        return 0;
+    }while(0);
+
     BK7011TRX.REG0x6->bits.capcal_sel = 0;
     CAL_WR_TRXREGS(0x6);
 
@@ -5275,6 +5357,52 @@ INT32 bk7011_cal_rx_iq(INT32 *val)
     INT32 gold_index = 0;
     INT32 i, curr, value, value1, value2;
     //bk7011_load_rxiq_init_cfg(); //v1.5
+
+    do 
+    {
+        int ret_i, tx_ifilter, ret_q, tx_qfilter;
+
+        if(manual_cal_need_load_cmtag_from_flash() == 0)
+        {
+            break;
+        }
+        
+        ret_i = manual_cal_load_calimain_tag_from_flash(CM_RX_AMP_ERR_WR, &rx_amp_err_wr, sizeof(int));
+        ret_q = manual_cal_load_calimain_tag_from_flash(CM_RX_PHASE_ERR_WR, &rx_phase_err_wr, sizeof(int));
+
+        if((ret_i == 1) && (ret_q == 1))
+        {
+            // found in flash
+            CAL_WARN("grx_amp_err_wr in flash: 0x%x\r\n", rx_amp_err_wr);
+            CAL_WARN("grx_phase_err_wr in flash: 0x%x\r\n", rx_phase_err_wr);
+        }
+        else if((ret_i == 0) || (ret_q == 0))
+        {
+            // tag not valid
+            break;
+        }
+        // ret < 0, means not found in flash
+        else if((ret_i == -1) || (ret_q == -1))
+        {
+            // not tlv in flash
+            manual_set_cmtag(LOAD_FROM_CALI);
+            break;
+        }
+        else if((ret_i <= -2) || (ret_q <= -2))
+        {
+            // has tlv, but no CALI_MAIN_TX tag
+            CM_SET_FLAG_BIT(CM_RX_AMP_ERR_WR_FLAG);
+            CM_SET_FLAG_BIT(CM_RX_PHASE_ERR_WR_FLAG);
+            break;
+        }
+
+        grx_amp_err_wr = rx_amp_err_wr;
+        grx_phase_err_wr = rx_phase_err_wr;
+        BK7011RCBEKEN.REG0x42->bits.RXAMPERRWR = rx_amp_err_wr;
+        BK7011RCBEKEN.REG0x42->bits.RXPHASEERRWR = rx_phase_err_wr;
+
+        return 0;
+    }while(0);
 
     /*step 1*/
     BK7011RCBEKEN.REG0x1C->bits.FRXON = 1;
@@ -5788,6 +5916,8 @@ void calibration_main(void)
 {
     INT32 goldval[32] = {0};
     UINT32 param_bak, ldoadda_bak;
+    
+    CM_CLR_FLAG_ALLBIT();
 
 #if DIFFERENCE_PIECES_CFG
 	bk7011_get_rfcali_mode();
@@ -6012,6 +6142,11 @@ void calibration_main(void)
     bk7011_recover_ldo_manual(param_bak);
     rwnx_cal_set_reg_adda_ldo(ldoadda_bak);
     
+    if(CM_FLAG_IS_SET())
+    {
+        manual_cal_save_cailmain_tx_tab_to_flash();
+        manual_cal_save_cailmain_rx_tab_to_flash();
+    }
 /*	
     gtx_power_cal_mode = TX_WANTED_POWER_CAL;
     cpu_delay(100);
@@ -6022,6 +6157,20 @@ void calibration_main(void)
 //    printf_trx_rc_value();
 #endif
     return ;
+}
+
+void do_all_calibration(void)
+{
+    if(manual_cal_need_load_cmtag_from_flash())
+    {
+        // last status is LOAD_FROM_FLASH, means it may load from flash or default
+        manual_set_cmtag(LOAD_FROM_CALI);
+
+        // only do one time in every pow on
+        calibration_main();
+
+        rwnx_tpc_pa_map_init();
+    }
 }
 
 void do_calibration_in_temp_dect(void)

@@ -46,7 +46,6 @@ uint32_t cfg_param_init(void)
 	return 0;
 }
 
-#if 1
 #define MAC_EFUSE           0
 #define MAC_ITEM            1
 #define MAC_RF_OTP_FLASH    2
@@ -112,6 +111,18 @@ void cfg_load_mac(u8 *mac)
     }
 }
 
+uint32_t wifi_get_rescan_cnt(void)
+{
+	uint32_t cnt = 0;
+
+	if(g_sta_param_ptr)
+	{
+		cnt = g_sta_param_ptr->retry_cnt;
+	}
+
+	return cnt;
+}
+
 void wifi_get_mac_address(char *mac, u8 type)
 {
     cfg_load_mac(system_mac);
@@ -162,8 +173,6 @@ int wifi_set_mac_address(char *mac)
 	
 	return ret;
 }
-
-#endif
 
 #if (CFG_SOC_NAME != SOC_BK7231)
 #include "sys_ctrl_pub.h"

@@ -148,7 +148,7 @@ BOOL_T gpio_test_all(IN CONST CHAR_T *in, OUT CHAR_T *out)
             *ptemp ++ = '\"';
 
             for(i = 0; i < gpio_test_table.group[idx].ionum; i++) {
-                ptemp += sprintf(ptemp, "%x", gpio_test_table.group[idx].iopin[i]);
+                ptemp += sprintf(ptemp, "%d", gpio_test_table.group[idx].iopin[i]);
                 *ptemp ++ = ',';
             }
             ptemp --;

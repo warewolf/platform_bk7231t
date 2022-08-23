@@ -8,6 +8,81 @@
 
 #define CFG_TEMP_DIFF_PWR_FREQOFFSET        1
 
+#define BK_FLASH_OPT_TLV_HEADER           (0x00564c54)   // ASIC TLV
+typedef enum{
+    TXID                        = 0x11111100,
+    TXPWR_TAB_TAB               = 0x22222200,
+    CALI_MAIN_TX                = 0x33333300,
+    CALI_MAIN_RX                = 0x44444400,
+    TXEND                       = 0xeeeeeeee,
+    TXNON                       = 0xffffffff
+}TXSTRUCT;
+
+#define DEFAULT_TXID_ID           (12345678)
+#define DEFAULT_TXID_THERMAL      (280) //180430,7231:315,7231U:340
+#define DEFAULT_TXID_CHANNEL      (22222222)
+#define DEFAULT_TXID_LPF_CAP_I    (0x80)
+#define DEFAULT_TXID_LPF_CAP_Q    (0x80)
+typedef enum{
+    TXID_ID                     = TXID+1,
+    TXID_MAC,
+    TXID_THERMAL,
+    TXID_CHANNEL,
+    TXID_XTAL,
+    TXID_ADC,    
+    TXID_LPFCAP,
+    TXID_END,
+    TXID_NON                    = TXID+0xFF
+}TXIDList;
+
+typedef enum{
+    TXPWR_ENABLE_ID             = TXPWR_TAB_TAB+1,
+    TXPWR_TAB_B_ID,
+    TXPWR_TAB_G_ID,
+    TXPWR_TAB_N_ID,
+    TXPWR_TAB_DIF_GN20_ID,
+    TXPWR_TAB_DIF_GN40_ID,
+    TXPWR_TAB_BLE_ID,
+    TXPWR_TAB_CALI_STATUTS,
+    TXPWR_END,
+    TXPWR_NON                   = TXPWR_TAB_TAB+0xFF
+}TXPWR_ELEM_ID;
+
+typedef enum {
+    TXPWR_NONE_RD               = 0u,
+    TXPWR_TAB_B_RD              = 0x1u,
+    TXPWR_TAB_G_RD              = 0x2u,
+    TXPWR_TAB_N_RD              = 0x4u,
+    TXPWR_TAB_BLE               = 0x8u,
+} TXPWR_IS_RD;
+
+typedef enum{
+    CM_TX_DCOR_MOD              = CALI_MAIN_TX+1,
+    CM_TX_DCOR_PA,
+    CM_TX_PREGAIN,
+    CM_TX_I_DC_COMP,
+    CM_TX_Q_DC_COMP,
+    CM_TX_I_GAIN_COMP,
+    CM_TX_Q_GAIN_COMP,
+    CM_TX_I_FILTER_CORNER,
+    CM_TX_Q_FILTER_CORNER,
+    CM_TX_PHASE_COMP,
+    CM_TX_PHASE_TY2,
+    CM_TX_END,
+    CM_TX_NON                   = CALI_MAIN_TX+0xFF
+}CM_TX_ELEM_ID;
+
+typedef enum{
+    CM_RX_DC_GAIN_TAB           = CALI_MAIN_RX+1,
+    CM_RX_AMP_ERR_WR,
+    CM_RX_PHASE_ERR_WR,
+    CM_RX_END,
+    CM_RX_NON                   = CALI_MAIN_RX+0xFF
+}CM_RX_ELEM_ID;
+
+#define LOAD_FROM_FLASH         1
+#define LOAD_FROM_CALI          0
+
 #if (CFG_SOC_NAME == SOC_BK7231)
 #define CFG_TEMP_DETECT_VERSION   CFG_TEMP_DETECT_VERSION0
 #else
@@ -127,6 +202,18 @@ extern void rwnx_cal_ble_recover_rfconfig(void);
 extern void manual_cal_set_setp0(void);
 extern void manual_cal_set_setp1(void);
 extern void manual_cal_clear_setp(void);
+extern void manual_cal_set_rfcal_step0(void);
 extern int manual_cal_rfcali_status(void);
+extern UINT32 manual_cal_check_pwr_idx(UINT32 *level);
+extern UINT32 manual_cal_is_in_rftest_mode(void);
+
+extern void rwnx_cal_en_extra_txpa(void);
+extern void rwnx_cal_dis_extra_txpa(void);
+
+extern int manual_cal_save_cailmain_tx_tab_to_flash(void);
+extern int manual_cal_save_cailmain_rx_tab_to_flash(void);
+extern int manual_cal_need_load_cmtag_from_flash(void);
+extern int manual_set_cmtag(UINT32 status);
+extern void do_all_calibration(void);
 
 #endif // _BK7011_CAL_PUB_H_

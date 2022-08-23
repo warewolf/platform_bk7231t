@@ -22,7 +22,7 @@ typedef enum
 extern void evm_via_mac_evt(INT32 dummy);
 extern void evm_via_mac_begin(void);
 extern void evm_via_mac_continue(void);
-extern UINT32 evm_bypass_mac_set_tx_data_length(UINT32 is_legacy_mode, UINT32 len);
+extern UINT32 evm_bypass_mac_set_tx_data_length(UINT32 modul_format, UINT32 len, UINT32 rate, UINT32 bandwidth, UINT32 need_change);
 extern UINT32 evm_bypass_mac_set_rate_mformat(UINT32 ppdu_rate, UINT32 m_format);
 extern void evm_bypass_mac_set_channel(UINT32 channel);
 extern void evm_via_mac_set_channel(UINT32 channel);

@@ -552,9 +552,21 @@ int wpa_get_scan_rst(struct prism2_hostapd_param *param, int len)
 		mhdr_set_station_status(RW_EVT_STA_NO_AP_FOUND);
 		
 #if CFG_ROLE_LAUNCH
-		if(rl_pre_sta_set_status(RL_STATUS_STA_LAUNCH_FAILED))
+		uint32_t rl_cancel_flag;
+		if((0 == wifi_get_rescan_cnt()) || rl_pre_sta_get_cancel())
 		{
-			return -1;
+			WPAS_PRT("RL_STATUS_STA_LAUNCH_FAILED\r\n");
+			rl_cancel_flag = rl_pre_sta_set_status(RL_STATUS_STA_LAUNCH_FAILED);
+		}
+		else
+		{
+			WPAS_PRT("RL_STATUS_STA_SCAN_VAIN\r\n");
+			rl_cancel_flag = rl_pre_sta_set_status(RL_STATUS_STA_SCAN_VAIN);
+		}
+		
+		if(rl_cancel_flag)
+		{
+			bk_wlan_terminate_sta_rescan();
 		}
 #endif
 
@@ -969,7 +981,7 @@ void hapd_intf_ke_rx_handle(int dummy)
         bk_wlan_dtim_rf_ps_mode_do_wakeup();
 #endif
 
-        rwm_transfer(type_ptr->vif_index, pd_ptr, payload_size);
+        rwm_transfer(type_ptr->vif_index, pd_ptr, payload_size, type_ptr->sync, type_ptr->args);
 
         os_free(pd_ptr);
     }

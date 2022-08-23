@@ -109,6 +109,34 @@ static UINT32 evm_translate_tx_rate(UINT32 rate)
 }
 #endif
 
+int do_evm_get_vision(UINT8 *v_tab, UINT8 v_len)
+{
+    #define BOOT_LOAD_VISION_LEN        (14)
+    #define BOOT_LOAD_VISION_ADDR       (0x90)
+    #define VISION_HEAD                 (0x00CCBBEE)
+    #define VISION_HEAD_MASK            (0x00FFFFFF)
+    #define VISION_LEN(x)               ((x >> 24) & 0xff)
+    #define VISION_HEAD_MASK            (0x00FFFFFF)
+
+    UINT32 header;
+    UINT32 len;
+
+    if((v_tab != NULL) && (v_len >= sizeof(UINT32)))
+    {
+        os_memcpy((UINT8*)&header, (UINT8*)BOOT_LOAD_VISION_ADDR, sizeof(header));
+        len = VISION_LEN(header);
+        
+        if(((header & VISION_HEAD_MASK) == VISION_HEAD) && (len <= v_len))
+        {
+            os_memset(v_tab, 0, v_len);
+            os_memcpy(v_tab, (UINT8*)(BOOT_LOAD_VISION_ADDR + sizeof(UINT32)), len);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 /*txevm [-m mode] [-c channel] [-l packet-length] [-r physical-rate]*/
 UINT32 gmode = EVM_DEFUALT_MODE;
 int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
@@ -117,7 +145,7 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
     char cmd0 = 0;
     char cmd1 = 0;
     UINT8 fail = 0;
-    UINT32 packet_len = EVM_DEFUALT_PACKET_LEN;
+    UINT32 packet_len = 0;
     UINT32 channel = EVM_DEFUALT_CHANNEL;
     UINT32 ble_channel = EVM_DEFUALT_BLE_CHANNEL;
     UINT32 mode = EVM_DEFUALT_MODE;
@@ -223,6 +251,7 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
                 UINT32 op = os_strtoul(argv[arg_id + 1], NULL, 10);
                 if(op < TXEVM_G_MAX) {
                     if(op == TXEVM_G_TEMP){
+                        manual_cal_set_rfcal_step0();
                         manual_cal_get_current_temperature();
                     }else if(op == TXEVM_G_MAC) {
                         UINT8 sysmac[6] = {0};
@@ -237,6 +266,15 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
                     }else if(op == TXEVM_G_DIFF_FLASH) {
                         manual_cal_load_differ_tag_from_flash();
                     }else if(op == TXEVM_G_GET_SW_VER) {
+                        UINT8 vision[20];
+                        if(do_evm_get_vision(vision, 20))
+                        {
+                            os_printf("version: %s\r\n", vision);
+                        }
+                        else
+                        {
+                            os_printf("no version\r\n", vision);
+                        }
 
                     }else if(op == TXEVM_G_RFCALI_STATUS) {
                         if(manual_cal_get_rfcali_status_inflash(&reg) != 1){
@@ -348,6 +386,9 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
                         manual_cal_fitting_txpwr_tab();
                         manual_cal_save_chipinfo_tab_to_flash();
                         manual_cal_save_txpwr_tab_to_flash();
+
+                        manual_cal_save_cailmain_tx_tab_to_flash();
+                        manual_cal_save_cailmain_rx_tab_to_flash();
                     }
                     else if(op == TXEVM_E_CLR_OPT){
                         manual_cal_clear_otp_flash();
@@ -449,7 +490,7 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
             && (guard_i_tpye <= 1)
             && ((1 <= channel)
                 && (14 >= channel))
-            && ((0 < packet_len)
+            && ((0 <= packet_len)
                 && (4095 >= packet_len))
             && ((1 == rate)
                 || (2 == rate)
@@ -495,8 +536,17 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
         {
             rwnx_no_use_tpc_set_pwr();
             
-            mdm_scramblerctrl_set(0x95);
-            evm_bypass_mac_set_tx_data_length(modul_format, packet_len);
+            mdm_scramblerctrl_set(0x85);
+            
+            if(packet_len == 0)
+            {
+                evm_bypass_mac_set_tx_data_length(modul_format, EVM_DEFUALT_PACKET_LEN, rate, bandwidth, 1);
+            }
+            else
+            {
+                evm_bypass_mac_set_tx_data_length(modul_format, packet_len, rate, bandwidth, 0);
+            }
+            
             if(rate <= 54) {
                 modul_format = 0;
             }
@@ -506,6 +556,8 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
             evm_bypass_mac_set_guard_i_type(guard_i_tpye);
             
             evm_bypass_mac_test();
+
+            rwnx_cal_en_extra_txpa();
 
 #if CFG_SUPPORT_CALIBRATION
             CHECK_OPERATE_RF_REG_IF_IN_SLEEP();
@@ -571,7 +623,8 @@ int do_evm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
             evm_via_mac_init();
             
             evm_via_mac_set_rate((HW_RATE_E)h_rate, modul_format, guard_i_tpye);
-            
+
+            rwnx_cal_en_extra_txpa();
             txpwr = rwnx_tpc_get_pwridx_by_rate(h_rate, 1);
             evm_via_mac_set_power(txpwr);
             

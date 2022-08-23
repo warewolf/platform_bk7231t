@@ -236,6 +236,8 @@ struct sockaddr {
 typedef struct socket_type_st {
     unsigned char type;
     unsigned char vif_index;
+	void *args;
+	int sync;
 }S_TYPE_ST,*S_TYPE_PTR;
 
 extern SOCKET fsocket_init(int af, int type, int protocol);

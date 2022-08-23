@@ -21,6 +21,7 @@
 #include "rtos_error.h"
 #include "role_launch.h"
 #include "ble_pub.h"
+#include "start_type_pub.h"
 
 volatile static PS_MODE_STATUS    bk_ps_mode = PS_NO_PS_MODE;
 
@@ -80,6 +81,7 @@ static UINT32 ps_keep_timer_period = 0;
 static UINT32 ps_reseted_moniter_flag = 0;
 static UINT32 ps_bcn_loss_max_count = 0;
 
+static UINT32 ps_keep_timer_flag = 1;
 
 void power_save_td_ck_timer_handler(void *data);
 void power_save_keep_timer_handler(void *data);
@@ -189,7 +191,7 @@ void power_save_td_check(void)
             || PS_DPSM_STATE_GET(PAUSING) || PS_DPSM_STATE_GET(RESUMING))
             || bk_ps_info.ps_arm_wakeup_way == PS_ARM_WAKEUP_USER)
     {
-        ps_run_td_timer();
+        ps_run_td_timer(0);
     }
 }
 
@@ -483,6 +485,7 @@ void power_save_ieee_dtim_wakeup(void)
 #endif
         if(!power_save_if_sleep_first() && ps_keep_timer_period)
         {
+            ps_keep_timer_flag = 1;
             bmsg_ps_sender(PS_BMSG_IOCTL_RF_KP_SET);
         }
 
@@ -866,7 +869,7 @@ int power_save_dtim_enable(void)
 
 int power_save_dtim_disable_handler(void)
 {
-    UINT32 wdt_val = 1;
+    UINT32 wdt_val = 5;
     GLOBAL_INT_DECLARATION();
     GLOBAL_INT_DISABLE();
 	
@@ -887,9 +890,13 @@ int power_save_dtim_disable_handler(void)
 
         if(power_save_wkup_event_get() & NEED_REBOOT_BIT)
         {
-            os_printf("wdt reboot\r\n");
+            sddev_control(WDT_DEV_NAME, WCMD_POWER_DOWN, NULL);
+            os_printf("pswdt reboot\r\n");
+            bk_misc_update_set_type(RESET_SOURCE_REBOOT);
             sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &wdt_val);
             sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
+            while(1);
+
         }
 
         if(power_save_wkup_event_get() & NEED_START_EZ_BIT)
@@ -1247,6 +1254,15 @@ void power_save_keep_timer_real_handler()
             && bk_ps_info.ps_arm_wakeup_way == PS_ARM_WAKEUP_RW
             && 0 == bk_ps_info.ps_real_sleep)
     {
+    if(ps_keep_timer_flag && (power_save_beacon_state_get() != STA_GET_TRUE))
+    {
+        PS_DBG("@%d ",__LINE__);
+        ps_fake_data_rx_check();
+        ps_keep_timer_flag = 0;
+        bmsg_ps_sender(PS_BMSG_IOCTL_RF_KP_SET);
+        GLOBAL_INT_RESTORE();
+        return;
+    }
         if(0 == ps_reseted_moniter_flag 
         && ps_bcn_loss_max_count < PS_BCN_MAX_LOSS_LIMIT
         )
@@ -1254,6 +1270,9 @@ void power_save_keep_timer_real_handler()
             bk_ps_info.ps_arm_wakeup_way = PS_ARM_WAKEUP_USER;
             power_save_clr_all_vif_prevent_sleep((UINT32)(PS_VIF_WAITING_BCN));
             ps_bcn_loss_max_count ++;
+
+            PS_DBG("@%d ",__LINE__);
+            ps_run_td_timer(0);
         }
         else
         {
@@ -1408,6 +1427,17 @@ void power_save_beacon_state_update(void)
     {
         power_save_beacon_state_set(STA_GET_TRUE);
         ps_bcn_loss_max_count = 0;
+
+        if(1 == ps_keep_timer_status)
+        {
+            bmsg_ps_sender(PS_BMSG_IOCTL_RF_KP_STOP);
+        }
+        
+        if(0 == ps_keep_timer_flag)
+        {
+            PS_DBG("@%d ",__LINE__);
+            ps_run_td_timer(0);
+        }
     }
 }
 

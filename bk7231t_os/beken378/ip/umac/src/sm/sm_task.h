@@ -98,7 +98,7 @@ enum sm_msg_tag
     /// Indicates that the SM associated the AP
     SM_ASSOC_IND,
     /// Indicates that the SM associated the AP
-    SM_DEASSOC_IND,
+    SM_DISASSOC_IND,
     /// Indicates that the SM associated the AP
     SM_ASSOC_FAILED_IND,
 };

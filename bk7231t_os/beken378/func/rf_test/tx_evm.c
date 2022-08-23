@@ -160,10 +160,28 @@ void evm_init(UINT32 channel, UINT32 bandwidth)
 	nxmac_rx_cntrl_set(0);
 }
 
-UINT32 evm_bypass_mac_set_tx_data_length(UINT32 modul_format, UINT32 len)
+UINT32 evm_bypass_mac_set_tx_data_length(UINT32 modul_format, UINT32 len, UINT32 rate, UINT32 bandwidth, UINT32 need_change)
 {	
 	UINT32 ret, is_legacy_mode = 1;
 	UINT32 param;
+
+    if(need_change)
+    {
+        if(bandwidth == 0)
+        {
+            if ((1 == rate)||(2 == rate)||(5 == rate)||(6 == rate)||(128 == rate))
+            {
+                len = 1024;
+            }
+        }
+        else
+        {
+            if ((128 == rate)||(129 == rate)||(130 == rate)||(131 == rate))
+            {
+                len = 1024;
+            }
+        }
+    } 
 
     if(modul_format >= 0x02)  // 0x2: HT-MM;  0x3: HT-GF 
         is_legacy_mode = 0;

@@ -522,54 +522,63 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 		}
 		mhdr_set_station_status(RW_EVT_STA_BEACON_LOSE);
 		break;
+
+	case SM_DISASSOC_IND:
+		if(fn)
+		{
+			param = RW_EVT_STA_DISCONNECTED;
+			(*fn)(&param);
+		}
+		mhdr_set_station_status(RW_EVT_STA_DISCONNECTED);
+		break;
 		
 	case SM_AUTHEN_FAIL_IND:
 		{
-		struct sm_fail_stat *status_ind;
-		
-		status_ind = (struct sm_fail_stat *)rx_msg->param;
-		switch (status_ind->status)
-		{
-			case WLAN_REASON_PREV_AUTH_NOT_VALID:
-			case WLAN_REASON_DEAUTH_LEAVING:
-			case WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT:
-				param = RW_EVT_STA_PASSWORD_WRONG;
-				break;
+			struct sm_fail_stat *status_ind;
+			
+			status_ind = (struct sm_fail_stat *)rx_msg->param;
+			switch (status_ind->status)
+			{
+				case WLAN_REASON_PREV_AUTH_NOT_VALID:
+				case WLAN_REASON_DEAUTH_LEAVING:
+				case WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT:
+					param = RW_EVT_STA_PASSWORD_WRONG;
+					break;
 
-			case MAC_RS_DIASSOC_TOO_MANY_STA:
-				param = RW_EVT_STA_ASSOC_FULL;
-				break;
-	
-			default:
-				param = RW_EVT_STA_CONNECT_FAILED;
-				break;
-		}
-		if(fn)
-		{
-			(*fn)(&param);
-		}
-		mhdr_set_station_status(param);
+				case MAC_RS_DIASSOC_TOO_MANY_STA:
+					param = RW_EVT_STA_ASSOC_FULL;
+					break;
+		
+				default:
+					param = RW_EVT_STA_CONNECT_FAILED;
+					break;
+			}
+			if(fn)
+			{
+				(*fn)(&param);
+			}
+			mhdr_set_station_status(param);
 		}
 		break;
 		
 	case SM_ASSOC_FAIL_INID:
 		{
-		struct sm_fail_stat *assoc_state;
+			struct sm_fail_stat *assoc_state;
 
-		assoc_state = (struct sm_fail_stat *)rx_msg->param;
-		if(assoc_state->status == MAC_ST_ASSOC_TOO_MANY_STA)
-        {
-			param = RW_EVT_STA_ASSOC_FULL;
-        }
-			else
-        {
-			param = RW_EVT_STA_DISCONNECTED;
-        }
-		if(fn)
-		{
-			(*fn)(&param);
-        }
-		mhdr_set_station_status(param);
+			assoc_state = (struct sm_fail_stat *)rx_msg->param;
+			if(assoc_state->status == MAC_ST_ASSOC_TOO_MANY_STA)
+	        {
+				param = RW_EVT_STA_ASSOC_FULL;
+	        }
+				else
+	        {
+				param = RW_EVT_STA_DISCONNECTED;
+	        }
+			if(fn)
+			{
+				(*fn)(&param);
+	        }
+			mhdr_set_station_status(param);
 		}
         break;
 

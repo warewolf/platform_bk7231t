@@ -223,6 +223,7 @@ void sm_connect_ind(uint16_t status);
 void sm_auth_handler(struct rxu_mgt_ind const *param);
 void sm_assoc_rsp_handler(struct rxu_mgt_ind const *param);
 int sm_deauth_handler(struct rxu_mgt_ind const *param);
+int sm_disassoc_handler(struct rxu_mgt_ind const *param);
 
 /**
  ****************************************************************************************

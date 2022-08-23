@@ -367,10 +367,8 @@ void sctrl_init(void)
 	param = 4;
     sctrl_ctrl(CMD_SCTRL_SET_VDD_VALUE, &param);
 
-	#if CFG_USE_STA_PS
 	/*32K Rosc calib*/
     REG_WRITE(SCTRL_ROSC_CAL, 0x7);
-	#endif
 
     #if (CFG_SOC_NAME == SOC_BK7221U)
     #if (CFG_USE_AUDIO)
@@ -462,10 +460,8 @@ void sctrl_hw_sleep(UINT32 peri_clk)
     
     PS_DEBUG_DOWN_TRIGER;
 
-#if (CFG_SOC_NAME == SOC_BK7231)
     REG_WRITE(SCTRL_ROSC_CAL, 0x35);
     REG_WRITE(SCTRL_ROSC_CAL, 0x37);
-#endif
 
     if(sctrl_mcu_ps_info.mcu_use_dco == 0)
     {
@@ -589,10 +585,9 @@ void sctrl_hw_wakeup()
     sddev_control(GPIO_DEV_NAME, CMD_GPIO_CLR_DPLL_UNLOOK_INT, NULL);
 
     /*open 32K Rosc calib*/
-#if (CFG_SOC_NAME == SOC_BK7231)
     REG_WRITE(SCTRL_ROSC_CAL, 0x35);
     REG_WRITE(SCTRL_ROSC_CAL, 0x37);
-#endif
+
     if(4 == flash_get_line_mode())
     {
         flash_set_line_mode(4);

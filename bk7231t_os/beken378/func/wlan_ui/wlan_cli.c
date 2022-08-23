@@ -48,6 +48,8 @@
 #include "utils_httpc.h"
 #endif
 
+#include "start_type_pub.h"
+
 #if CFG_ENABLE_ATE_FEATURE
 
 #ifndef MOC
@@ -1069,29 +1071,7 @@ void get_version(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
 
 void reboot(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    FUNCPTR reboot = 0;
-    UINT32 wdt_val = 1;
-    
-#if CFG_USE_STA_PS
-    GLOBAL_INT_DECLARATION();
-
-    GLOBAL_INT_DISABLE();
-    if(power_save_if_ps_rf_dtim_enabled()
-        && power_save_if_rf_sleep())
-    {
-        power_save_wkup_event_set(NEED_DISABLE_BIT | NEED_REBOOT_BIT);
-    }
-    else
-    {
-#endif        
-
-    os_printf("wdt reboot\r\n");
-    sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &wdt_val);
-    sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
-#if CFG_USE_STA_PS
-    }
-    GLOBAL_INT_RESTORE();
-#endif        
+    bk_reboot(); 
 }
 
 static void echo_cmd_handler(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)

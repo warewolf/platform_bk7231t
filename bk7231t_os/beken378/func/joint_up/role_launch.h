@@ -3,7 +3,7 @@
 
 #include "wlan_ui_pub.h"
 
-#define JL_DEBUG           0
+#define JL_DEBUG            0
 
 #if JL_DEBUG
 #define JL_PRT              os_printf
@@ -15,10 +15,10 @@
 #define JL_FATAL            null_prf
 #endif
 
-#define RL_LAUNCH_PERIOD    250   
-#define RL_ENTER_PERIOD     150   
+#define RL_LAUNCH_PERIOD           250   
+#define RL_ENTER_PERIOD            150   
 
-#define RL_SUPPORT_FAST_CONNECT 1
+#define RL_SUPPORT_FAST_CONNECT    1
 
 typedef network_InitTypeDef_st LAUNCH_DESCR;
 
@@ -100,14 +100,16 @@ enum
     RL_STATUS_UNKNOWN = 0,
     RL_STATUS_STA_INITING = 1,
     RL_STATUS_STA_SCANNING = 2,
-    RL_STATUS_STA_CONNECTING = 3,
-    RL_STATUS_STA_DHCPING = 4,    
-    RL_STATUS_STA_CHANNEL_SWITCHING = 5, 
-    RL_STATUS_STA_CHANNEL_SWITCHED = 6,
-    RL_STATUS_STA_CSA_LAUNCHED_UNCERTAINTY = 7,
-    RL_STATUS_STA_LAUNCHED = 8,
-    RL_STATUS_STA_LAUNCH_FAILED = 9,
-    RL_STATUS_STA_PS_SETTING = 0xa,
+    RL_STATUS_STA_SCAN_VAIN = 3,
+    RL_STATUS_STA_SCAN_OVER = 4,
+    RL_STATUS_STA_CONNECTING = 5,
+    RL_STATUS_STA_DHCPING = 6,    
+    RL_STATUS_STA_CHANNEL_SWITCHING = 7, 
+    RL_STATUS_STA_CHANNEL_SWITCHED = 8,
+    RL_STATUS_STA_CSA_LAUNCHED_UNCERTAINTY = 9,
+    RL_STATUS_STA_LAUNCHED = 0xa,
+    RL_STATUS_STA_LAUNCH_FAILED = 0xb,
+    RL_STATUS_STA_PS_SETTING = 0xc,
     
     RL_STATUS_AP_INITING = 0x11,
     RL_STATUS_AP_UPDATING_BCN = 0x12,
@@ -174,6 +176,7 @@ extern uint32_t rl_pre_ap_get_status(void);
 extern uint32_t rl_pre_sta_set_status(uint32_t status);
 extern uint32_t rl_pre_ap_set_status(uint32_t status);
 extern void rl_pre_sta_set_cancel(void);
+extern uint32_t rl_pre_sta_get_cancel(void);
 extern void rl_pre_sta_clear_cancel(void);
 extern uint32_t fl_get_pre_sta_cancel_status(void);
 extern void rl_pre_ap_set_cancel(void);

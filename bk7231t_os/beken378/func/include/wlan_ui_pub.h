@@ -6,9 +6,9 @@
 #include "include.h"
 #include "rtos_pub.h"
 #include "rw_pub.h"
+
 #if CFG_SUPPORT_ALIOS
 #include <hal/wifi.h>
-//#include <k_api.h>
 #endif
 
 #define ICU_BASE                                     (0x00802000)
@@ -403,24 +403,26 @@ OSStatus bk_wlan_set_ip_status(IPStatusTypedef *inNetpara, WiFi_Interface inInte
 OSStatus bk_wlan_start_ap_adv(network_InitTypeDef_ap_st *inNetworkInitParaAP);
 void bk_wlan_ap_para_info_get(network_InitTypeDef_ap_st *ap_info);
 #endif
-void bk_wlan_register_monitor_cb(monitor_data_cb_t fn);
-monitor_data_cb_t bk_wlan_get_monitor_cb(void);
-monitor_data_cb_t bk_wlan_get_bcn_cb(void);
-void bk_wlan_enable_lsig(void);
-void bk_wlan_disable_lsig(void);
-int bk_wlan_is_monitor_mode(void);
-void bk_wlan_set_ap_monitor_coexist(int val);
-int bk_wlan_get_ap_monitor_coexist();
-uint32_t bk_sta_cipher_is_open(void);
-uint32_t bk_sta_cipher_is_wep(void);
-int bk_sta_cipher_type(void);
-int bk_wlan_stop(char mode);
-void bk_wlan_ap_set_channel_config(uint8_t channel);
-uint8_t bk_wlan_ap_get_channel_config(void);
-uint32_t bk_wlan_ap_get_frequency(void);
-uint32_t bk_wlan_get_INT_status(void);
 
+extern void bk_wlan_register_monitor_cb(monitor_data_cb_t fn);
+extern monitor_data_cb_t bk_wlan_get_monitor_cb(void);
+extern monitor_data_cb_t bk_wlan_get_bcn_cb(void);
+extern void bk_wlan_enable_lsig(void);
+extern void bk_wlan_disable_lsig(void);
+extern int bk_wlan_is_monitor_mode(void);
+extern void bk_wlan_set_ap_monitor_coexist(int val);
+extern int bk_wlan_get_ap_monitor_coexist();
+extern uint32_t bk_sta_cipher_is_open(void);
+extern uint32_t bk_sta_cipher_is_wep(void);
+extern int bk_sta_cipher_type(void);
+extern int bk_wlan_stop(char mode);
+extern void bk_wlan_ap_set_channel_config(uint8_t channel);
+extern uint8_t bk_wlan_ap_get_channel_config(void);
+extern uint32_t bk_wlan_ap_get_frequency(void);
+extern uint32_t bk_wlan_get_INT_status(void);
+extern void bk_wlan_terminate_sta_rescan(void);
 extern int is_apm_bss_config_empty(void);
+
 /** @brief  Request deep sleep,and wakeup by gpio.
  *
  *  @param  gpio_index_map:The gpio bitmap which set 1 enable wakeup deep sleep.

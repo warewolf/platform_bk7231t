@@ -15,8 +15,10 @@
 #include "l2_packet.h"
 #include "fake_socket.h"
 #include "mac.h"
-
+#include "rw_msdu.h"
 #include "uart_pub.h"
+
+#define L2_RX_TMP_BUF_LEN     512
 
 struct l2_packet_data {
 	char ifname[17];
@@ -37,14 +39,18 @@ int l2_packet_get_own_addr(struct l2_packet_data *l2, u8 *addr)
 	return 0;
 }
 
-
-int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
-		   const u8 *buf, size_t len)
+/**
+ * send L2 packet
+ * return: <0 if error, else 0.
+ */
+int __l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
+		   const u8 *buf, size_t len, int sync)
 {
 	int data_len, ret = 0;
 	struct l2_ethhdr *eth;
     S_TYPE_PTR type_ptr;
 	unsigned char *data_buf = NULL;
+	struct ieee80211_tx_cb cb;	//control block
 
 	type_ptr = os_zalloc(sizeof(S_TYPE_ST));
     if(!type_ptr) {
@@ -69,33 +75,63 @@ int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
 	os_memcpy(eth+1, buf, len);
 
     type_ptr->type = HOSTAPD_DATA;
-    
-    type_ptr->vif_index = l2->vif_index;
-	
-	fsocket_send(l2->fd, data_buf, data_len, type_ptr);
 
-send_exit:	  
+    type_ptr->vif_index = l2->vif_index;
+	type_ptr->sync = sync;
+
+	cb.result = -1;
+	if (sync) {
+#if CFG_SUPPORT_ALIOS
+		ret = rtos_init_semaphore(&cb.sema, 0);
+#else
+		ret = rtos_init_semaphore(&cb.sema, 1);
+#endif
+		type_ptr->args = (void *)&cb;
+	}
+
+	fsocket_send(l2->fd, data_buf, data_len, type_ptr);
+	if (sync) {
+		ret = rtos_get_semaphore(&cb.sema, 5*1000 /*BEKEN_NEVER_TIMEOUT*/);
+		if (ret != kNoErr) {
+			bk_printf("%s: send failed\r\n", __func__);
+		} else {
+			ret = cb.result;
+			bk_printf("%s: ret %d\r\n", __func__, ret);
+		}
+		rtos_deinit_semaphore(&cb.sema);
+	}
+
+send_exit:
 	if(data_buf){
 		os_free(data_buf);
 	}
-	
+
 	return ret;
 }
 
+int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
+		   const u8 *buf, size_t len)
+{
+	return __l2_packet_send(l2, dst_addr, proto, buf, len, 0);
+}
+
+int l2_packet_send_sync(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
+		   const u8 *buf, size_t len)
+{
+	return __l2_packet_send(l2, dst_addr, proto, buf, len, 1);
+}
 
 static void l2_packet_receive(int sock, void *eloop_ctx, void *sock_ctx)
 {
-#define TMP_BUF_LEN     512
-
 	int len;
 	unsigned char *buf;
 	struct l2_ethhdr *hdr;
 	struct l2_packet_data *l2 = eloop_ctx;
 
-	buf = os_malloc(TMP_BUF_LEN);
+	buf = os_malloc(L2_RX_TMP_BUF_LEN);
 	ASSERT(buf);
 	
-	len = fsocket_recv(sock, buf, TMP_BUF_LEN, 0);
+	len = fsocket_recv(sock, buf, L2_RX_TMP_BUF_LEN, 0);
 	if (len < 0) {
 		wpa_printf(MSG_ERROR, "recv: %s", strerror(errno));
 		goto recv_exit;
@@ -162,13 +198,13 @@ struct l2_packet_data * l2_packet_init_bridge(
 			      rx_callback_ctx, l2_hdr);
 }
 
-
 void l2_packet_deinit(struct l2_packet_data *l2)
 {
 	if (l2 == NULL)
 		return;
 
-	if (l2->fd >= 0) {
+	if (l2->fd >= 0) 
+	{
 		eloop_unregister_read_sock(l2->fd);
 		/* TODO: close connection */
 		fsocket_close(l2->fd);
@@ -177,19 +213,16 @@ void l2_packet_deinit(struct l2_packet_data *l2)
 	os_free(l2);
 }
 
-
 int l2_packet_get_ip_addr(struct l2_packet_data *l2, char *buf, size_t len)
 {
 	/* TODO: get interface IP address */
 	return -1;
 }
 
-
 void l2_packet_notify_auth_start(struct l2_packet_data *l2)
 {
 	/* This function can be left empty */
 }
-
 
 int l2_packet_set_packet_filter(struct l2_packet_data *l2,
 				enum l2_packet_filter_type type)

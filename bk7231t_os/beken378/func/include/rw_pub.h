@@ -234,7 +234,7 @@ extern UINT32 rw_ieee80211_get_centre_frequency(UINT32 chan_id);
 extern UINT8 rw_ieee80211_get_chan_id(UINT32 freq);
 extern void *sr_get_scan_results(void);
 extern void sr_release_scan_results(SCAN_RST_UPLOAD_PTR ptr);
-extern UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len);
+extern UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len, int sync, void *arg);
 extern void* rwm_transfer_pre(UINT8 vif_idx, UINT8 *buf, UINT32 len);
 extern UINT32 rwm_uploaded_data_handle(UINT8 *upper_buf, UINT32 len);
 extern UINT32 rwm_get_rx_valid_node_len(void);
@@ -326,9 +326,11 @@ UINT32 rw_ieee80211_set_country(const wifi_country_t *country);
 UINT32 rw_ieee80211_get_country(wifi_country_t *country);
 UINT8 rw_ieee80211_init_scan_chan(struct scanu_start_req *req);
 UINT8 rw_ieee80211_is_scan_rst_in_countrycode(UINT8 freq);
+
 #if CFG_IEEE80211N
 void rw_ieee80211_set_ht_cap(UINT8 ht_supp);
 #endif
+
 #endif //_RW_PUB_H_
 // eof
 

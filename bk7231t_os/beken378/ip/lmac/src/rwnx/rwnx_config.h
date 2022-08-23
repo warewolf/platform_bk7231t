@@ -503,6 +503,7 @@
                                                         + 20 * 1024)
 
 extern int rwnx_get_noht_rssi_thresold(void) __attribute__ ((weak));
+extern INT32 rwnx_printf_fun(const char *fmt, ...) __attribute__ ((weak));
                                                         
 #endif // _RWNX_CONFIG_H_
 // eof

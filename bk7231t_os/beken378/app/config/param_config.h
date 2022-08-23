@@ -20,7 +20,7 @@
 #define CONFIG_ROLE_STA         2
 #define CONFIG_ROLE_COEXIST     3
 
-#define DEFAULT_CHANNEL_AP   11
+#define DEFAULT_CHANNEL_AP      11
 
 typedef struct fast_connect_param
 {
@@ -46,6 +46,8 @@ typedef struct ap_param
     uint8_t key[65];
     uint8_t key_len;
 } ap_param_t;
+
+#define MAX_STA_RETRY_COUNT     16
 
 typedef struct sta_param
 {

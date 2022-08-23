@@ -157,6 +157,16 @@ enum ps_dpsm_state_bit_pos
 };
 #endif //(NX_DPSM)
 
+enum
+{
+    PS_NULL_SUC,
+    PS_NULL_DIS_FAIL,
+    PS_NULL_EN_FAIL,
+    PS_NULL_BUSY_FAIL,
+
+};
+
+
 /**
  * TYPE DEFINITIONS
  ****************************************************************************************
@@ -210,7 +220,7 @@ __INLINE bool ps_uapsd_enabled(void)
 }
 #endif
 
-void ps_run_td_timer(void);
+void ps_run_td_timer(UINT32);
 
 /**
  ****************************************************************************************

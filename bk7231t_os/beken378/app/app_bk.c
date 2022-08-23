@@ -1,7 +1,7 @@
 /**
  ****************************************************************************************
  *
- * @file app.c
+ * @file app_bk.c
  *
  *
  * Copyright (C) Beken Corp 2011-2016
@@ -37,11 +37,13 @@
 #include "mcu_ps_pub.h"
 #include "rw_msdu.h"
 #include "txu_cntrl.h"
+
 #if CFG_SUPPORT_ALIOS
 #include "ll.h"
 #elif (!CFG_SUPPORT_RTT)
 #include "wlan_cli_pub.h"
 #endif
+
 #include "app_music_pub.h"
 #include "bk7011_cal_pub.h"
 
@@ -154,7 +156,7 @@ void bmsg_tx_handler(BUS_MSG_T *msg)
     bmsg_ps_handler_rf_ps_mode_real_wakeup();
     bk_wlan_dtim_rf_ps_mode_do_wakeup();
 #endif
-    rwm_transfer(vif_idx, q->payload, q->len);
+    rwm_transfer(vif_idx, q->payload, q->len, 0, 0);
 tx_handler_exit:
 
     pbuf_free(q);
@@ -338,7 +340,7 @@ void ps_msg_process(UINT8 ps_msg)
             break;
 			
         case PS_BMSG_IOCTL_RF_PS_TIMER_INIT:
-            power_save_set_keep_timer_time(30);
+            power_save_set_keep_timer_time(20);
             break; 
 			
         case PS_BMSG_IOCTL_RF_PS_TIMER_DEINIT:

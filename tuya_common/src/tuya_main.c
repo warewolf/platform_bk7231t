@@ -59,6 +59,8 @@ static UG_PROC_S *ug_proc = NULL;
 
 after_mf_test_cb pre_app_cb = NULL;
 SET_OTA_FINISH_NOTIFY _ota_finish_notify = NULL;
+MF_USER_PRODUCT_TEST_CB user_product_test_cb = NULL;
+MF_USER_CALLBACK user_enter_mf_cb = NULL;
 /***********************************************************
 *************************function define********************
 ***********************************************************/
@@ -67,6 +69,8 @@ extern VOID pre_device_init(VOID);
 extern OPERATE_RET device_init(VOID);
 extern BOOL_T gpio_test(IN CONST CHAR_T *in, OUT CHAR_T *out);
 extern VOID mf_user_callback(VOID);
+extern OPERATE_RET mf_user_product_test(USHORT_T cmd,UCHAR_T *data, UINT_T len, OUT UCHAR_T **ret_data,OUT USHORT_T *ret_len);
+extern VOID user_enter_mf_callback(VOID);
 extern void extended_app_waiting_for_launch(void);
 extern TY_GPIO_PORT_E swith_ctl_port;
 STATIC VOID __gw_ug_inform_cb(INOUT BOOL_T *handled, IN CONST FW_UG_S *fw);
@@ -311,14 +315,16 @@ void user_main(void)
     // to add prodect test code
     mf_reg_gw_ug_cb(__mf_gw_ug_inform_cb, __gw_upgrage_process_cb, __mf_gw_upgrade_notify_cb);
     MF_IMPORT_INTF_S intf = {
-        __tuya_mf_uart_init,
-        __tuya_mf_uart_free,
-        __tuya_mf_send,
-        __tuya_mf_recv,
-        gpio_test,
-        mf_user_callback
+        .uart_init = __tuya_mf_uart_init,
+        .uart_free = __tuya_mf_uart_free,
+        .uart_send = __tuya_mf_send,
+        .uart_recv = __tuya_mf_recv,
+        .gpio_test = gpio_test,
+        .mf_user_product_test = user_product_test_cb,
+        .user_callback = mf_user_callback,
+        .user_enter_mf_callback = user_enter_mf_cb,
     };
-    
+
     BOOL_T mf_close = FALSE;
     mf_close = wd_mf_test_close_if_read();                                  //无法进入产测，请手工注释此行
     if(TRUE != mf_close) {
@@ -627,6 +633,16 @@ void pre_app_cfg_set(after_mf_test_cb callback)
 void set_ota_finish_notify_cb(SET_OTA_FINISH_NOTIFY callback)
 {
     _ota_finish_notify = callback;
+}
+
+void set_user_product_test_cb(MF_USER_PRODUCT_TEST_CB callback)
+{
+    user_product_test_cb = callback;
+}
+
+void set_mf_enter_cb(MF_USER_CALLBACK callback)
+{
+    user_enter_mf_cb = callback;
 }
 
 

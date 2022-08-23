@@ -26,6 +26,7 @@
 #if CFG_USB
 #include "fusb_pub.h"
 #endif
+#include "start_type_pub.h"
 
 UINT32 func_init_extended(void)
 {
@@ -115,6 +116,7 @@ UINT32 func_init_extended(void)
 #endif
 
     FUNC_PRT("[FUNC]func_init_extended OVER!!!\r\n\r\n");
+    os_printf("start_type:%d\r\n",bk_misc_get_start_type());
     return 0;
 }
 

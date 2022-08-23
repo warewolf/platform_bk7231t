@@ -259,6 +259,55 @@ tx_exit:
 	return ret;
 }
 
+#if FSOCKET_TX_SYNC
+int fsocket_send_sync(SOCKET sk, const unsigned char *buf, int len, S_TYPE_PTR type)
+{
+	int ret = 0;
+	BK_SOCKET *element;
+	SOCKET_MSG *sk_msg;
+	unsigned char *data_buf;
+	GLOBAL_INT_DECLARATION();
+
+	SK_PRT("hapd_tx:%d,buf:0x%x, len:%d\r\n", sk, buf, len);
+	element = sk_get_sk_element(sk);
+	if(0 == element)
+	{
+		goto tx_exit;
+	}
+
+	sk_msg = (SOCKET_MSG *)os_malloc(sizeof(SOCKET_MSG));
+	if(0 == sk_msg)
+	{
+		goto tx_exit;
+	}
+	
+	data_buf = (unsigned char *)os_malloc(len); 
+	if(0 == data_buf)
+	{
+		goto malloc_buf_exit;
+	}
+	ret = len;
+	sk_msg->len = len;
+	sk_msg->msg = data_buf;
+	
+	os_memcpy(sk_msg->msg, buf, len);
+
+	GLOBAL_INT_DISABLE();
+	dl_list_add_tail(&element->sk_tx_msg, &sk_msg->data);
+	GLOBAL_INT_RESTORE();
+
+	bmsg_skt_tx_sender(type);
+	
+	return ret;
+	
+malloc_buf_exit:
+	os_free(sk_msg);
+	
+tx_exit:	
+	return ret;
+}
+#endif
+
 int fsocket_recv(SOCKET sk, const unsigned char *buf, int len, int flag)
 {
 	int count;

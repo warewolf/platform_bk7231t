@@ -162,6 +162,9 @@ void td_pck_ind(uint8_t vif_index, uint8_t sta_index, bool rx);
  ****************************************************************************************
  */
 void td_pck_ps_ind(uint8_t vif_index, bool rx);
+
+void td_pck_ps_clr(uint8_t vif_index, bool rx);
+
 #endif //(NX_DPSM)
 
 /**

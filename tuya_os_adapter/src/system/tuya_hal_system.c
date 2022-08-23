@@ -14,6 +14,7 @@
 #include "wdt_pub.h"
 #include "drv_model_pub.h"
 
+#include "start_type_pub.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
@@ -44,7 +45,6 @@
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
-static char reason_buf[64];
 static char serial_no[SERIAL_NUM_LEN+1] = {0};
 
 /***********************************************************
@@ -110,12 +110,8 @@ bool tuya_hal_system_isrstatus(void)
 ***********************************************************/
 void tuya_hal_system_reset(void)
 {
-    FUNCPTR reboot = 0;
-    uint32_t wdt_val = 1;
     bk_printf("\r\n****SystemReset****\r\n");
-    sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &wdt_val);
-    // start wdt timer
-    sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
+    bk_reboot();
 }
 
 /***********************************************************
@@ -208,10 +204,41 @@ char *tuya_hal_get_serialno(void)
 *  Output: none 
 *  Return: char *->reset reason
 ***********************************************************/
-char *tuya_hal_system_get_rst_info(void)
+TY_RST_REASON_E tuya_hal_system_get_rst_info(void)
 {
-    static char reason_buf[64] = "don't support get reset reason";
-    return reason_buf;
+    unsigned char value = bk_misc_get_start_type() & 0xFF;
+    TY_RST_REASON_E bk_value;
+    
+    switch(value) {
+        case RESET_SOURCE_POWERON:
+            bk_value = TY_RST_POWER_OFF;
+            break;
+
+        case RESET_SOURCE_REBOOT:
+            bk_value = TY_RST_SOFTWARE;
+            break;
+
+        case RESET_SOURCE_WATCHDOG:
+            bk_value = TY_RST_HARDWARE_WATCHDOG;
+            break;
+
+        case RESET_SOURCE_CRASH_XAT0:
+        case RESET_SOURCE_CRASH_UNDEFINED:
+        case RESET_SOURCE_CRASH_PREFETCH_ABORT:
+        case RESET_SOURCE_CRASH_DATA_ABORT:
+        case RESET_SOURCE_CRASH_UNUSED:
+            bk_value = TY_RST_FATAL_EXCEPTION;
+            break;
+
+        default:
+            bk_value = TY_RST_POWER_OFF;
+            break;
+
+    }
+
+    bk_printf("bk_rst:%d tuya_rst:%d",value, bk_value);
+    
+    return bk_value;
 }
 
 /***********************************************************

@@ -226,7 +226,6 @@ static void handle_read(int sock, void *eloop_ctx, void *sock_ctx)
         os_printf("handle_read no mem\r\n");
         goto read_exit;
     }
- //    ASSERT(buf);
 
     len = fsocket_recv(sock, buf, TMP_BUF_LEN, 0);
     if (len < 0)
@@ -1584,6 +1583,28 @@ int wpa_driver_associate(void *priv, struct wpa_driver_associate_params *params)
         ret = -1;
     }
 
+	eloop_register_signal(SIGDISASSOC, wpa_driver_disassoc_sig_handler, drv->wpa_s);
+
+    param->cmd = PRISM2_HOSTAPD_REG_DISASSOC_CALLBACK;
+    param->vif_idx = drv->vif_index;
+    param->u.reg_disassoc_evt.cb = wpa_handler_signal;
+    param->u.reg_disassoc_evt.arg = (void *)SIGDISASSOC;
+    if (hostapd_ioctl(drv, param, blen))
+    {
+        ret = -1;
+    }
+
+	eloop_register_signal(SIGDEAUTH, wpa_driver_deauth_sig_handler, drv->wpa_s);
+
+    param->cmd = PRISM2_HOSTAPD_REG_DEAUTH_CALLBACK;
+    param->vif_idx = drv->vif_index;
+    param->u.reg_deauth_evt.cb = wpa_handler_signal;
+    param->u.reg_deauth_evt.arg = (void *)SIGDEAUTH;
+    if (hostapd_ioctl(drv, param, blen))
+    {
+        ret = -1;
+    }
+
     os_printf("wpa_driver_associate\r\n");
     param = (struct prism2_hostapd_param *)buf;
     param->cmd = PRISM2_HOSTAPD_ASSOC_REQ;
@@ -1612,28 +1633,6 @@ int wpa_driver_associate(void *priv, struct wpa_driver_associate_params *params)
         param->cmd = PRISM2_HOSTAPD_ASSOC_ACK;
         param->vif_idx = drv->vif_index;
         hostapd_ioctl(drv, param, blen);
-    }
-
-	eloop_register_signal(SIGDISASSOC, wpa_driver_disassoc_sig_handler, drv->wpa_s);
-
-    param->cmd = PRISM2_HOSTAPD_REG_DISASSOC_CALLBACK;
-    param->vif_idx = drv->vif_index;
-    param->u.reg_disassoc_evt.cb = wpa_handler_signal;
-    param->u.reg_disassoc_evt.arg = (void *)SIGDISASSOC;
-    if (hostapd_ioctl(drv, param, blen))
-    {
-        ret = -1;
-    }
-
-	eloop_register_signal(SIGDEAUTH, wpa_driver_deauth_sig_handler, drv->wpa_s);
-
-    param->cmd = PRISM2_HOSTAPD_REG_DEAUTH_CALLBACK;
-    param->vif_idx = drv->vif_index;
-    param->u.reg_deauth_evt.cb = wpa_handler_signal;
-    param->u.reg_deauth_evt.arg = (void *)SIGDEAUTH;
-    if (hostapd_ioctl(drv, param, blen))
-    {
-        ret = -1;
     }
 
     os_free(buf);

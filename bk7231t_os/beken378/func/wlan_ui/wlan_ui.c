@@ -27,6 +27,8 @@
 #include "mcu_ps_pub.h"
 #include "manual_ps_pub.h"
 #include "gpio_pub.h"
+#include "wdt_pub.h"
+#include "start_type_pub.h"
 #include "sys_ctrl_pub.h"
 #include "port/net.h"
 #include "txu_cntrl.h"
@@ -352,6 +354,37 @@ void bk_wlan_phy_show_cca(void)
 	phy_show_cca();
 }
 
+void bk_reboot(void)
+{
+    FUNCPTR reboot = 0;
+    UINT32 wdt_val = 5;
+    
+    os_printf("bk_reboot\r\n");
+
+    bk_misc_update_set_type(RESET_SOURCE_REBOOT);
+    
+#if CFG_USE_STA_PS
+    GLOBAL_INT_DECLARATION();
+
+    GLOBAL_INT_DISABLE();
+    if(power_save_if_ps_rf_dtim_enabled()
+        && power_save_if_rf_sleep())
+    {
+        power_save_wkup_event_set(NEED_DISABLE_BIT | NEED_REBOOT_BIT);
+    }
+    else
+    {
+#endif        
+    sddev_control(WDT_DEV_NAME, WCMD_POWER_DOWN, NULL);
+    os_printf("wdt reboot\r\n");
+    sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &wdt_val);
+    sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
+    while(1);
+#if CFG_USE_STA_PS
+    }
+    GLOBAL_INT_RESTORE();
+#endif        
+}
 void bk_wlan_ap_init(network_InitTypeDef_st *inNetworkInitPara)
 {
     os_printf("Soft_AP_start\r\n");
@@ -466,6 +499,15 @@ OSStatus bk_wlan_start_ap(network_InitTypeDef_st *inNetworkInitParaAP)
     return kNoErr;
 }
 
+void bk_wlan_terminate_sta_rescan(void)
+{
+	os_printf("bk_wlan_terminate_sta_rescan\r\n");
+	if(g_sta_param_ptr)
+	{
+		g_sta_param_ptr->retry_cnt = 0;
+	}
+}
+
 void bk_wlan_sta_init(network_InitTypeDef_st *inNetworkInitPara)
 {
     if(!g_sta_param_ptr)
@@ -474,7 +516,7 @@ void bk_wlan_sta_init(network_InitTypeDef_st *inNetworkInitPara)
         ASSERT(g_sta_param_ptr);
     }
 
-	g_sta_param_ptr->retry_cnt = 17;
+	g_sta_param_ptr->retry_cnt = MAX_STA_RETRY_COUNT;
     wifi_get_mac_address((u8 *)&g_sta_param_ptr->own_mac, CONFIG_ROLE_STA);
     if(!g_wlan_general_param)
     {
@@ -677,7 +719,7 @@ void bk_wlan_sta_init_adv(network_InitTypeDef_adv_st *inNetworkInitParaAdv)
         ASSERT(g_sta_param_ptr);
     }
 
-	g_sta_param_ptr->retry_cnt = 17;
+	g_sta_param_ptr->retry_cnt = MAX_STA_RETRY_COUNT;
     if(MAC_ADDR_NULL((u8 *)&g_sta_param_ptr->own_mac))
     {
         wifi_get_mac_address((char *)&g_sta_param_ptr->own_mac, CONFIG_ROLE_STA);
@@ -711,6 +753,13 @@ void bk_wlan_sta_init_adv(network_InitTypeDef_adv_st *inNetworkInitParaAdv)
         inet_aton(inNetworkInitParaAdv->net_mask, &(g_wlan_general_param->ip_mask));
         inet_aton(inNetworkInitParaAdv->gateway_ip_addr, &(g_wlan_general_param->ip_gw));
     }
+    
+#if CFG_ROLE_LAUNCH
+	    if(rl_pre_sta_set_status(RL_STATUS_STA_CONNECTING))
+	    {
+	        return;
+	    }
+#endif
 
     bk_wlan_reg_csa_cb_coexist_mode();
     sa_station_init();
