@@ -771,6 +771,10 @@ void app_start(void)
 {
     app_pre_start();
 
+	#if CFG_UART2_CLI
+	cli_init();
+	#endif
+
 #if defined(SUPPORT_MIDEA_BLE)
     if(!get_ate_mode_state())
     {

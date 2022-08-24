@@ -111,7 +111,11 @@ void gpio_config(UINT32 index, UINT32 mode)
     case GMODE_SECOND_FUNC_PULL_UP:
         val = 0x78;
         break;
-
+	
+	case GMODE_SET_HIGH_IMPENDANCE:
+		val = 0x08;
+		break;
+	
     default:
         overstep = 1;
         WARN_PRT("gpio_mode_exception:%d\r\n", mode);

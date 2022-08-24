@@ -16,7 +16,9 @@
 #include "mcu_ps_pub.h"
 #include "role_launch.h"
 
-uint32_t scan_cfm = 0;
+typedef VOID (*MHDR_STATION_ERR_STATUS)(rw_evt_type err_value);
+
+uint32_t resultful_scan_cfm = 0;
 uint8_t *ind_buf_ptr = 0;
 struct co_list rw_msg_rx_head;
 struct co_list rw_msg_tx_head;
@@ -28,6 +30,10 @@ IND_CALLBACK_T assoc_cfm_cb = {0};
 IND_CALLBACK_T deassoc_evt_cb = {0};
 IND_CALLBACK_T deauth_evt_cb = {0};
 IND_CALLBACK_T wlan_connect_user_cb = {0};
+
+MHDR_STATION_ERR_STATUS err_status_cb = NULL;
+
+
 
 extern void app_set_sema(void);
 extern int get_security_type_from_ie(u8 *, int, u16);
@@ -91,6 +97,7 @@ void sr_release_scan_results(SCAN_RST_UPLOAD_PTR ptr)
         sr_free_all(ptr);
     }
     scan_rst_set_ptr = 0;
+	resultful_scan_cfm = 0;
 	wpa_clear_scan_results();
 }
 #endif
@@ -264,11 +271,27 @@ void mhdr_connect_ind(void *msg, UINT32 len)
     mcu_prevent_clear(MCU_PS_CONNECT);
 }
 
+void mhdr_set_station_status_err_cb(MHDR_STATION_ERR_STATUS status_cb)
+{
+    if(status_cb){
+        err_status_cb = status_cb;
+    }
+}
+
 void mhdr_set_station_status(rw_evt_type val)
 {
     GLOBAL_INT_DECLARATION();
     GLOBAL_INT_DISABLE();
     connect_flag = val;
+    if((connect_flag == RW_EVT_STA_BEACON_LOSE) || 
+        (connect_flag == RW_EVT_STA_PASSWORD_WRONG) || 
+        (connect_flag == RW_EVT_STA_NO_AP_FOUND) ||
+        (connect_flag == RW_EVT_STA_ASSOC_FULL) ||
+        (connect_flag == RW_EVT_STA_CONNECT_FAILED)) {
+        if(err_status_cb) {
+            err_status_cb(connect_flag);
+        }
+    }
     GLOBAL_INT_RESTORE();
 }
 
@@ -402,8 +425,7 @@ UINT32 mhdr_scanu_result_ind(SCAN_RST_UPLOAD_T *scan_rst, void *msg, UINT32 len)
                 }
             }
         }
-    }
-    while(0);
+    }while(0);
 
     item = (SCAN_RST_ITEM_PTR)sr_malloc_result_item(vies_len);
     if (item == NULL)
@@ -464,16 +486,20 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
     switch(rx_msg->id)
     {
     case SCANU_START_CFM:
-        scan_cfm = 1;
+		if(scan_rst_set_ptr)
+		{
+        	resultful_scan_cfm = 1;
+		}
+		
         mhdr_scanu_start_cfm(rx_msg, scan_rst_set_ptr);
         break;
 
     case SCANU_RESULT_IND:
-        if(scan_cfm && scan_rst_set_ptr)
+        if(resultful_scan_cfm && scan_rst_set_ptr)
         {
             sr_release_scan_results(scan_rst_set_ptr);
             scan_rst_set_ptr = 0;
-            scan_cfm = 0;
+            resultful_scan_cfm = 0;
         }
 
         if(0 == scan_rst_set_ptr)

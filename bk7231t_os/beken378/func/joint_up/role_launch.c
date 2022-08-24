@@ -26,16 +26,39 @@ extern void user_connected_callback(FUNCPTR fn);
 #endif
 
 #if RL_SUPPORT_FAST_CONNECT
-#define BSSID_INFO_ADDR 0x1e2000 /*reserve 4k for bssid info*/
+#define BSSID_INFO_ADDR       0x1e2000 /*reserve 4k for bssid info*/
 static char g_rl_sta_key[64];
+
+static void rl_read_bssid_info(RL_BSSID_INFO_PTR bssid_info)
+{
+	uint32_t status, addr,ret;
+	DD_HANDLE flash_hdl;
+	
+	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
+	if(DD_HANDLE_UNVALID == flash_hdl)
+	{
+		os_null_printf("DD_HANDLE_UNVALID\r\n");
+		return;
+	}
+	
+	addr = BSSID_INFO_ADDR;
+	ret = ddev_read(flash_hdl, (char *)bssid_info, sizeof(RL_BSSID_INFO_T), addr);
+	if(DRV_FAILURE == ret)
+	{
+		os_null_printf("DRV_FAILURE\r\n");
+	}
+	
+	ddev_close(flash_hdl);
+}
+
 static void rl_write_bssid_info(void)
 {
 	int i;
-	uint8_t protect_flag, protect_param, temp[4];
 	uint8_t *psk;
 	uint32_t status, addr;
-	RL_BSSID_INFO_T bssid_info;
+	RL_BSSID_INFO_T bssid_info, pre_bssid;
 	LinkStatusTypeDef link_status;
+	uint8_t protect_flag, protect_param, temp[4];
 	DD_HANDLE flash_hdl;
 	uint32_t ssid_len;
 
@@ -62,6 +85,16 @@ static void rl_write_bssid_info(void)
 	}
 	os_strcpy(bssid_info.pwd, g_rl_sta_key);
 
+	/*obtain the previous bssid-info*/
+	rl_read_bssid_info(&pre_bssid);
+
+	/*if different, save the latest information about fast connect*/
+	if(0 == os_memcmp(&pre_bssid, &bssid_info, sizeof(bssid_info)))
+	{
+		bk_printf("same_bssid_info\r\n");
+		goto wr_exit;
+	}
+
 	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
 	ddev_control(flash_hdl, CMD_FLASH_GET_PROTECT, &protect_flag);
 	protect_param = FLASH_PROTECT_NONE;
@@ -71,17 +104,9 @@ static void rl_write_bssid_info(void)
 	ddev_write(flash_hdl, &bssid_info, sizeof(bssid_info), addr);
 	ddev_control(flash_hdl, CMD_FLASH_SET_PROTECT, (void *)&protect_flag);
 	ddev_close(flash_hdl);
-}
 
-static void rl_read_bssid_info(RL_BSSID_INFO_PTR bssid_info)
-{
-	uint32_t status, addr;
-	DD_HANDLE flash_hdl;
-
-	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
-	addr = BSSID_INFO_ADDR;
-	ddev_read(flash_hdl, (char *)bssid_info, sizeof(RL_BSSID_INFO_T), addr);
-	ddev_close(flash_hdl);
+wr_exit:
+	return;
 }
 
 static void rl_sta_fast_connect(RL_BSSID_INFO_PTR bssid_info)

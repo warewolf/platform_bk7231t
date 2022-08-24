@@ -274,25 +274,23 @@ extern int rw_msg_send_sm_connect_req( CONNECT_PARAM_T *sme, void *cfm);
 extern int rw_msg_send_tim_update(u8 vif_idx, u16 aid, u8 tx_status);
 extern int rw_msg_send_apm_stop_req(u8 vif_index);
 extern int rw_msg_set_power(u8 vif_idx, u8 power);
-
-VIF_INF_PTR rwm_mgmt_vif_idx2ptr(UINT8 vif_idx);
-VIF_INF_PTR rwm_mgmt_vif_type2ptr(UINT8 vif_type);
-STA_INF_PTR rwm_mgmt_sta_idx2ptr(UINT8 staid);
-STA_INF_PTR rwm_mgmt_sta_mac2ptr(void *mac);
-UINT8 rwm_mgmt_sta_mac2idx(void *mac);
-UINT8 rwm_mgmt_vif_mac2idx(void *mac);
-UINT8 rwm_mgmt_vif_name2idx(char *name);
-UINT8 rwm_mgmt_get_hwkeyidx(UINT8 vif_idx, UINT8 staid);
-void rwm_mgmt_set_vif_netif(struct netif *net_if);
-struct netif *rwm_mgmt_get_vif2netif(UINT8 vif_idx);
-UINT8 rwm_mgmt_get_netif2vif(struct netif *netif);
-UINT8 rwm_mgmt_tx_get_staidx(UINT8 vif_idx, void *dstmac);
-u8 rwn_mgmt_is_only_sta_role_add(void);
-
-void rwm_msdu_init(void);
-void rwm_flush_txing_list(UINT8 sta_idx);
-void rwm_msdu_ps_change_ind_handler(void *msg) ;
-void rwm_msdu_send_txing_node(UINT8 sta_idx);
+extern VIF_INF_PTR rwm_mgmt_vif_idx2ptr(UINT8 vif_idx);
+extern VIF_INF_PTR rwm_mgmt_vif_type2ptr(UINT8 vif_type);
+extern STA_INF_PTR rwm_mgmt_sta_idx2ptr(UINT8 staid);
+extern STA_INF_PTR rwm_mgmt_sta_mac2ptr(void *mac);
+extern UINT8 rwm_mgmt_sta_mac2idx(void *mac);
+extern UINT8 rwm_mgmt_vif_mac2idx(void *mac);
+extern UINT8 rwm_mgmt_vif_name2idx(char *name);
+extern UINT8 rwm_mgmt_get_hwkeyidx(UINT8 vif_idx, UINT8 staid);
+extern void rwm_mgmt_set_vif_netif(struct netif *net_if);
+extern struct netif *rwm_mgmt_get_vif2netif(UINT8 vif_idx);
+extern UINT8 rwm_mgmt_get_netif2vif(struct netif *netif);
+extern UINT8 rwm_mgmt_tx_get_staidx(UINT8 vif_idx, void *dstmac);
+extern u8 rwn_mgmt_is_only_sta_role_add(void);
+extern void rwm_msdu_init(void);
+extern void rwm_flush_txing_list(UINT8 sta_idx);
+extern void rwm_msdu_ps_change_ind_handler(void *msg) ;
+extern void rwm_msdu_send_txing_node(UINT8 sta_idx);
 
 __INLINE u8 rwm_mgmt_is_ap_inface(u8 vif_idx)
 {

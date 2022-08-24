@@ -1351,7 +1351,6 @@ void phy_unsupported_modulation_check(void)
         rx_vect1[i++] = mdm_rxvector1_get();
         rx_vect1[i++] = mdm_rxvector1_get();
         rx_vect1[i++] = mdm_rxvector1_get();
-        rx_vect1[i++] = mdm_rxvector1_get();
         rx_vect1[i++] = mdm_rxvector1_get(); // Don't read beyond the array size you defined !!!
 
         // Search in the RX vector 1 array the index of the latest non-null

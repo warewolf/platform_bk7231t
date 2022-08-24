@@ -3,11 +3,16 @@
 
 #include <stdio.h>
 #include "include.h"
+
 #if CFG_SUPPORT_ALIOS
 #include "hal/soc/soc.h"
 #endif
 
+#if CFG_UART2_CLI
+#define os_printf                      bk_printf
+#else
 #define os_printf                      os_null_printf
+#endif
 
 #define warning_prf                    bk_printf
 #define fatal_prf                      bk_printf

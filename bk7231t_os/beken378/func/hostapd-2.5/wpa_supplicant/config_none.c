@@ -213,13 +213,35 @@ int wpa_config_set_wep(struct wpa_ssid *ssid)
 	int ret;
 	
 	ret = set_wep_key(ssid);
-
 	if(!ret) {
 		g_sta_param_ptr->cipher_suite = SECURITY_TYPE_WEP;
+	}else{
+		mhdr_set_station_status(RW_EVT_STA_PASSWORD_WRONG);
 	}
 	
 	return 0;
 }
+
+#if RL_SUPPORT_FAST_CONNECT
+static void wpa_config_update_fast_psk(struct wpa_ssid *ssid)
+{
+	RL_BSSID_INFO_T bssid_info;
+	rl_read_bssid_info(&bssid_info);	
+
+	if(os_memcmp(ssid->ssid, bssid_info.ssid, ssid->ssid_len) == 0
+		&& os_strcmp(ssid->passphrase, bssid_info.pwd) == 0)
+	{
+		bk_printf("Skip PSK caculation if SSID and passphrase are same \n");
+		os_memset(&ssid->psk, 0, sizeof(ssid->psk));
+		os_strcpy(ssid->psk, bssid_info.psk);
+		ssid->psk_set = 1;
+	}
+	else
+	{
+		wpa_config_update_psk(ssid);
+	}
+}
+#endif
 
 int wpa_config_set_wpa(struct wpa_ssid *ssid, struct wpa_ie_data *ie)
 {
@@ -241,9 +263,15 @@ int wpa_config_set_wpa(struct wpa_ssid *ssid, struct wpa_ie_data *ie)
 		wpa_config_ht_cap_by_sec(g_sta_param_ptr->cipher_suite);
 		#endif
 		if (ssid->passphrase && (ssid->psk_set == 0)) {
+			#if RL_SUPPORT_FAST_CONNECT
+			wpa_config_update_fast_psk(ssid);
+			#else
 			wpa_config_update_psk(ssid);
+			#endif
 		}
-	}
+	}else{
+		mhdr_set_station_status(RW_EVT_STA_PASSWORD_WRONG);
+	}		
 	
 	return ret;
 }

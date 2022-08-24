@@ -33,13 +33,33 @@
 #include "hal_dma.h"
 
 /// Maximum length of the additional ProbeReq IEs
-#define SCANU_MAX_IE_LEN  200
+#define SCANU_MAX_IE_LEN                     200
+#define DIS_HT_SCAN_RST_RSSI_THRED          (-50)
+
+#define TYPE_ACTIVE_SCAN                     1
+#define TYPE_PASSIVE_SCAN                    2
 
 struct rxu_mgt_ind;
 
 /** The SCAN environment.
  * This environment can be used by any element that requires the SCAN.
  */
+struct scanu_setting
+{
+	/* active-scan or passive-scan*/
+	uint16_t scan_method;
+
+	/* 1 or 2*/
+	uint16_t probe_cnt;
+
+	/* delay before switching on a channel*/
+	uint32_t chan_delay;
+	uint32_t joining_chan_delay;
+
+	/* scan duration on each channel*/
+	uint32_t scan_time;
+};
+
 struct scanu_env_tag
 {
     /// Parameters of the Scan request
@@ -62,10 +82,8 @@ struct scanu_env_tag
     struct mac_addr bssid;
     /// SSID looked for.
     struct mac_ssid ssid;
-    #if (NX_P2P)
-    /// P2P Scan (ssid we are looking for is "DIRECT-")
-    bool p2p_scan;
-    #endif //(NX_P2P)
+
+	struct scanu_setting setting;
 };
 
 /// Definition of an additional IE buffer
@@ -77,13 +95,10 @@ struct scanu_add_ie_tag
     uint32_t buf[SCANU_MAX_IE_LEN/4];
 };
 
-/// Scan time to enable or disable the scan (2sec).
-#define SCAN_ENABLE_TIME 2000000
-
 /// SCAN module environment declaration.
 extern struct scanu_env_tag scanu_env;
-
 extern struct scanu_add_ie_tag scanu_add_ie;
+extern struct scanu_env_tag scanu_env;
 
 /**
  ****************************************************************************************
@@ -121,12 +136,12 @@ int scanu_frame_handler(struct rxu_mgt_ind const *frame);
  * if the BSS was not found.
  ****************************************************************************************
  */
-struct mac_scan_result* scanu_find_result(struct mac_addr const *bssid_ptr,
-                                          bool allocate);
-
+struct mac_scan_result* scanu_find_result(struct mac_addr const *bssid_ptr, bool allocate);
 struct mac_scan_result *scanu_search_by_bssid(struct mac_addr const *bssid);
-
+uint32_t scanu_is_active_scan(void);
+uint32_t scanu_is_passive_scan(void);
 struct mac_scan_result *scanu_search_by_ssid(struct mac_ssid const *ssid);
+uint32_t scanu_is_joining(void);
 
 /**
  ****************************************************************************************

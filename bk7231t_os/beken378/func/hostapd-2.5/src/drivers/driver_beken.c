@@ -1239,6 +1239,7 @@ static struct hostapd_hw_modes *hostap_get_hw_feature_data(void *priv,
     mode->rates[2] = 55;
     mode->rates[3] = 110;
 
+#if CFG_SUPPORT_80211G
     mode->rates[4] = 60;
     mode->rates[5] = 90;
     mode->rates[6] = 120;
@@ -1247,6 +1248,7 @@ static struct hostapd_hw_modes *hostap_get_hw_feature_data(void *priv,
     mode->rates[9] = 360;
     mode->rates[10] = 480;
     mode->rates[11] = 540;
+#endif
 
     return mode;
 }

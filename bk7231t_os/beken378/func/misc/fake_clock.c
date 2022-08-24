@@ -213,7 +213,6 @@ UINT32 timer_cal_tick(void)
     {
         if(lost > 200)
         {
-            //os_printf("m cal_:%x %x\r\n", lost, machw);
         }
 
         lost -= FCLK_DURATION_MS;
@@ -233,18 +232,15 @@ UINT32 timer_cal_tick(void)
         }
     }
     #endif
-    //os_printf("tc:%d\r\n",lost);
     
     mcu_ps_machw_init();
     GLOBAL_INT_RESTORE();
     return 0 ;
 
-CAL_RESET:
     timer_cal_init();
     GLOBAL_INT_RESTORE();
     return 0 ;
 }
-
 
 void cal_timer_hdl(UINT8 param)
 {

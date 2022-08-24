@@ -65,10 +65,10 @@
 #define SCAN_DISABLED_BIT CO_BIT(31)
 
 /// Duration on channel (in TUs) when actively scanning
-#define SCAN_ACTIVE_DURATION          90000   // 30 ms
+#define SCAN_ACTIVE_DURATION          (90 * CHAN_SLOT_DURATION_US)   // 90 ms
 
 /// Duration on channel (in TUs) when passively scanning
-#define SCAN_PASSIVE_DURATION         110000   // 120 ms
+#define SCAN_PASSIVE_DURATION         (110 * CHAN_SLOT_DURATION_US)   // 110 ms
 
 /// Definition of a channel to be scanned
 struct scan_chan_tag
@@ -117,9 +117,7 @@ struct scan_env_tag
  ****************************************************************************************
  */
 extern struct scan_env_tag scan_env;
-
 extern struct scan_probe_req_ie_tag scan_probe_req_ie;
-
 
 /*
  * FUNCTION PROTOTYPES

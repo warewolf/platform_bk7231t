@@ -621,9 +621,9 @@ int bkreg_run_command(const char *content, int cnt)
         UINT32 u32_end_value;
         UINT32 u32_duty_cycle1, u32_duty_cycle2;
         UINT32 u32_dead_band_1;
-        extern void tuya_pwm_init(uint8 channel_num, uint32 end_value, uint32 duty_cycle);
-        extern void tuya_pwm_stop(uint8 channel_num_1, uint8 channel_num_2);
-        extern void tuya_pwm_reset_duty_cycle(uint8 channel_num_1, uint8 channel_num_2,
+        extern void bk_cw_pwm_init(uint8 channel_num, uint32 end_value, uint32 duty_cycle);
+        extern void bk_cw_pwm_stop(uint8 channel_num_1, uint8 channel_num_2);
+        extern void bk_cw_pwm_reset_duty_cycle(uint8 channel_num_1, uint8 channel_num_2,
                                            uint32 duty_cycle_1, uint32 duty_cycle_2,
                                            uint32 end_value, uint32 dead_band_1);
         os_printf("BEKEN_TUYA_PWM\r\n");
@@ -639,11 +639,11 @@ int bkreg_run_command(const char *content, int cnt)
                                     | ((pHCIrxBuf->param[8]<<16) & 0x00FF0000UL)
                                     | ((pHCIrxBuf->param[9]<<24) & 0xFF000000UL);
                 os_printf("tuya_pwm_init\r\n");
-                tuya_pwm_init(pHCIrxBuf->param[1], u32_end_value, u32_duty_cycle1);
+                bk_cw_pwm_init(pHCIrxBuf->param[1], u32_end_value, u32_duty_cycle1);
                 break;
             case 0x02:
                 os_printf("tuya_pwm_stop\r\n");
-                tuya_pwm_stop(pHCIrxBuf->param[1], pHCIrxBuf->param[2]);
+                bk_cw_pwm_stop(pHCIrxBuf->param[1], pHCIrxBuf->param[2]);
                 break;
             case 0x03:
                 u32_duty_cycle1 = 0 | ( pHCIrxBuf->param[3] & 0x000000FFUL)
@@ -663,9 +663,9 @@ int bkreg_run_command(const char *content, int cnt)
                                     | ((pHCIrxBuf->param[17]<<16) & 0x00FF0000UL)
                                     | ((pHCIrxBuf->param[18]<<24) & 0xFF000000UL);
                 os_printf("tuya_pwm_reset_duty_cycle\r\n");
-                tuya_pwm_init(pHCIrxBuf->param[1], u32_end_value, u32_duty_cycle1);
-                tuya_pwm_init(pHCIrxBuf->param[2], u32_end_value, u32_duty_cycle2);
-                tuya_pwm_reset_duty_cycle(pHCIrxBuf->param[1], pHCIrxBuf->param[2],
+                bk_cw_pwm_init(pHCIrxBuf->param[1], u32_end_value, u32_duty_cycle1);
+                bk_cw_pwm_stop(pHCIrxBuf->param[2], u32_end_value, u32_duty_cycle2);
+                bk_cw_pwm_reset_duty_cycle(pHCIrxBuf->param[1], pHCIrxBuf->param[2],
                                           u32_duty_cycle1, u32_duty_cycle2,
                                           u32_end_value, u32_dead_band_1);
                 break;
@@ -754,6 +754,11 @@ int bkreg_run_command(const char *content, int cnt)
     bkreg_tx(pHCItxBuf);
 
     return 0;
+}
+#else
+int bkreg_run_command(const char *content, int cnt)
+{
+	return 0;
 }
 #endif // CFG_SUPPORT_BKREG
 #else

@@ -80,6 +80,7 @@ enum
     CMD_SCTRL_SET_LINEIN_VOLUME_ANALOG,    
     
 	#endif // (CFG_SOC_NAME == SOC_BK7221)
+    CMD_SCTRL_SET_LOW_PWR_CLK,
     CMD_SCTRL_SET_VDD_VALUE,
 };
 
@@ -103,7 +104,7 @@ enum
 #define BLK_BIT_IO_LDO_LOW_POWER                 (1 << 09)
 #define BLK_BIT_ANALOG_SYS_LDO                   (1 << 08)
 #define BLK_BIT_DIGITAL_CORE_LDO_LOW_POWER       (1 << 07)
-#define BLK_BIT_NC0                              (1 << 06)
+#define BLK_BIT_DIGITAL_CORE                     (1 << 06)
 #define BLK_BIT_DPLL_480M                        (1 << 05)
 #define BLK_BIT_32K_XTAL                         (1 << 04)
 #define BLK_BIT_26M_XTAL                         (1 << 03)
@@ -149,6 +150,11 @@ enum
 
 #define PARAM_AUD_DAC_GAIN_MASK                  (0x1F)
 #endif // (CFG_SOC_NAME != SOC_BK7231)
+
+/*CMD_SCTRL_SET_LOW_PWR_CLK*/
+#define LPO_SELECT_ROSC                             (0x0)
+#define LPO_SELECT_32K_XTAL                         (0x1)
+#define LPO_SELECT_32K_DIV                          (0x2)
 
 typedef union
 {

@@ -21,7 +21,7 @@ do
     rm -rf $i/*.o
 done
 
-for i in `find ../tuya_common/src -type d`
+for i in `find ../tuya_common -type d`
 do
 #    echo $i
     rm -rf $i/*.o

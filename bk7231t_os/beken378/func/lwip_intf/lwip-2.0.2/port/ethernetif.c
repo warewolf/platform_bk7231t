@@ -157,7 +157,14 @@ static err_t low_level_output(struct netif *netif, struct pbuf *p)
 {
 	int ret;
 	err_t err = ERR_OK;
-    uint8_t vif_idx = rwm_mgmt_get_netif2vif(netif);
+    uint8_t vif_idx;
+
+	vif_idx = rwm_mgmt_get_netif2vif(netif);
+	if (vif_idx >= NX_VIRT_DEV_MAX)
+	{
+		os_printf("%s: invalid vif: %d!\r\n", __func__, vif_idx);
+		return ERR_ARG;
+	}
 
 	//os_printf("output:%x\r\n", p);
 	ret = bmsg_tx_sender(p, (uint32_t)vif_idx);

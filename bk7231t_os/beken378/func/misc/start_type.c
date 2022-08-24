@@ -27,6 +27,8 @@ RESET_SOURCE_STATUS bk_misc_get_start_type()
 {
     uint32_t misc_value = *((volatile uint32_t *)(START_TYPE_ADDR));
 
+    if((start_type = sctrl_get_deep_sleep_wake_soure()) == 0)
+    {
     switch(misc_value) 
     { 
         case RESET_SOURCE_REBOOT:
@@ -59,10 +61,10 @@ RESET_SOURCE_STATUS bk_misc_get_start_type()
                 start_type = misc_value;
             }
             break;  
-        
         default: 
             start_type = RESET_SOURCE_POWERON;
             break; 
+    }
     }
 
     *((volatile uint32_t *)(START_TYPE_DMEMORY_ADDR)) = (uint32_t)CRASH_XAT0_VALUE;

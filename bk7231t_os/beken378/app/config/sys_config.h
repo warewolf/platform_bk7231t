@@ -8,7 +8,8 @@
 /* uart2 for debug, and generally, uart1 is used for communication.
    what is more, uart1 maybe is not bound out*/
 #define CFG_USE_UART1                              1
-#define CFG_JTAG_ENABLE                            0					//edit tuya_cheyisong 2020-2-28
+#define CFG_UART2_CLI                              0
+#define CFG_JTAG_ENABLE                            0
 #define OSMALLOC_STATISTICAL                       0
 
 /*section 0-----app macro config-----*/
@@ -163,6 +164,11 @@
 #define CFG_SUPPORT_BLE                            1
 #define CFG_USE_BLE_PS                             1
 
+#if CFG_UART2_CLI
+#define CFG_ENABLE_ATE_FEATURE                     1
+#else
 #define CFG_ENABLE_ATE_FEATURE                     0
+#endif
+
 #define CFG_RWNX_QOS_MSDU						   1
 #endif // _SYS_CONFIG_H_

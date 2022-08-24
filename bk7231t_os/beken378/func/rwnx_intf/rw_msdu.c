@@ -19,8 +19,8 @@
 #include "fake_clock_pub.h"
 #include "power_save_pub.h"
 
-void ethernetif_input(int iface, struct pbuf *p);
-UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag);
+extern void ethernetif_input(int iface, struct pbuf *p);
+extern UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag);
 
 LIST_HEAD_DEFINE(msdu_rx_list);
 
@@ -433,11 +433,10 @@ void rwm_msdu_send_txing_node(UINT8 sta_idx)
     txl_cntrl_inc_pck_cnt();
     #endif
 
-    //os_printf("pop txing list node:%p, sta:%d\r\n",node, sta_idx);
     rwm_transfer_node(node, TXU_CNTRL_MORE_DATA);
 
     if(node_left && !sta_mgmt_is_in_ps(sta_idx)) {
-        // trigger sending txing again
+        /* trigger sending txing again*/
         bmsg_txing_sender(sta_idx);
     } 
     else if(!node_left) 
@@ -445,7 +444,6 @@ void rwm_msdu_send_txing_node(UINT8 sta_idx)
         u8 vif_idx = sta_mgmt_get_vif_idx(sta_idx);
         u16 aid = sta_mgmt_get_aid(sta_idx);
         
-        //rwnx_send_me_uapsd_traffic_ind(sta_idx, 0);
         rw_msg_send_tim_update(vif_idx, aid, 0);
     }
 }
@@ -684,19 +682,14 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
     UINT8 tid;
     UINT32 ret = RW_FAILURE;
     UINT8 *content_ptr;
-
     UINT32 queue_idx;
-
     ETH_HDR_PTR eth_hdr_ptr;
     struct txdesc *txdesc_new;
 	struct sta_info_tag *sta;
 	struct vif_info_tag *vif;
 
-    if(!node) {
-        #if NX_POWERSAVE
-        txl_cntrl_dec_pck_cnt();
-        #endif
-        
+    if(!node) 
+	{
         goto tx_exit;
     }
     
@@ -705,6 +698,12 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
 
 #if CFG_RWNX_QOS_MSDU
 	vif = rwm_mgmt_vif_idx2ptr(node->vif_idx);
+	if (NULL == vif)
+	{
+		os_printf("%s: vif is NULL!\r\n", __func__);
+		goto tx_exit;
+	}
+	
 	if (likely(vif->active)) {
 		sta = &sta_info_tab[vif->u.sta.ap_id];
 		if (qos_need_enabled(sta)) {
@@ -738,11 +737,6 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
     txdesc_new = tx_txdesc_prepare(queue_idx);
     if(TXDESC_STA_USED == txdesc_new->status)
     {
-        rwm_node_free(node);
-        #if NX_POWERSAVE
-        txl_cntrl_dec_pck_cnt();
-        #endif
-        
         os_printf("rwm_transfer no txdesc \r\n");
         goto tx_exit;
     }
@@ -783,8 +777,16 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
     txdesc_new->lmac.hw_desc->cfm.status = 0;
 	
     txu_cntrl_push(txdesc_new, queue_idx);
+    return ret;
 
 tx_exit:
+    if (NULL != node)
+        rwm_node_free(node);
+		
+    #if NX_POWERSAVE
+    txl_cntrl_dec_pck_cnt();
+    #endif
+	
     return ret;
 }
 

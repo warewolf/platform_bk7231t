@@ -170,7 +170,7 @@ INCLUDES += -I./beken378/func/temp_detect
 INCLUDES += -I./beken378/func/spidma_intf
 INCLUDES += -I./beken378/func/rwnx_intf
 INCLUDES += -I./beken378/func/joint_up
-INCLUDES += -I./beken378/func/tuya_pwm
+INCLUDES += -I./beken378/func/bk_tuya_pwm
 INCLUDES += -I./beken378/os/include
 INCLUDES += -I./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/Keil/ARM968es
 INCLUDES += -I./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/include
@@ -392,7 +392,7 @@ SRC_C += ./beken378/func/user_driver/BkDriverWdg.c
 SRC_C += ./beken378/func/user_driver/BkDriverTimer.c
 SRC_C += ./beken378/func/wlan_ui/wlan_cli.c
 SRC_C += ./beken378/func/wlan_ui/wlan_ui.c
-SRC_C += ./beken378/func/tuya_pwm/tuya_pwm.c
+SRC_C += ./beken378/func/bk_tuya_pwm/bk_tuya_pwm.c
 
 #rwnx ip module
 #SRC_C += ./beken378/ip/common/co_dlist.c
@@ -606,7 +606,7 @@ endif
 # -------------------------------------------------------------------
 TY_OUTPUT = $(TOP_DIR)/apps/$(APP_BIN_NAME)/output/$(APP_VERSION)
 
-TY_SRC_DIRS += $(shell find ../tuya_common/src -type d)
+TY_SRC_DIRS += $(shell find ../tuya_common -type d)
 TY_SRC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/src -type d)
 TY_SRC_DIRS += $(shell find ../tuya_os_adapter/src -type d)
 
@@ -615,12 +615,9 @@ SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.cpp))
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.s)) 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.S)) 
 
-#TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk -type d)
-SDK_INCLUDE_DIRS := $(shell find $(TOP_DIR)/sdk -name include -type d)
-TY_INC_DIRS += $(foreach dir,$(SDK_INCLUDE_DIRS),$(shell find $(dir) -type d))
-
+TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk -type d)
 TY_INC_DIRS += $(shell find ../tuya_os_adapter/include -type d)
-TY_INC_DIRS += $(shell find ../tuya_common/include -type d)
+TY_INC_DIRS += $(shell find ../tuya_common -type d)
 TY_INC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/include -type d)
 
 INCLUDES += $(foreach base_dir, $(TY_INC_DIRS), $(addprefix -I , $(base_dir))) 

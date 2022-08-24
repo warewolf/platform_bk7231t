@@ -1,25 +1,23 @@
-
 #include "include.h"
+
 #if (CFG_SOC_NAME == SOC_BK7231U)
-
 #include "arm_arch.h"
-
 #include "target_util_pub.h"
 #include "mem_pub.h"
-
 #include "drv_model_pub.h"
 #include "sys_ctrl_pub.h"
 #include "phy.h"
-
 #include "bk7011_cal_pub.h"
 #include "bk7011_cal.h"
-
 #include <string.h>
 #include "flash_pub.h"
+#include "uart_pub.h"
+
 #ifdef INCLUDE_OS
 #include "cmd_evm.h"
 #include "temp_detect_pub.h"
 #endif
+
 #include "power_save_pub.h"
 
 #define CAL_RESULT_TO_FLASH		    0
@@ -40,19 +38,19 @@
 #define TX_PHASE_LOOPBACK_IMB_CAL       1
 
 
-#define CAL_DEBUG          1
-#include "uart_pub.h"
+#define CAL_DEBUG                      0
+
 #if CAL_DEBUG
-#define CAL_PRT      null_prf
-#define CAL_WARN     null_prf// warning_prf
-#define CAL_FATAL    fatal_prf
-#define CAL_TIM_PRT os_printf
+#define CAL_PRT       null_prf
+#define CAL_WARN      null_prf
+#define CAL_FATAL     fatal_prf
+#define CAL_TIM_PRT   os_printf
 #define CAL_FLASH_PRT os_printf
 #else
-#define CAL_PRT      null_prf
-#define CAL_WARN     null_prf
-#define CAL_FATAL    null_prf
-#define CAL_TIM_PRT null_prf
+#define CAL_PRT       null_prf
+#define CAL_WARN      null_prf
+#define CAL_FATAL     null_prf
+#define CAL_TIM_PRT   null_prf
 #define CAL_FLASH_PRT null_prf
 #endif
 
@@ -1568,35 +1566,34 @@ void rwnx_cal_read_current_cal_result(void)
     }
     else
 #endif
-    {
-        CAL_FATAL("*********** finally result **********\r\n");
-        CAL_FATAL("gtx_dcorMod            : 0x%x\r\n", gtx_dcorMod);
-        CAL_FATAL("gtx_dcorPA             : 0x%x\r\n", gtx_dcorPA);
-        CAL_FATAL("gtx_pre_gain           : 0x%x\r\n", gtx_pre_gain);
-        CAL_FATAL("gtx_i_dc_comp          : 0x%x\r\n", gtx_i_dc_comp);
-        CAL_FATAL("gtx_q_dc_comp          : 0x%x\r\n", gtx_q_dc_comp);
-        CAL_FATAL("gtx_i_gain_comp        : 0x%x\r\n", gtx_i_gain_comp);
-        CAL_FATAL("gtx_q_gain_comp        : 0x%x\r\n", gtx_q_gain_comp);
-        CAL_FATAL("gtx_ifilter_corner over: 0x%x\r\n", gtx_ifilter_corner);
-        CAL_FATAL("gtx_qfilter_corner over: 0x%x\r\n", gtx_qfilter_corner);
-        CAL_FATAL("gtx_phase_comp         : 0x%x\r\n", gtx_phase_comp);
-        CAL_FATAL("gtx_phase_ty2          : 0x%x\r\n", gtx_phase_ty2);
-        
-        CAL_FATAL("gbias_after_cal        : 0x%x\r\n", gbias_after_cal);
-        CAL_FATAL("gav_tssi               : 0x%x\r\n", gav_tssi);
 
-        CAL_FATAL("g_rx_dc_gain_tab 0 over: 0x%x\r\n", g_rx_dc_gain_tab[0]);
-        CAL_FATAL("g_rx_dc_gain_tab 1 over: 0x%x\r\n", g_rx_dc_gain_tab[1]);
-        CAL_FATAL("g_rx_dc_gain_tab 2 over: 0x%x\r\n", g_rx_dc_gain_tab[2]);
-        CAL_FATAL("g_rx_dc_gain_tab 3 over: 0x%x\r\n", g_rx_dc_gain_tab[3]);
-        CAL_FATAL("g_rx_dc_gain_tab 4 over: 0x%x\r\n", g_rx_dc_gain_tab[4]);
-        CAL_FATAL("g_rx_dc_gain_tab 5 over: 0x%x\r\n", g_rx_dc_gain_tab[5]);
-        CAL_FATAL("g_rx_dc_gain_tab 6 over: 0x%x\r\n", g_rx_dc_gain_tab[6]);
-        CAL_FATAL("g_rx_dc_gain_tab 7 over: 0x%x\r\n", g_rx_dc_gain_tab[7]);
-        CAL_FATAL("grx_amp_err_wr         : 0x%03x\r\n", grx_amp_err_wr);
-        CAL_FATAL("grx_phase_err_wr       : 0x%03x\r\n", grx_phase_err_wr);
-        CAL_FATAL("**************************************\r\n");
-    }
+	CAL_FATAL("*********** finally result **********\r\n");
+	CAL_FATAL("gtx_dcorMod            : 0x%x\r\n", gtx_dcorMod);
+	CAL_FATAL("gtx_dcorPA             : 0x%x\r\n", gtx_dcorPA);
+	CAL_FATAL("gtx_pre_gain           : 0x%x\r\n", gtx_pre_gain);
+	CAL_FATAL("gtx_i_dc_comp          : 0x%x\r\n", gtx_i_dc_comp);
+	CAL_FATAL("gtx_q_dc_comp          : 0x%x\r\n", gtx_q_dc_comp);
+	CAL_FATAL("gtx_i_gain_comp        : 0x%x\r\n", gtx_i_gain_comp);
+	CAL_FATAL("gtx_q_gain_comp        : 0x%x\r\n", gtx_q_gain_comp);
+	CAL_FATAL("gtx_ifilter_corner over: 0x%x\r\n", gtx_ifilter_corner);
+	CAL_FATAL("gtx_qfilter_corner over: 0x%x\r\n", gtx_qfilter_corner);
+	CAL_FATAL("gtx_phase_comp         : 0x%x\r\n", gtx_phase_comp);
+	CAL_FATAL("gtx_phase_ty2          : 0x%x\r\n", gtx_phase_ty2);
+	
+	CAL_FATAL("gbias_after_cal        : 0x%x\r\n", gbias_after_cal);
+	CAL_FATAL("gav_tssi               : 0x%x\r\n", gav_tssi);
+
+	CAL_FATAL("g_rx_dc_gain_tab 0 over: 0x%x\r\n", g_rx_dc_gain_tab[0]);
+	CAL_FATAL("g_rx_dc_gain_tab 1 over: 0x%x\r\n", g_rx_dc_gain_tab[1]);
+	CAL_FATAL("g_rx_dc_gain_tab 2 over: 0x%x\r\n", g_rx_dc_gain_tab[2]);
+	CAL_FATAL("g_rx_dc_gain_tab 3 over: 0x%x\r\n", g_rx_dc_gain_tab[3]);
+	CAL_FATAL("g_rx_dc_gain_tab 4 over: 0x%x\r\n", g_rx_dc_gain_tab[4]);
+	CAL_FATAL("g_rx_dc_gain_tab 5 over: 0x%x\r\n", g_rx_dc_gain_tab[5]);
+	CAL_FATAL("g_rx_dc_gain_tab 6 over: 0x%x\r\n", g_rx_dc_gain_tab[6]);
+	CAL_FATAL("g_rx_dc_gain_tab 7 over: 0x%x\r\n", g_rx_dc_gain_tab[7]);
+	CAL_FATAL("grx_amp_err_wr         : 0x%03x\r\n", grx_amp_err_wr);
+	CAL_FATAL("grx_phase_err_wr       : 0x%03x\r\n", grx_phase_err_wr);
+	CAL_FATAL("**************************************\r\n");
 }
 
 void rwnx_cal_set_lpfcap_iq(UINT32 lpfcap_i, UINT32 lpfcap_q)
@@ -5158,8 +5155,7 @@ INT32 bk7011_cal_rx_dc(void)
     INT32 i, j, k, t, curr, value;
     UINT32 rx_dc_gain_tab_temp[8];
     UINT32 rx_dc_gain_tab_temp1[8];
-
-
+    
     /*step 2*/
     BK7011RCBEKEN.REG0x3C->bits.RXDCCALEN = 1;
     BK7011RCBEKEN.REG0x3C->bits.RXAVGMODE = 0;
@@ -5167,8 +5163,7 @@ INT32 bk7011_cal_rx_dc(void)
     BK7011RCBEKEN.REG0x1C->bits.FTXON = 0;
     BK7011RCBEKEN.REG0x1C->bits.FRXON = 1;
 
-
-     BK7011TRX.REG0x5->bits.chspi = 0x0;//2400MHz, 20181120 from 0x64 to 0x0;
+    BK7011TRX.REG0x5->bits.chspi = 0x0;//2400MHz, 20181120 from 0x64 to 0x0;
     CAL_WR_TRXREGS(0x5);
     delay100us(1);//delay 100us for RFPLL
     
@@ -5192,19 +5187,19 @@ INT32 bk7011_cal_rx_dc(void)
                 value |= curr;
                 (*((volatile unsigned long *)(TRX_BEKEN_BASE + (0x14 + i / 2) * 4))) = value;
                 while(BK7011RCBEKEN.REG0x1->value & 0xfffffff);
-                cal_delay_100us(gst_rx_adc);
+                cal_delay_100us(1);
 
                 //read dc avg, and calc mean
                 value = 0;
-                for(t = 0; t < 10; t ++)
+                //for(t = 0; t < 10; t ++)
                 {
                     if(j == 0)  curr = BK7011RCBEKEN.REG0x3C->bits.RXAVGIRD;
                     else        curr = BK7011RCBEKEN.REG0x3C->bits.RXAVGQRD;
                     if(curr >= 2048) curr -= 4096;
                     value += curr;
-                    cpu_delay(100);
+                    //cpu_delay(100);
                 }
-                curr = value / 10;
+                curr = value;
 
                 //calc new dc offset
                 if(curr > 0) index += (0x1 << k);
@@ -5258,19 +5253,22 @@ INT32 bk7011_cal_rx_dc(void)
                 value |= curr;
                 (*((volatile unsigned long *)(TRX_BEKEN_BASE + (0x14 + i / 2) * 4))) = value;
                 while(BK7011RCBEKEN.REG0x1->value & 0xfffffff);
-                cal_delay_100us(gst_rx_adc);
+                cal_delay_100us(1);
 
                 //read dc avg, and calc mean
                 value = 0;
-                for(t = 0; t < 10; t ++)
+                //for(t = 0; t < 10; t ++)
                 {
                     if(j == 0)  curr = BK7011RCBEKEN.REG0x3C->bits.RXAVGIRD;
                     else        curr = BK7011RCBEKEN.REG0x3C->bits.RXAVGQRD;
                     if(curr >= 2048) curr -= 4096;
                     value += curr;
-                    cpu_delay(100);
+                    
+                    //REG_WRITE((0x00802800+(21*4)), 0x02);
+                    //cpu_delay(100);
+                    //REG_WRITE((0x00802800+(21*4)), 0x00);
                 }
-                curr = value / 10;
+                curr = value;
 
                 //calc new dc offset
                 if(curr > 0) index += (0x1 << k);
@@ -6053,13 +6051,13 @@ void calibration_main(void)
         bk7011_cal_dcormod_do_fitting();
     }
 #else
-//    BK7011TRX.REG0x7->bits.chin60 = 0xc;//fix to this channel for power cal.
-//    CAL_WR_TRXREGS(0x7);
+#if 0
     BK7011TRX.REG0x5->bits.chspi = 0xc;//fix to this channel for power cal.
     CAL_WR_TRXREGS(0x5);
     delay100us(1);//delay 100us for RFPLL	
    
     bk7011_cal_tx_output_power(goldval);  // Actual Power cal.
+#endif
 #endif
 
     bk7011_set_tx_after_cal();
@@ -6073,45 +6071,6 @@ void calibration_main(void)
 
     bk7011_rx_cal_en();
     bk7011_cal_rx_dc();
-
-    bk7011_tx_cal_en();
-
-    BK7011TRX.REG0x5->bits.chspi = 0x5d;//2495MHz
-    CAL_WR_TRXREGS(0x5);
-    delay100us(1);//delay 100us for RFPLL
-
-    
-  //20170804 by yiming 
-    gtx_power_cal_mode = TX_IQ_LOOPBACK_POWER_CAL;	
-    bk7011_cal_tx_output_power(goldval);       
-    bk7011_cal_bias();
-    bk7011_cal_pll();
-    delay100us(1);//delay 100us for RFPLL
-    
-    gtx_power_cal_mode = TX_IQ_LOOPBACK_POWER_CAL;	
-    bk7011_cal_tx_output_power(goldval);      
- 
-   gtx_dc_cal_mode = TX_DC_LOOPBACK_CAL_IQ;   
-   bk7011_cal_tx_dc(goldval);//Loopback DC cal.   
-
- 
-    gtx_gain_imb_cal_mode = TX_GAIN_LOOPBACK_IMB_CAL;    
-    bk7011_cal_tx_gain_imbalance(goldval);
-
-#ifdef CALIBRATE_TIMES
-    if (p_gtx_i_gain_comp_temp_array != NULL)
-    {
-//	gtx_i_gain_comp_temp_array[calibrate_time] = BK7011RCBEKEN.REG0x50->bits.TXIGAINCOMP;
-//	gtx_q_gain_comp_temp_array[calibrate_time] = BK7011RCBEKEN.REG0x50->bits.TXQGAINCOMP;
-	p_gtx_i_gain_comp_temp_array[calibrate_time] =( (*((volatile unsigned long * )(0x01050000 + 0x50*4))) >> 16) & 0x03FF ;
-	p_gtx_q_gain_comp_temp_array[calibrate_time] = (*((volatile unsigned long * )(0x01050000 + 0x50*4))) & 0x03FF ;
-    }
-#endif
-
-    gtx_phase_imb_cal_mode = TX_PHASE_LOOPBACK_IMB_CAL;  
-    bk7011_cal_tx_phase_imbalance(goldval);
-
-    bk7011_rx_cal_en();
     bk7011_cal_rx_iq(goldval);
 
 

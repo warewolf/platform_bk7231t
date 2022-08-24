@@ -7,21 +7,9 @@
 #include "rtos_pub.h"
 #include "rw_pub.h"
 
-#if CFG_SUPPORT_ALIOS
-#include <hal/wifi.h>
-#endif
+#include "manual_ps_pub.h"
 
-#define ICU_BASE                                     (0x00802000)
-#define ICU_INT_STATUS                               (ICU_BASE + 19 * 4)
-
-#if CFG_SUPPORT_ALIOS
-enum {
-    WLAN_ENC_OPEN,
-    WLAN_ENC_WEP,
-    WLAN_ENC_CCMP,
-    WLAN_ENC_TKIP,
-};
-#else
+#if 1
 #define WiFi_Interface  wlanInterfaceTypedef
 
 #define DHCP_DISABLE  (0)   /**< Disable DHCP service. */
@@ -230,6 +218,11 @@ typedef struct vif_addcfg_st {
     u8 adv;
 } VIF_ADDCFG_ST, *VIF_ADDCFG_PTR;
 
+enum
+{
+	MTR_GENERAL_SNIFFER_TYPE = 1,
+	MTR_PASSIVE_SCAN_SNIFFER_TYPE
+};
 typedef void (*monitor_data_cb_t)(uint8_t *data, int len, hal_wifi_link_info_t *info);
 #endif
 
@@ -374,6 +367,8 @@ int bk_wlan_monitor_rx_type(int type);
  *  @detail This function disconnect wifi station and softAP.
  *
  */
+int bk_wlan_start_passive_scan_sniffer(void);
+int bk_wlan_stop_passive_scan_sniffer(void);
 int bk_wlan_start_monitor(void);
 
 /** @brief  Stop wifi monitor mode
@@ -410,6 +405,7 @@ extern monitor_data_cb_t bk_wlan_get_bcn_cb(void);
 extern void bk_wlan_enable_lsig(void);
 extern void bk_wlan_disable_lsig(void);
 extern int bk_wlan_is_monitor_mode(void);
+extern int bk_wlan_is_general_sniffer_type(void);
 extern void bk_wlan_set_ap_monitor_coexist(int val);
 extern int bk_wlan_get_ap_monitor_coexist();
 extern uint32_t bk_sta_cipher_is_open(void);
@@ -423,15 +419,12 @@ extern uint32_t bk_wlan_get_INT_status(void);
 extern void bk_wlan_terminate_sta_rescan(void);
 extern int is_apm_bss_config_empty(void);
 
-/** @brief  Request deep sleep,and wakeup by gpio.
+/** @brief  Request deep sleep,and wakeup by gpio,rtc,or usb.
  *
- *  @param  gpio_index_map:The gpio bitmap which set 1 enable wakeup deep sleep.
- *              gpio_index_map is hex and every bits is map to gpio0-gpio31.
- *          gpio_edge_map:The gpio edge bitmap for wakeup gpios,
- *              gpio_edge_map is hex and every bits is map to gpio0-gpio31.
- *              0:rising,1:falling.
+ *  @param  first set PS_DEEP_CTRL_PARAM struct.
  */
-void bk_enter_deep_sleep(UINT32 gpio_index_map,UINT32 gpio_edge_map);
+extern void bk_enter_deep_sleep_mode ( PS_DEEP_CTRL_PARAM *deep_param );
+
 
 /** @brief  Enable dtim power save,close rf,and wakeup by ieee dtim dynamical
  *

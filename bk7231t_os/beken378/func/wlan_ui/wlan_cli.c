@@ -1785,6 +1785,39 @@ void pwr_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
     rw_msg_set_power(0,pwr);
 }
 
+static void Deep_Sleep_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+	PS_DEEP_CTRL_PARAM deep_sleep_param;
+
+	deep_sleep_param.wake_up_way			= 0;
+	
+	deep_sleep_param.gpio_index_map      	= os_strtoul(argv[1], NULL, 16);
+	deep_sleep_param.gpio_edge_map       	= os_strtoul(argv[2], NULL, 16);	
+	deep_sleep_param.gpio_last_index_map 	= os_strtoul(argv[3], NULL, 16);
+	deep_sleep_param.gpio_last_edge_map  	= os_strtoul(argv[4], NULL, 16);
+	deep_sleep_param.sleep_time     		= os_strtoul(argv[5], NULL, 16);
+	deep_sleep_param.wake_up_way     		= os_strtoul(argv[6], NULL, 16);
+	deep_sleep_param.gpio_stay_lo_map 	    = os_strtoul(argv[7], NULL, 16);
+	deep_sleep_param.gpio_stay_hi_map  	    = os_strtoul(argv[8], NULL, 16);
+            
+	if(argc == 9)
+	{		
+		os_printf("---deep sleep test param : 0x%0X 0x%0X 0x%0X 0x%0X %d %d\r\n", 
+					deep_sleep_param.gpio_index_map, 
+					deep_sleep_param.gpio_edge_map,
+					deep_sleep_param.gpio_last_index_map, 
+					deep_sleep_param.gpio_last_edge_map,
+					deep_sleep_param.sleep_time,
+					deep_sleep_param.wake_up_way);
+		
+		bk_enter_deep_sleep_mode(&deep_sleep_param);
+	}
+	else
+	{
+		os_printf("---argc error!!! \r\n");
+	}
+}
+
 static void Ps_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     UINT32 gpio_index = 0;
@@ -2271,6 +2304,8 @@ static const struct cli_command user_clis[] =
     {"channel", "channel []", channel_Command},
     {"mac", "mac <mac>, Get mac/Set mac. <mac>: c89346000001", mac_command},
     {"ps", "ps [func] [param]", Ps_Command},
+    {"deep_sleep", "deep_sleep [param]", Deep_Sleep_Command},
+    
 #ifdef TCP_CLIENT_DEMO
     {"tcp_cont", "tcp_cont [ip] [port]", tcp_make_connect_server_command},
 #endif

@@ -411,7 +411,7 @@ UINT32 manual_cal_is_in_rftest_mode(void)
     }
 }
 
-UINT32 g_cmtag_flag = LOAD_FROM_CALI;
+UINT32 g_cmtag_flag = LOAD_FROM_FLASH;
 int manual_set_cmtag(UINT32 status)
 {
     g_cmtag_flag = status;

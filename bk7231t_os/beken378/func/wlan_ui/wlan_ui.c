@@ -33,13 +33,16 @@
 #include "port/net.h"
 #include "txu_cntrl.h"
 #include "rw_msdu.h"
+#include "phy_trident.h"
 
 #if CFG_ROLE_LAUNCH
 #include "role_launch.h"
 #endif
 
+static int g_monitor_type = MTR_GENERAL_SNIFFER_TYPE; 
 monitor_data_cb_t g_monitor_cb = 0;
 static monitor_data_cb_t g_bcn_cb = 0;
+
 #if CFG_AP_MONITOR_COEXIST
 static int g_ap_monitor_coexist = 0;
 #endif
@@ -50,6 +53,7 @@ monitor_data_cb_t g_mesh_monitor_cb = 0;
 uint8_t g_mesh_bssid[6];
 #endif
 FUNC_1PARAM_PTR connection_status_cb = 0;
+uint8_t sys_channel = DEFAULT_CHANNEL_AP;
 
 extern void mm_hw_ap_disable(void);
 extern int hostapd_main_exit(void);
@@ -280,7 +284,6 @@ uint8_t bk_wlan_sta_get_channel(void)
     return channel;
 }
 
-uint8_t sys_channel = DEFAULT_CHANNEL_AP;
 uint8_t bk_wlan_ap_get_default_channel(void)
 {
     uint8_t channel;
@@ -336,7 +339,6 @@ void bk_wlan_reg_csa_cb_coexist_mode(void)
     mhdr_connect_user_cb(bk_wlan_ap_csa_coexist_mode, 0);
 }
 
-#include "phy_trident.h"
 void bk_wlan_phy_open_cca(void)
 {
 	phy_open_cca();
@@ -510,7 +512,10 @@ void bk_wlan_terminate_sta_rescan(void)
 
 void bk_wlan_sta_init(network_InitTypeDef_st *inNetworkInitPara)
 {	
-    mhdr_set_station_status(RW_EVT_STA_IDLE);
+	if(inNetworkInitPara)
+	{
+    	mhdr_set_station_status(RW_EVT_STA_IDLE);
+	}
 	
     if(!g_sta_param_ptr)
     {
@@ -714,8 +719,11 @@ void bk_wlan_start_assign_scan(UINT8 **ssid_ary, UINT8 ssid_num)
 }
 
 void bk_wlan_sta_init_adv(network_InitTypeDef_adv_st *inNetworkInitParaAdv)
-{
-    mhdr_set_station_status(RW_EVT_STA_IDLE);
+{	
+	if(inNetworkInitParaAdv)
+	{
+    	mhdr_set_station_status(RW_EVT_STA_IDLE);
+	}
 	
     if(!g_sta_param_ptr)
     {
@@ -1194,13 +1202,49 @@ int bk_wlan_get_ap_monitor_coexist()
 }
 #endif
 
+int bk_wlan_is_general_sniffer_type(void)
+{
+	return (MTR_GENERAL_SNIFFER_TYPE == g_monitor_type);
+}
+
+int bk_wlan_start_passive_scan_sniffer(void)
+{
+    monitor_data_cb_t cb_bakup;
+
+	cb_bakup = g_monitor_cb;
+    g_monitor_cb = NULL;
+
+    bk_wlan_stop(SOFT_AP);
+    bk_wlan_stop(STATION);
+
+    g_monitor_cb = cb_bakup;
+
+    bk_wlan_ap_init(0);
+	g_monitor_type = MTR_PASSIVE_SCAN_SNIFFER_TYPE; 
+    rwnx_remove_added_interface();
+    g_wlan_general_param->role = CONFIG_ROLE_NULL;
+
+	return 0;
+}
+
+int bk_wlan_stop_passive_scan_sniffer(void)
+{
+    if(g_monitor_cb)
+    {
+        g_monitor_cb = 0;
+        hal_exit_passive_scan_sniffer();
+    }
+
+    return 0;
+}
+
 /** @brief  Start wifi monitor mode
  *
  *  @detail This function disconnect wifi station and softAP.
  *
  */
 int bk_wlan_start_monitor(void)
-{
+{	
 #if !CFG_AP_MONITOR_COEXIST
     monitor_data_cb_t cb_bakup = g_monitor_cb;
     g_monitor_cb = NULL;
@@ -1210,10 +1254,8 @@ int bk_wlan_start_monitor(void)
 
     g_monitor_cb = cb_bakup;
 
-#if CFG_SUPPORT_ALIOS
-    lsig_init();
-#endif
     bk_wlan_ap_init(0);
+	g_monitor_type = MTR_GENERAL_SNIFFER_TYPE; 
     rwnx_remove_added_interface();
     g_wlan_general_param->role = CONFIG_ROLE_NULL;
 #else
@@ -1230,10 +1272,8 @@ int bk_wlan_start_monitor(void)
 
 		g_monitor_cb = cb_bakup;
 
-#if CFG_SUPPORT_ALIOS
-		lsig_init();
-#endif
 		bk_wlan_ap_init(0);
+		g_monitor_type = MTR_GENERAL_SNIFFER_TYPE; 
 		rwnx_remove_added_interface();
 		g_wlan_general_param->role = CONFIG_ROLE_NULL;
 	}
@@ -1387,39 +1427,8 @@ monitor_data_cb_t bk_wlan_get_bcn_cb(void)
 
 extern void bmsg_ps_sender(uint8_t ioctl);
 
-/** @brief  Request deep sleep,and wakeup by gpio.
- *
- *  @param  gpio_index_map:The gpio bitmap which set 1 enable wakeup deep sleep.
- *              gpio_index_map is hex and every bits is map to gpio0-gpio31.
- *          gpio_edge_map:The gpio edge bitmap for wakeup gpios,
- *              gpio_edge_map is hex and every bits is map to gpio0-gpio31.
- *              0:rising,1:falling.
- */
 #if CFG_USE_DEEP_PS
-void bk_enter_deep_sleep(UINT32 gpio_index_map,UINT32 gpio_edge_map)
-{
-    UINT32 param;
-    UINT32 i;
-
-    for (i = 0; i < GPIONUM; i++)
-    {
-        if (gpio_index_map & (0x01UL << i))
-        {
-            if(gpio_index_map & gpio_edge_map & (0x01UL << i))
-            {
-            	param = GPIO_CFG_PARAM(i, GMODE_INPUT_PULLUP);
-            	sddev_control(GPIO_DEV_NAME, CMD_GPIO_CFG, &param);
-            }
-            else
-            {
-                param = GPIO_CFG_PARAM(i, GMODE_INPUT_PULLDOWN);
-                sddev_control(GPIO_DEV_NAME, CMD_GPIO_CFG, &param);
-            }
-        }
-    }
-
-    deep_sleep_wakeup_with_gpio(gpio_index_map,gpio_edge_map);
-}
+extern void bk_enter_deep_sleep_mode ( PS_DEEP_CTRL_PARAM *deep_param );
 #endif
 
 #if CFG_USE_STA_PS

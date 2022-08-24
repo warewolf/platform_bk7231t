@@ -109,7 +109,6 @@ void set_printf_port(UINT8 port)
     pirntf_port = port;
 }
 
-/*uart2 as deubg port*/
 char string[256];
 void bk_printf(const char *fmt, ...)
 {
@@ -118,19 +117,23 @@ void bk_printf(const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(string, sizeof(string) - 1, fmt, ap);
     string[255] = 0;
-#if ATE_APP_FUN
+
+#if CFG_UART2_CLI
+	bk_send_string(UART2_PORT, string);
+#elif ATE_APP_FUN
 	if(get_ate_mode_state())
 	{
     	bk_send_string(UART1_PORT, string);
 	}
 	else
-#endif
+#else
 	{
         if(get_printf_port() == 1)
         	bk_send_string(UART1_PORT, string);
         else
             bk_send_string(UART2_PORT, string);
 	}
+#endif
     va_end(ap);
 }
 
