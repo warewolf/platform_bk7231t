@@ -723,6 +723,11 @@ OSStatus bk_wlan_start_sta(network_InitTypeDef_st *inNetworkInitPara)
 		bk_printf("  chan: %d\n", chan);
 		bk_printf("  PMK: %s\n", psk);
 #endif
+		if (os_strlen((char *)psk) == 0) {
+			// no psk info, calcuate pmk
+			psk = 0;
+			psk_len = 0;
+		}
 	}
 #endif
 

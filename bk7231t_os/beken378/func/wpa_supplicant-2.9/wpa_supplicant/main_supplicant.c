@@ -85,10 +85,12 @@ void wlan_store_fci(struct wpa_supplicant *wpa_s)
 	ieee80211_freq_to_chan(wpa_s->current_bss->freq, &fci.channel);
 	os_strcpy((char *)fci.pwd, wpa_s->current_ssid->passphrase);
 
-	psk = wpa_s->current_ssid->psk;
-	for(i = 0; i < PMK_LEN; i++) {
-		sprintf(temp, "%02x", psk[i]);
-		strcat((char *)fci.psk, temp);
+	if (wpa_s->current_ssid && wpa_s->current_ssid->psk_set) {
+		psk = wpa_s->current_ssid->psk;
+		for(i = 0; i < PMK_LEN; i++) {
+			sprintf(temp, "%02x", psk[i]);
+			strcat((char *)fci.psk, temp);
+		}
 	}
 
 	/* XXX: security not set */

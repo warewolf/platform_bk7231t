@@ -75,6 +75,7 @@ int tuya_hal_wifi_all_ap_scan(AP_IF_S **ap_ary, uint32_t *num)
     OPERATE_RET ret;
     INT_T i;
     INT_T scan_cnt;
+    INT_T ssid_len;
     ScanResult_adv apList;
     
     if((NULL == ap_ary) || (NULL == num)) {
@@ -106,14 +107,21 @@ int tuya_hal_wifi_all_ap_scan(AP_IF_S **ap_ary, uint32_t *num)
         goto SCAN_ERR;
     }
     
+    memset(array, 0, (sizeof(AP_IF_S) * scan_cnt));
+    
     for(i = 0; i < scan_cnt; i++) {
         item = &array[i];
 
         item->channel = apList.ApList[i].channel;
         item->rssi = apList.ApList[i].ApPower;
         os_memcpy(item->bssid, apList.ApList[i].bssid, 6);
-        os_strcpy(item->ssid, apList.ApList[i].ssid);
-        item->s_len = os_strlen(item->ssid);
+        
+        ssid_len = os_strlen(apList.ApList[i].ssid);
+        if(ssid_len > WIFI_SSID_LEN) {
+            ssid_len = WIFI_SSID_LEN;
+        }
+        os_strncpy((char*)item->ssid, apList.ApList[i].ssid, ssid_len);
+        item->s_len = ssid_len;
     }
     
     *ap_ary = array;
@@ -147,7 +155,7 @@ int tuya_hal_wifi_assign_ap_scan(const char *ssid, AP_IF_S **ap)
     AP_IF_S *item;
     AP_IF_S *array;
     OPERATE_RET ret;
-    INT_T i,j, scan_cnt;
+    INT_T i,j, scan_cnt,ssid_len;
     ScanResult_adv apList;
     
     if((NULL == ssid) || (NULL == ap)) {
@@ -182,7 +190,9 @@ int tuya_hal_wifi_assign_ap_scan(const char *ssid, AP_IF_S **ap)
     if(NULL == array) {
         goto SCAN_ERR;
     }
-
+    
+    memset(array, 0, (sizeof(AP_IF_S) * scan_cnt));
+    
     /* iterate scan result list to find specified ssid */
     for(i = 0, j = 0; i < apList.ApNum && j < scan_cnt; i++) {
         /* skip non-matched ssid */
@@ -195,8 +205,13 @@ int tuya_hal_wifi_assign_ap_scan(const char *ssid, AP_IF_S **ap)
         item->channel = apList.ApList[i].channel;
         item->rssi = apList.ApList[i].ApPower;
         os_memcpy(item->bssid, apList.ApList[i].bssid, 6);
-        os_strcpy((char*)item->ssid, apList.ApList[i].ssid);
-        item->s_len = os_strlen((char*)item->ssid);
+
+        ssid_len = os_strlen(apList.ApList[i].ssid);
+        if(ssid_len > WIFI_SSID_LEN) {
+            ssid_len = WIFI_SSID_LEN;
+        }
+        os_strncpy((char*)item->ssid, apList.ApList[i].ssid, ssid_len);
+        item->s_len = ssid_len;
 
         j++;
     }

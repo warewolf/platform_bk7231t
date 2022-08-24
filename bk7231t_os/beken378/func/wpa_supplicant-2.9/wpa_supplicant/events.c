@@ -3622,6 +3622,10 @@ static void wpas_event_disconnect(struct wpa_supplicant *wpa_s, const u8 *addr,
 	if (!locally_generated)
 		wpa_s->own_disconnect_req = 0;
 
+#if CFG_WPA_CTRL_IFACE
+	g_sta_param_ptr->retry_cnt = MAX_STA_RETRY_COUNT;
+#endif
+
 	wpa_supplicant_event_disassoc(wpa_s, reason_code, locally_generated);
 
 	if (((reason_code == WLAN_REASON_IEEE_802_1X_AUTH_FAILED ||
