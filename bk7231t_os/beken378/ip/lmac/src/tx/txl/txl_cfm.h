@@ -62,14 +62,7 @@ extern const uint32_t txl_cfm_evt_bit[NX_TXQ_CNT];
 /// Context of the Tx Control block
 struct txl_cfm_env_tag
 {
-    /// Tx confirmation list
     struct co_list cfmlist[NX_TXQ_CNT];
-    /// Array of pending confirmations
-    volatile uint32_t user_cfm[TXL_CFM_PENDING_MAX];
-    /// In index for the pending confirmation array
-    uint8_t in_idx;
-    /// Target LLI count to be reached to indicate the confirmation to host
-    uint16_t lli_cnt;
 };
 
 /*

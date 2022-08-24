@@ -77,6 +77,16 @@
 #define CFG_REORD_BUF       64
 #endif // CONFIG_IEEE80211N
 
+#if CFG_IEEE80211W
+#define CFG_MFP				1
+#endif
+
+#if CFG_SME
+#define NX_HOST_SME			1
+#else
+#define NX_HOST_SME			0
+#endif
+
 // The CFG_xxx macros should be added on the compilation command line
 // by the SCons scripts. Because it has been not implemented yet, any
 // undefined option fall back on the default behavior.

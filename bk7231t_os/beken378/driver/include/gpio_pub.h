@@ -42,6 +42,7 @@ enum
     GMODE_INPUT,
     GMODE_SECOND_FUNC_PULL_UP,//Special for uart1
     GMODE_OUTPUT_PULLUP,
+    GMODE_SET_HIGH_IMPENDANCE,
     GMODE_HIGH_Z
 };
 
@@ -221,6 +222,17 @@ __inline static void bk_gpio_output_reverse(GPIO_INDEX id)
 extern void gpio_usb_second_function(void);
 #endif
 
+typedef struct {
+    UINT32 id;
+    UINT32 val;
+}gpio_val;
+
+typedef struct {
+    unsigned char cnt;   
+    gpio_val *multi_value;
+}multi_gpio;
+
+
 extern UINT32 gpio_ctrl(UINT32 cmd, void *param);
 extern UINT32 gpio_input(UINT32 id);
 extern void gpio_init(void);
@@ -229,6 +241,8 @@ void gpio_int_disable(UINT32 index);
 void gpio_int_enable(UINT32 index, UINT32 mode, void (*p_Int_Handler)(unsigned char));
 void gpio_config( UINT32 index, UINT32 mode ) ;
 void gpio_output(UINT32 id, UINT32 val);
+void gpio_multi_output(multi_gpio val);
+
 
 #endif // _GPIO_PUB_H_
 

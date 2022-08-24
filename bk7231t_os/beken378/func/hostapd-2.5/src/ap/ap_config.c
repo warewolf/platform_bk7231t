@@ -320,6 +320,9 @@ void hostapd_config_free_bss(struct hostapd_bss_config *conf)
 	os_free(conf->no_auth_if_seen_on);
 
 	os_free(conf);
+
+	user = user;
+	prev_user = prev_user;
 }
 
 

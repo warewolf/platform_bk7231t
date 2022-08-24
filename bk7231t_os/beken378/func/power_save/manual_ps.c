@@ -4,6 +4,7 @@
 #include "power_save_pub.h"
 #include "sys_ctrl_pub.h"
 #include "target_util_pub.h"
+#include "start_type_pub.h"
 
 
 #if PS_SUPPORT_MANUAL_SLEEP
@@ -208,80 +209,80 @@ void power_save_wakeup_with_gpio(UINT32 gpio_index)
 #endif
 
 #if CFG_USE_DEEP_PS
-
-/*
- *  deep sleep
- *
-*/
-void deep_sleep_wakeup_with_timer(UINT32 sleep_time)
+void bk_enter_deep_sleep_mode ( PS_DEEP_CTRL_PARAM *deep_param )
 {
-    PS_DEEP_CTRL_PARAM deep_param;
+	UINT32 param;
+	UINT32 i;
+	ASSERT ( deep_param != NULL );
+	
+	if ( ( deep_param->wake_up_way & PS_DEEP_WAKEUP_GPIO ) ) {
+		if ( deep_param->gpio_index_map ) {
+			bk_printf ( "---enter deep sleep :wake up with gpio 0~31 ps: 0x%x 0x%x \r\n",
+			            deep_param->gpio_index_map, deep_param->gpio_edge_map );
+		}
+		
+		if ( deep_param->gpio_last_index_map ) {
+			bk_printf ( "---enter deep sleep :wake up with gpio32~39 ps: 0x%x 0x%x \r\n",
+			            deep_param->gpio_last_index_map, deep_param->gpio_last_edge_map );
+		}
+	}
+	
+	if ( ( deep_param->wake_up_way & PS_DEEP_WAKEUP_RTC ) ) {
+		bk_printf ( "---enter deep sleep :wake up with " );
+		
+		if ( deep_param->lpo_32k_src == LPO_SELECT_32K_XTAL ) {
+			bk_printf ( " xtal 32k " );
+		}
+		else {
+			bk_printf ( "  rosc " );
+		}
+		
+		bk_printf ( " ps :%d s\r\n", deep_param->sleep_time );
+		
+		if ( deep_param->sleep_time > 0x1ffff ) {
+			deep_param->sleep_time = 0x1ffff;
+		}
+		
+		deep_param->sleep_time = 32768 * deep_param->sleep_time;
+	}
 
-    if(power_save_ps_mode_get() != PS_NO_PS_MODE)
-    {
-        os_printf("can't pwm ps,ps in mode %d!\r\n", power_save_ps_mode_get());
-        return ;
-    }
-
-
-    if(sleep_time != 0xffffffff)
-    {
-        os_printf("sleep with rtc,%d ms\r\n", sleep_time);
-        deep_param.param = ((sleep_time * 102400) / 3125) ;
-
-        if(deep_param.param > 0xffff) //only 16 bit
-            deep_param.param = 0xffff;
-        else if(deep_param.param < 32)
-            deep_param.param = 32;
-    }
-    else
-    {
-        os_printf("sleep forever\r\n");
-        deep_param.param = 0xffffffff;
-    }
-
-    deep_param.deep_wkway = PS_DEEP_WAKEUP_RTC;
-    os_printf("enter rtc ps\r\n");
-    GLOBAL_INT_DECLARATION();
-    GLOBAL_INT_DISABLE();
-    sddev_control(SCTRL_DEV_NAME, CMD_SCTRL_RTOS_DEEP_SLEEP, &deep_param);
-    delay(5);
-    GLOBAL_INT_RESTORE();
-    os_printf("exit pwm ps\r\n");
+    bk_misc_update_set_type(RESET_SOURCE_DEEPPS_GPIO);
+	
+	GLOBAL_INT_DECLARATION();
+	GLOBAL_INT_DISABLE();
+	sddev_control ( SCTRL_DEV_NAME, CMD_SCTRL_RTOS_DEEP_SLEEP, deep_param );
+	delay ( 5 );
+	GLOBAL_INT_RESTORE();
+	(void)i;
+	(void)param;
 }
 
-
-/** @brief  Request deep sleep,and wakeup by gpio.
- *          First user must set gpio to GMODE_INPUT,GMODE_INPUT_PULLUP,
- *          or GMODE_INPUT_PULLDOWN,as required.
- *
- *  @param  gpio_index_map:The gpio bitmap which set 1 enable wakeup deep sleep.
- *              gpio_index_map is hex and every bits is map to gpio0-gpio31.
- *          gpio_edge_map:The gpio edge bitmap for wakeup gpios,
- *              gpio_edge_map is hex and every bits is map to gpio0-gpio31.
- *              0:rising,1:falling.
- */
-void deep_sleep_wakeup_with_gpio(UINT32 gpio_index_map,UINT32 gpio_edge_map)
+#if 0
+void test_deep_ps()
 {
-    PS_DEEP_CTRL_PARAM deep_param;
+	PS_DEEP_CTRL_PARAM deep_sleep_param;
 
-    if(power_save_ps_mode_get() != PS_NO_PS_MODE)
-    {
-        os_printf("can't gpio ps,ps in mode %d!\r\n", power_save_ps_mode_get());
-        return ;
-    }
-
-    os_printf("enter deep ps %x %x\r\n",gpio_index_map,gpio_edge_map);
-
-    GLOBAL_INT_DECLARATION();
-    GLOBAL_INT_DISABLE();
-    deep_param.deep_wkway = PS_DEEP_WAKEUP_GPIO;
-    deep_param.param = gpio_index_map;
-    deep_param.gpio_lv= gpio_edge_map;
-    sddev_control(SCTRL_DEV_NAME, CMD_SCTRL_RTOS_DEEP_SLEEP, &deep_param);
-    delay(5);
-    GLOBAL_INT_RESTORE();
-    os_printf("exit gpio ps\r\n");
+	deep_sleep_param.wake_up_way			= 0;
+	
+	deep_sleep_param.gpio_index_map      	= 0xc00;
+	deep_sleep_param.gpio_edge_map       	= 0x800;	
+	deep_sleep_param.gpio_last_index_map 	= 0;
+	deep_sleep_param.gpio_last_edge_map  	= 0;
+	deep_sleep_param.sleep_time     		= 50;
+	deep_sleep_param.wake_up_way     		= 3;
+	deep_sleep_param.gpio_stay_lo_map 	    = 0;
+	deep_sleep_param.gpio_stay_hi_map  	    = 0;
+	
+		os_printf("---deep sleep test param : 0x%0X 0x%0X 0x%0X 0x%0X %d %d\r\n", 
+					deep_sleep_param.gpio_index_map, 
+					deep_sleep_param.gpio_edge_map,
+					deep_sleep_param.gpio_last_index_map, 
+					deep_sleep_param.gpio_last_edge_map,
+					deep_sleep_param.sleep_time,
+					deep_sleep_param.wake_up_way);
+		
+		bk_enter_deep_sleep_mode(&deep_sleep_param);
 }
+#endif
 #endif
 

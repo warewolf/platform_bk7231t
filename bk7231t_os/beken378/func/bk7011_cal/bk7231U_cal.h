@@ -2,20 +2,6 @@
 #define _BK7231U_CAL_H_
 
 #if (CFG_SOC_NAME != SOC_BK7231)
-
-#define INCLUDE_OS
-
-#define CALIBRATE_TIMES     2000
-#undef  CALIBRATE_TIMES         // by gwf
-
-#define REGTRXV2A
-#define BK7011_VER_A
-
-////Difference between pieces
-#define DIFFERENCE_PIECES_CFG        0
-
-//#define _11MBPS_MAX_POWER
-
 void delay05us(INT32 num);
 
 #define trx_reg_is_write(st_trxreg)     while(BK7011RCBEKEN.REG0x1->value & st_trxreg) 	{cpu_delay(1);}
@@ -28,22 +14,18 @@ void delay05us(INT32 num);
 #define SUMNUMBERS					4
 #define MINOFFSET			    	16
 
-//#define DPDCALILEN				  256
-
 #define cpu_delay(val)            delay(MAX(1, val/100))
 #define DELAY1US				  100
-//#define DELAY05US				  1
+
 
 #define cal_delay(val)            delay05us(MAX(1, val))	// 8us
-//#define CAL_DELAY1US			  2
-//#define CAL_DELAY05US			  20 //20160804  1:0.5us 2:1us
+
 #define CAL_DELAY05US			  2		// 20170503 2:1.5us     2 to 20  for debug 20180227
 #define CAL_TX_NUM                50
 #define CAL_RX_NUM                5
 
 #define cal_delay_100us(val)      delay100us(MAX(1, val))	// 200us
 #define CAL_DELAY100US			  1  //20160804  1:100us 2:200us		// 20170503 1:150us 2:300us
-
 
 #define st_TRXREG00			(1<<0)
 #define st_TRXREG01			(1<<1)

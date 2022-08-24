@@ -75,7 +75,7 @@ static int set_wpa_psk(struct wpa_ssid *ssid)
         return 1;
 	} else if (g_sta_param_ptr->key_len == 64) {
 		wpa_printf(MSG_ERROR, "use PSK");
-		if (hexstr2bin(g_sta_param_ptr->key, ssid->psk, 32) ||
+		if (hexstr2bin((char*)g_sta_param_ptr->key, ssid->psk, 32) ||
 		    g_sta_param_ptr->key[64] != '\0') {
 			wpa_printf(MSG_ERROR, "Invalid PSK '%s'.",
 				    g_sta_param_ptr->key);
@@ -107,7 +107,7 @@ static int set_wep_key(struct wpa_ssid*ssid)
 	}else if(g_sta_param_ptr->key_len == 10 ||
 				g_sta_param_ptr->key_len == 26){
 		ssid->wep_key_len[0] = g_sta_param_ptr->key_len / 2;
-		hexstr2bin(g_sta_param_ptr->key, ssid->wep_key[0],ssid->wep_key_len[0] ); 
+		hexstr2bin((char*)g_sta_param_ptr->key, (unsigned char*)ssid->wep_key[0],ssid->wep_key_len[0] ); 
 	}else{
 		errors++;
 	}
@@ -213,13 +213,35 @@ int wpa_config_set_wep(struct wpa_ssid *ssid)
 	int ret;
 	
 	ret = set_wep_key(ssid);
-
 	if(!ret) {
 		g_sta_param_ptr->cipher_suite = SECURITY_TYPE_WEP;
+	}else{
+		mhdr_set_station_status(RW_EVT_STA_PASSWORD_WRONG);
 	}
 	
 	return 0;
 }
+
+#if RL_SUPPORT_FAST_CONNECT
+static void wpa_config_update_fast_psk(struct wpa_ssid *ssid)
+{
+	RL_BSSID_INFO_T bssid_info;
+	rl_read_bssid_info(&bssid_info);	
+
+	if(os_memcmp(ssid->ssid, bssid_info.ssid, ssid->ssid_len) == 0
+		&& os_strcmp(ssid->passphrase, bssid_info.pwd) == 0)
+	{
+		bk_printf("Skip PSK caculation if SSID and passphrase are same \n");
+		os_memset(&ssid->psk, 0, sizeof(ssid->psk));
+		os_strcpy(ssid->psk, bssid_info.psk);
+		ssid->psk_set = 1;
+	}
+	else
+	{
+		wpa_config_update_psk(ssid);
+	}
+}
+#endif
 
 int wpa_config_set_wpa(struct wpa_ssid *ssid, struct wpa_ie_data *ie)
 {
@@ -241,9 +263,15 @@ int wpa_config_set_wpa(struct wpa_ssid *ssid, struct wpa_ie_data *ie)
 		wpa_config_ht_cap_by_sec(g_sta_param_ptr->cipher_suite);
 		#endif
 		if (ssid->passphrase && (ssid->psk_set == 0)) {
+			#if RL_SUPPORT_FAST_CONNECT
+			wpa_config_update_fast_psk(ssid);
+			#else
 			wpa_config_update_psk(ssid);
+			#endif
 		}
-	}
+	}else{
+		mhdr_set_station_status(RW_EVT_STA_PASSWORD_WRONG);
+	}		
 	
 	return ret;
 }
@@ -263,7 +291,7 @@ static struct wpa_ssid * wpa_config_read_network(int *line, int id)
 
 	wpa_config_set_network_defaults(ssid);
 
-	ssid->ssid = dup_binstr(g_sta_param_ptr->ssid.array, g_sta_param_ptr->ssid.length);
+	ssid->ssid = (u8*)dup_binstr(g_sta_param_ptr->ssid.array, g_sta_param_ptr->ssid.length);
 	ssid->ssid_len = g_sta_param_ptr->ssid.length;
 	ssid->key_mgmt = 0;
 
@@ -289,7 +317,6 @@ static struct wpa_ssid * wpa_config_read_network(int *line, int id)
 	}
 	
 	errors += wpa_config_validate_network(ssid, *line);
-
 	if(errors){
 		wpa_config_free_ssid(ssid);
 		ssid = NULL;
@@ -364,6 +391,7 @@ int wpa_config_write(const char *name, struct wpa_config *config)
 #endif
 
 	return 0;
+	(void)ssid;
 }
 // eof
 

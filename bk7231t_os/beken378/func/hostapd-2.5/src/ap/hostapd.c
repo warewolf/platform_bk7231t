@@ -1151,6 +1151,7 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 	if (iface->conf->channel) {
 #ifdef NEED_AP_MLME
 		int res;
+		(void)res;
 #endif /* NEED_AP_MLME */
 
 		iface->freq = hostapd_hw_get_freq(hapd, iface->conf->channel);
@@ -1294,8 +1295,10 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 		return res_dfs_offload;
 	}
 
-#ifdef NEED_AP_MLME
+#ifdef NEED_AP_MLME 
+#ifdef CONFIG_DFS
 dfs_offload:
+#endif
 #endif /* NEED_AP_MLME */
 
 #ifdef CONFIG_FST

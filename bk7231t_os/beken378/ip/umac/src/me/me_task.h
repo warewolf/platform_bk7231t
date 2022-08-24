@@ -178,6 +178,10 @@ struct me_mgmt_tx_req
     bool no_ack;
     /// Boolean indicating if the frame is sent off-channel
     bool off_channel;
+#if NX_MFP
+	/// robust mgmt
+	bool robust;
+#endif
     /// VIF index
     uint8_t vif_idx;
 

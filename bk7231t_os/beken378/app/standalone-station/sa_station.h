@@ -1,6 +1,7 @@
 #ifndef _SA_STATION_H_
 #define _SA_STATION_H_
 
+#include "includes.h"
 #include "schedule_pub.h"
 #include "rw_msg_tx.h"
 
@@ -62,7 +63,11 @@ void sa_station_init(void);
 void sa_station_uninit(void);
 void sa_station_set_reconnect_timer(void);
 void sa_reconnect_init(void);
+#ifdef CONFIG_SME
+int sa_station_send_associate_cmd(ASSOC_PARAM_T *assoc_param);
+#else
 int sa_station_send_associate_cmd(CONNECT_PARAM_T *connect_param);
+#endif
 
 #endif // _SA_STATION_H_
 // eof

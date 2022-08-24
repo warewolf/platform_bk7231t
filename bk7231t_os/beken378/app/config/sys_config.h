@@ -8,6 +8,7 @@
 /* uart2 for debug, and generally, uart1 is used for communication.
    what is more, uart1 maybe is not bound out*/
 #define CFG_USE_UART1                              1
+#define CFG_UART2_CLI                              0
 #define CFG_JTAG_ENABLE                            0					//edit tuya_cheyisong 2020-2-28
 #define OSMALLOC_STATISTICAL                       0
 
@@ -36,6 +37,32 @@
 #define CFG_TX_EVM_TEST                            0
 #define CFG_RX_SENSITIVITY_TEST                    0
 #define CFG_ROLE_LAUNCH                            1
+#define CFG_USE_WPA_29							   0
+#define CFG_WPA_CTRL_IFACE						   0
+#define CFG_WLAN_FAST_CONNECT                      1
+/* PMF */
+#define CFG_IEEE80211W							   0
+#if CFG_WPA_CTRL_IFACE
+#undef CFG_ROLE_LAUNCH
+#define CFG_ROLE_LAUNCH							   0
+#endif
+#define CFG_WPA3								   1
+#if CFG_WPA3
+/* disable rl, enable ctrl iface, enable wpa29, pmf, sme */
+#undef CFG_ROLE_LAUNCH
+#define CFG_ROLE_LAUNCH                            0
+#undef CFG_WPA_CTRL_IFACE
+#define CFG_WPA_CTRL_IFACE						   1
+#undef CFG_USE_WPA_29
+#define CFG_USE_WPA_29							   1
+#undef CFG_IEEE80211W
+#define CFG_IEEE80211W							   1
+#define CFG_SME								       1
+#define CFG_WPA_CRYPTO_MBEDTLS                     1
+#define CFG_WRAP_LIBC                              1
+#endif
+//#define CFG_MESH								   0
+#define CFG_WFA_CERT							   0
 #define CFG_ENABLE_BUTTON                          0
 #define CFG_UDISK_MP3                              0
 
@@ -69,6 +96,7 @@
 #define CFG_ENABLE_WPA_LOG                         0
 #define CFG_IPERF_TEST                             0
 #define CFG_ENABLE_DEMO_TEST                       0
+#define CFG_PING_COMMAND                           0
 
 /*section 5-----PRODUCT macro config-----*/
 #define CFG_RELEASE_FIRMWARE                       0
@@ -163,6 +191,11 @@
 #define CFG_SUPPORT_BLE                            1
 #define CFG_USE_BLE_PS                             1
 
+#if CFG_UART2_CLI
+#define CFG_ENABLE_ATE_FEATURE                     1
+#else
 #define CFG_ENABLE_ATE_FEATURE                     0
+#endif
+
 #define CFG_RWNX_QOS_MSDU						   1
 #endif // _SYS_CONFIG_H_

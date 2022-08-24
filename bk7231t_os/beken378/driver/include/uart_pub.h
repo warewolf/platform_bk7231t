@@ -3,11 +3,16 @@
 
 #include <stdio.h>
 #include "include.h"
+
 #if CFG_SUPPORT_ALIOS
 #include "hal/soc/soc.h"
 #endif
 
+#if CFG_UART2_CLI
+#define os_printf                      bk_printf
+#else
 #define os_printf                      os_null_printf
+#endif
 
 #define warning_prf                    bk_printf
 #define fatal_prf                      bk_printf
@@ -121,5 +126,7 @@ extern UINT8 uart_is_tx_fifo_empty(UINT8 uport);
 extern UINT8 uart_is_tx_fifo_full(UINT8 uport);
 extern int uart_read_byte(int uport);
 extern int uart_write_byte(int uport, char c);
+extern void print_hex_dump(const char *prefix, void *b, int len);
+extern void bk_send_byte(UINT8 uport, UINT8 data);
 #endif // _UART_PUB_H
 

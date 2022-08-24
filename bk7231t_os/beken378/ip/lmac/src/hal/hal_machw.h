@@ -376,6 +376,8 @@ void hal_machw_stop(void);
  * This function has to be called when the last configured interface is removed.
  ****************************************************************************************
  */
+extern void hal_exit_passive_scan_sniffer(void);
+extern void hal_enter_passive_scan_sniffer(void);
 extern void hal_machw_enter_monitor_mode(void);
 extern void hal_machw_exit_monitor_mode(void);
 extern uint32_t hal_monitor_record_count(struct mac_hdr *machdr);

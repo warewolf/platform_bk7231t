@@ -1022,7 +1022,7 @@ void wpa_supplicant_update_scan_int(struct wpa_supplicant *wpa_s, int sec)
 	wpa_s->scan_interval = sec;
 }
 
-
+extern void wpa_supplicant_rescan_terminal(void);
 /**
  * wpa_supplicant_req_scan - Schedule a scan for neighboring access points
  * @wpa_s: Pointer to wpa_supplicant data
@@ -1063,9 +1063,17 @@ void wpa_supplicant_req_scan(struct wpa_supplicant *wpa_s, int sec, int usec)
 	} 
 	else 
 	{
-		os_printf("Setting scan request: %d.%06d sec\r\n",
-					sec, usec);		
-		eloop_register_timeout(sec, usec, wpa_supplicant_scan, wpa_s, NULL);
+		os_printf("Setting scan[retry%d] request: %d.%06d sec\r\n", g_sta_param_ptr->retry_cnt, sec, usec);		
+
+		if(g_sta_param_ptr->retry_cnt)
+		{
+			g_sta_param_ptr->retry_cnt--;
+			eloop_register_timeout(sec, usec, wpa_supplicant_scan, wpa_s, NULL);
+		}
+		else
+		{
+			wpa_supplicant_rescan_terminal();
+		}
 	}
 }
 
@@ -1344,6 +1352,17 @@ scan:
 		wpa_s->prev_sched_ssid = NULL;
 
 	return 0;
+#else
+	return 0;
+	(void)need_ssids;
+	(void)wildcard;
+	(void)max_sched_scan_ssids;
+	(void)ret;
+	(void)extra_ie;
+	(void)ssid;
+	(void)prev_state;
+	(void)scan_params;
+	(void)params;
 #endif
 }
 

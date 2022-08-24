@@ -193,7 +193,7 @@ static void sdp_cleanup(struct prf_task_env* env, uint8_t conidx, uint8_t reason
         if(sdp_env->operation != NULL)
         {
             struct kernel_msg *msg = kernel_msg2param(sdp_env->operation);
-            printf("operation = 0x%08x\r\n",(uint32_t)sdp_env->operation);
+            printf("operation = 0x%x\r\n",(unsigned int)sdp_env->operation);
             printf("msgid = 0x%02x,dest_id = 0x%02x,src_id = 0x%02x\r\n",msg->id,msg->dest_id,msg->src_id);
 					
             kernel_free(sdp_env->operation);
@@ -263,7 +263,7 @@ extern struct prf_env_tag prf_env;
 void sdp_extract_svc_info(struct gattc_sdp_svc_ind const *ind)
 {
     printf("*************************************************************************************************\r\n");
-    uint8_t sdp_env_idx;
+    uint8_t sdp_env_idx = 0;
 	int i;
     uint8_t add_svc_flag = false;
     printf("prf_env.prf_used  = %d\r\n",prf_env.prf_used);
@@ -279,8 +279,8 @@ void sdp_extract_svc_info(struct gattc_sdp_svc_ind const *ind)
             sdp_env_idx = i;
             add_svc_flag = true;
             adp_serv_env[sdp_env_idx].use_status = VALID_STATUS;
-            printf("found sdp_env_idx = %d,use_status = 0x%x\r\n",sdp_env_idx,adp_serv_env[sdp_env_idx].use_status);
-            printf("p_use_status = 0x%x\r\n",&adp_serv_env[sdp_env_idx].use_status);
+            printf("found sdp_env_idx = %d,use_status = 0x%04x\r\n",sdp_env_idx,adp_serv_env[sdp_env_idx].use_status);
+            printf("p_use_status = 0x%x\r\n",(unsigned int)&adp_serv_env[sdp_env_idx].use_status);
             break;
         }
     }

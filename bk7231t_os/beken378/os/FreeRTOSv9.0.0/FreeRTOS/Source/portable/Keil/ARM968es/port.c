@@ -114,6 +114,7 @@ cannot be initialised to 0 as this will cause interrupts to be enabled
 during the kernel initialization process. */
 uint32_t ulCriticalNesting = ( uint32_t ) 9999;
 void * volatile pxNestChangedCurrentTCB = NULL;
+uint32_t volatile g_preempt_delayed_schedule_flag = 0;
 
 /* Tick interrupt routines for cooperative and preemptive operation
 respectively.  The preemptive version is not defined as __irq as it is called
@@ -546,6 +547,44 @@ void rtos_stack_overflow(char *taskname)
 {
     os_printf("of--%s\r\n", taskname);
 	while(1);
+}
+
+void preempt_delayed_schedule_set_flag(void)
+{
+	os_printf("preempt_delayed_schedule_set_flag\r\n");
+	g_preempt_delayed_schedule_flag = 1;
+}
+
+void preempt_delayed_schedule_clear_flag(void)
+{
+	g_preempt_delayed_schedule_flag = 0;
+}
+
+uint32_t preempt_delayed_schedule_get_flag(void)
+{
+	return g_preempt_delayed_schedule_flag;
+}
+
+uint32_t preempt_delayed_schedule_handler(void)
+{
+	uint32_t hit = 0;
+	uint32_t current_mode, previous_mode;
+	GLOBAL_INT_DECLARATION();
+
+	GLOBAL_INT_DISABLE();
+	current_mode = platform_cpsr_content() & ARM968_MODE_MASK;
+	previous_mode = platform_spsr_content() & ARM968_MODE_MASK;
+
+	if((ARM_MODE_FIQ == current_mode)
+		&& (ARM_MODE_SYS != previous_mode))
+	{
+		preempt_delayed_schedule_set_flag();
+		hit = 1;
+	}
+
+	GLOBAL_INT_RESTORE();
+		
+	return hit;
 }
 
 #ifdef CONTROL_IRQ_WITH_NORMAL_FUNCTION

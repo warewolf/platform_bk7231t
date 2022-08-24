@@ -13,7 +13,11 @@
 #include "include.h"
 #include "BkDriverUart.h"
 
+#if CFG_UART2_CLI
+#define CLI_UART        BK_UART_2
+#else
 #define CLI_UART        BK_UART_1
+#endif
 
 #define RX_WAIT         BEKEN_WAIT_FOREVER
 #define SEND_WAIT       BEKEN_WAIT_FOREVER

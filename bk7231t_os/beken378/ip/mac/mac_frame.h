@@ -451,8 +451,10 @@
 #define MAC_RSNIE_GROUP_CIPHER_OFT               4
 #define MAC_RSNIE_PAIRWISE_CIPHER_SUITE_CNT_OFT  8
 #define MAC_RSNIE_PAIRWISE_CIPHER_SUITE_LIST_OFT 10
+#define MAC_RSNIE_PAIRWISE_CIPHER_SIZE           4
 #define MAC_RSNIE_KEY_MANAGEMENT_SUITE_CNT_OFT   14
 #define MAC_RSNIE_KEY_MANAGEMENT_SUITE_LIST_OFT  16
+#define MAC_RSNIE_KEY_MANAGEMENT_SIZE            4
 #define MAC_RSNIE_RSN_CAPABILITIES_OFT           20
 #define MAC_RSNIE_RSN_PMKID_COUNT_OFT            22
 #define MAC_RSNIE_RSN_PMKID_COUNT_LIST_OFT       24
@@ -627,6 +629,7 @@ enum mac_ht_oper_prot_val
 #define MAC_AUTH_CHALLENGE_TAG			16
 //challenge text IE size
 #define CHALLENGE_TEXT_SIZE             130
+#define MAC_AUTH_SAE_DATA_OFT			  6	  // Order 4
 
 /*
  * Association Req Frame offset
@@ -1521,6 +1524,34 @@ enum
 #define MAC_AC_VO_TXOP_b                102    // 3264us / 32 us
 #define MAC_AC_VO_TXOP_ag                47    // 1504us / 32 us
 
+/**
+ * @name RSNIE definitions
+ * @{
+ ****************************************************************************************
+ */
+// Cipher suites
+
+// AKM suites
+#define MAC_RSNIE_AKM_8021X                   0x000FAC01
+#define MAC_RSNIE_AKM_PSK                     0x000FAC02
+#define MAC_RSNIE_AKM_FT_8021X                0x000FAC03
+#define MAC_RSNIE_AKM_FT_PSK                  0x000FAC04
+#define MAC_RSNIE_AKM_8021X_SHA256            0x000FAC05
+#define MAC_RSNIE_AKM_PSK_SHA256              0x000FAC06
+#define MAC_RSNIE_AKM_TDLS                    0x000FAC07
+#define MAC_RSNIE_AKM_SAE                     0x000FAC08
+#define MAC_RSNIE_AKM_FT_OVER_SAE             0x000FAC09
+#define MAC_RSNIE_AKM_8021X_SUITE_B           0x000FAC0B
+#define MAC_RSNIE_AKM_8021X_SUITE_B_192       0x000FAC0C
+#define MAC_RSNIE_AKM_FILS_SHA256             0x000FAC0D
+#define MAC_RSNIE_AKM_FILS_SHA384             0x000FAC0F
+#define MAC_RSNIE_AKM_FT_FILS_SHA256          0x000FAC10
+#define MAC_RSNIE_AKM_FT_FILS_SHA384          0x000FAC11
+#define MAC_RSNIE_AKM_OWE                     0x000FAC12
+
+// RSN CAPA
+
+/** @} */
 
 #define MAC_EDCA_DEFAULT_STA                                                            \
 {                                                                                       \
@@ -1695,11 +1726,14 @@ enum
 #define MAC_AUTH_ALGO_OPEN                0
 #define MAC_AUTH_ALGO_SHARED              1
 #define MAC_AUTH_ALGO_FT                  2
+#define MAC_AUTH_ALGO_SAE				  3
 
 #define MAC_AUTH_FIRST_SEQ                1
 #define MAC_AUTH_SECOND_SEQ               2
 #define MAC_AUTH_THIRD_SEQ                3
 #define MAC_AUTH_FOURTH_SEQ               4
+#define MAC_AUTH_SAE_COMMIT				  1
+#define MAC_AUTH_SAE_CONFIRM			  2
 
 // Defines for encryption status
 #define MAC_ENC_NONE               0

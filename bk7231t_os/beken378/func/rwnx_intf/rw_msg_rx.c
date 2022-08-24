@@ -14,15 +14,37 @@
 #include "ieee802_11_defs.h"
 #include "wlan_ui_pub.h"
 #include "mcu_ps_pub.h"
-#include "role_launch.h"
+#include "driver.h"
+#if CFG_WPA_CTRL_IFACE
+#include "signal.h"
+#include "ctrl_iface.h"
+#endif
 
-uint32_t scan_cfm = 0;
+#if CFG_ROLE_LAUNCH
+#include "role_launch.h"
+#endif
+#if CFG_WPA_CTRL_IFACE
+#include "wpa_ctrl.h"
+#include "notifier.h"
+#endif
+#include "rxu_task.h"
+
+uint32_t resultful_scan_cfm = 0;
 uint8_t *ind_buf_ptr = 0;
 struct co_list rw_msg_rx_head;
 struct co_list rw_msg_tx_head;
-rw_evt_type connect_flag = RW_EVT_STA_IDLE;
+
+/* transient status is the passing status of station connection,
+   abnormal status is exceptional status, which maybe is uploaded to upper layer.
+   the application will go with the status.
+ */
+static rw_evt_type g_connect_transient_status = RW_EVT_STA_IDLE;
+static rw_evt_type g_connect_abnormal_status = RW_EVT_STA_IDLE;
 
 SCAN_RST_UPLOAD_T *scan_rst_set_ptr = 0;
+#if CFG_WPA_CTRL_IFACE
+IND_CALLBACK_T scan_cfm_cb_user = {0};
+#endif
 IND_CALLBACK_T scan_cfm_cb = {0};
 IND_CALLBACK_T assoc_cfm_cb = {0};
 IND_CALLBACK_T deassoc_evt_cb = {0};
@@ -34,12 +56,13 @@ extern int get_security_type_from_ie(u8 *, int, u16);
 extern void rwnx_cal_set_txpwr(UINT32 pwr_gain, UINT32 grate);
 extern void bk7011_default_rxsens_setting(void);
 
-#if 1 /* scan result*/
+/* scan result malloc item */
 UINT8 *sr_malloc_result_item(UINT32 vies_len)
 {
     return os_zalloc(vies_len + sizeof(struct sta_scan_res));
 }
 
+/* free scan result item */
 void sr_free_result_item(UINT8 *item_ptr)
 {
     os_free(item_ptr);
@@ -90,12 +113,12 @@ void sr_release_scan_results(SCAN_RST_UPLOAD_PTR ptr)
     {
         sr_free_all(ptr);
     }
+	
     scan_rst_set_ptr = 0;
+	resultful_scan_cfm = 0;
 	wpa_clear_scan_results();
 }
-#endif
 
-#if 2
 void mr_kmsg_init(void)
 {
     co_list_init(&rw_msg_tx_head);
@@ -117,10 +140,7 @@ UINT32 mr_kmsg_fwd(struct ke_msg *msg)
 
 void mr_kmsg_flush(void)
 {
-    while(mr_kmsg_fuzzy_handle())
-    {
-        ;
-    }
+    while(mr_kmsg_fuzzy_handle());
 }
 
 UINT32 mr_kmsg_fuzzy_handle(void)
@@ -171,8 +191,6 @@ UINT32 mr_kmsg_exact_handle(UINT16 rsp)
     return ret;
 }
 
-#endif
-
 void mhdr_connect_user_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
 {
     wlan_connect_user_cb.cb = ind_cb;
@@ -185,11 +203,38 @@ void mhdr_assoc_cfm_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
     assoc_cfm_cb.ctxt_arg = ctxt;
 }
 
+#if CFG_WPA_CTRL_IFACE
+void scanu_notifier_func(void *cxt, int type, int value)
+{
+	//os_printf("%s: type %d, cb %p, value %d\r\n", __func__, type, scan_cfm_cb_user.cb, value);
+	if (type != WLAN_EVENT_SCAN_RESULTS || !scan_cfm_cb_user.cb || !value)
+		return;
+	scan_cfm_cb_user.cb(cxt, (uint8_t)value);
+}
+
+void mhdr_scanu_reg_cb_for_wpa(FUNC_2PARAM_PTR ind_cb, void *ctxt)
+{
+    scan_cfm_cb.cb = ind_cb;
+    scan_cfm_cb.ctxt_arg = ctxt;
+}
+
+void mhdr_scanu_reg_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
+{
+    scan_cfm_cb_user.cb = ind_cb;
+    scan_cfm_cb_user.ctxt_arg = ctxt;
+	wlan_register_notifier(scanu_notifier_func, ctxt);
+}
+
+#else	/* !CFG_WPA_CTRL_IFACE */
+
 void mhdr_scanu_reg_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
 {
     scan_cfm_cb.cb = ind_cb;
     scan_cfm_cb.ctxt_arg = ctxt;
 }
+#endif
+
+
 
 void mhdr_deauth_evt_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
 {
@@ -210,6 +255,8 @@ void mhdr_disconnect_ind(void *msg)
 
     msg_ptr = (struct ke_msg *)msg;
     disc = (struct sm_disconnect_ind *)msg_ptr->param;
+
+    os_printf("%s reason_code=%d\n", __FUNCTION__, disc->reason_code);
 
 #if CFG_ROLE_LAUNCH
 	if(rl_sta_req_is_null())
@@ -232,6 +279,53 @@ void mhdr_disconnect_ind(void *msg)
 	}
 }
 
+#ifdef CONFIG_SME
+/* SM_ASSOCIATE_IND handler */
+void mhdr_assoc_ind(void *msg, UINT32 len)
+{
+	struct ke_msg *msg_ptr;
+	struct sm_assoc_indication *ind;
+
+	msg_ptr = (struct ke_msg *)msg;
+	ind = (struct sm_assoc_indication *)msg_ptr->param;
+
+	/* send to wpa_s via ctrl iface */
+	wpa_ctrl_event_copy(WPA_CTRL_EVENT_ASSOC_IND, ind, sizeof(*ind));
+
+	if (0 == ind->status_code) {
+		os_printf("---------SM_ASSOC_IND_ok\r\n");
+
+		bk7011_default_rxsens_setting();
+
+#if 0	/* send to wpas */
+		if (assoc_cfm_cb.cb)
+			(*assoc_cfm_cb.cb)(assoc_cfm_cb.ctxt_arg, assoc_ind_ptr->vif_idx);
+#endif
+
+		if (wlan_connect_user_cb.cb)
+			(*wlan_connect_user_cb.cb)(wlan_connect_user_cb.ctxt_arg, 0);
+	} /*else {
+		os_printf("---------SM_CONNECT_IND_fail\r\n");		// EVENT_DISASSOC sent to wpa_s
+		mhdr_disconnect_ind(msg);
+	}  */
+
+	mcu_prevent_clear(MCU_PS_CONNECT);
+}
+
+
+void mhdr_auth_ind(void *msg, UINT32 len)
+{
+    struct ke_msg *msg_ptr;
+    struct sm_auth_indication *ind;
+
+    msg_ptr = (struct ke_msg *)msg;
+    ind = (struct sm_auth_indication *)msg_ptr->param;
+
+	wpa_ctrl_event_copy(WPA_CTRL_EVENT_AUTH_IND, ind, sizeof(*ind));
+}
+
+
+#else /* !CONFIG_SME */
 void mhdr_connect_ind(void *msg, UINT32 len)
 {
     struct ke_msg *msg_ptr;
@@ -263,18 +357,94 @@ void mhdr_connect_ind(void *msg, UINT32 len)
 
     mcu_prevent_clear(MCU_PS_CONNECT);
 }
+#endif
+
+#if defined(CFG_IEEE80211W) || defined(CONFIG_SME)
+/* RXU_MGT_IND handler, send it to wpa_s */
+void mhdr_mgmt_ind(void *msg, UINT32 len)
+{
+    struct ke_msg *msg_ptr = (struct ke_msg *)msg;
+    struct rxu_mgt_ind *ind = (struct rxu_mgt_ind *)msg_ptr->param;
+
+#if CFG_WPA_CTRL_IFACE
+	wpa_ctrl_event_copy(WPA_CTRL_EVENT_MGMT_IND, ind, sizeof(*ind) + ind->length);
+#else
+	/* FIXME: DON'T CALL IN RWNX_MSG THREAD */
+	union wpa_event_data data;
+	struct wpa_supplicant *wpa_s = wpa_suppliant_ctrl_get_wpas();
+
+	os_memset(&data, 0, sizeof(data));
+	data.rx_mgmt.ssi_signal = ind->rssi;
+	data.rx_mgmt.frame = (u8 *)ind->payload;
+	data.rx_mgmt.frame_len = ind->length;
+	data.rx_mgmt.freq = ind->center_freq;
+
+	//print_hex_dump("MGMT: ", ind->payload, ind->length);
+	if (wpa_s)
+		wpa_supplicant_event_sta(wpa_s, EVENT_RX_MGMT, &data);
+#endif
+}
+#endif
+
+void mhdr_set_station_status_when_reconnect_over(void)
+{
+	if(RW_EVT_STA_CONNECTED != g_connect_transient_status)
+	{
+		g_connect_transient_status = g_connect_abnormal_status;
+	}
+}
+
+
+void mhdr_set_abnormal_status(rw_evt_type val)
+{
+	rw_evt_type pre_status = g_connect_abnormal_status;
+	
+	if((RW_EVT_STA_PASSWORD_WRONG == pre_status)
+			|| (RW_EVT_STA_NO_AP_FOUND == pre_status))
+	{
+		goto set_exit;
+	}
+
+	g_connect_abnormal_status = val;
+
+set_exit:
+	return;
+}
+
+uint32_t mhdr_is_station_abnormal_status(rw_evt_type val)
+{
+	uint32_t unusual_flag = 0;
+
+	if((RW_EVT_STA_PASSWORD_WRONG == val)
+		|| (RW_EVT_STA_NO_AP_FOUND == val)
+		|| (RW_EVT_STA_BEACON_LOSE == val)
+		|| (RW_EVT_STA_ASSOC_FULL == val)
+		|| (RW_EVT_STA_DISCONNECTED == val)
+		|| (RW_EVT_STA_CONNECT_FAILED == val))
+	{	
+		unusual_flag = 1;
+	}
+	
+	return unusual_flag;
+}
 
 void mhdr_set_station_status(rw_evt_type val)
 {
     GLOBAL_INT_DECLARATION();
+	
     GLOBAL_INT_DISABLE();
-    connect_flag = val;
+    g_connect_transient_status = val;
+
+	if(mhdr_is_station_abnormal_status(val))
+	{
+		mhdr_set_abnormal_status(val);
+	}
     GLOBAL_INT_RESTORE();
 }
 
 rw_evt_type mhdr_get_station_status(void)
 {
-    return connect_flag;
+    return g_connect_transient_status;
 }
 
 static void sort_scan_result(SCAN_RST_UPLOAD_T *ap_list)
@@ -402,8 +572,7 @@ UINT32 mhdr_scanu_result_ind(SCAN_RST_UPLOAD_T *scan_rst, void *msg, UINT32 len)
                 }
             }
         }
-    }
-    while(0);
+    }while(0);
 
     item = (SCAN_RST_ITEM_PTR)sr_malloc_result_item(vies_len);
     if (item == NULL)
@@ -461,19 +630,28 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
     extern FUNC_1PARAM_PTR bk_wlan_get_status_cb(void);
 	FUNC_1PARAM_PTR fn = bk_wlan_get_status_cb();
 
-    switch(rx_msg->id)
-    {
-    case SCANU_START_CFM:
-        scan_cfm = 1;
+	//bk_printf("%s: msgid 0x%x\n", __func__, rx_msg->id);
+	switch (rx_msg->id) {
+
+	/**************************************************************************/
+	/*                          scan_hdlrs                                    */
+	/**************************************************************************/
+	case SCANU_START_CFM:
+		/* scan complete */
+		if(scan_rst_set_ptr)
+		{
+        	resultful_scan_cfm = 1;
+		}
+		
         mhdr_scanu_start_cfm(rx_msg, scan_rst_set_ptr);
         break;
 
     case SCANU_RESULT_IND:
-        if(scan_cfm && scan_rst_set_ptr)
+        if(resultful_scan_cfm && scan_rst_set_ptr)
         {
             sr_release_scan_results(scan_rst_set_ptr);
             scan_rst_set_ptr = 0;
-            scan_cfm = 0;
+            resultful_scan_cfm = 0;
         }
 
         if(0 == scan_rst_set_ptr)
@@ -487,19 +665,44 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
         mhdr_scanu_result_ind(scan_rst_set_ptr, rx_msg, rx_msg->param_len);
         break;
 
+		/**************************************************************************/
+		/*							sm_hdlrs								      */
+		/**************************************************************************/
+#ifdef CONFIG_SME
+	case SM_AUTH_IND:
+		/* authentication indication */
+		mhdr_auth_ind(rx_msg, rx_msg->param_len);
+		break;
+
+	case SM_ASSOCIATE_IND:
+		/* association indication */
+		mhdr_assoc_ind(rx_msg, rx_msg->param_len);
+		break;
+#else /* !CONFIG_SME*/
+
     case SM_CONNECT_IND:
-        if(scan_rst_set_ptr)
-        {
+		/* connect indication */
+        if(scan_rst_set_ptr) {
             sr_release_scan_results(scan_rst_set_ptr);
             scan_rst_set_ptr = 0;
         }
 
         mhdr_connect_ind(rx_msg, rx_msg->param_len);
         break;
+#endif /* CONFIG_SME */
+
+#if defined(CFG_IEEE80211W) || defined(CONFIG_SME)
+	case RXU_MGT_IND:
+		// STA mgmt: FIXME: AP may sends RXU_MGT_IND?
+		mhdr_mgmt_ind(rx_msg, rx_msg->param_len);
+		break;
+#endif
 
     case SM_DISCONNECT_IND:
+		/* disconnect indication */
         os_printf("SM_DISCONNECT_IND\r\n");
         mhdr_disconnect_ind(rx_msg);
+	
 		extern UINT32 rwnx_sys_is_enable_hw_tpc(void);
         if(rwnx_sys_is_enable_hw_tpc() == 0)
             rwnx_cal_set_txpwr(20, 11);
@@ -533,6 +736,11 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 			{
 				case WLAN_REASON_MICHAEL_MIC_FAILURE:
 					param = RW_EVT_STA_PASSWORD_WRONG;
+#if RL_SUPPORT_FAST_CONNECT
+					rl_clear_bssid_info();
+#elif (CFG_WPA_CTRL_IFACE && CFG_WLAN_FAST_CONNECT)
+					wlan_clear_fast_connect_info();
+#endif
 					break;
 				
 				default:
@@ -605,7 +813,8 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
 			param = RW_EVT_STA_CONNECTED;
 			(*fn)(&param);
         }
-		mhdr_set_station_status(RW_EVT_STA_CONNECTED);
+		if (mhdr_get_station_status() < RW_EVT_STA_CONNECTED)
+			mhdr_set_station_status(RW_EVT_STA_CONNECTED);
         break;
 
     case APM_ASSOC_IND:
@@ -638,9 +847,57 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
         break;
 #endif
 
-    default:
-        break;
-    }
+	/**************************************************************************/
+	/*							me_hdlrs									  */
+	/**************************************************************************/
+	case ME_TKIP_MIC_FAILURE_IND:
+		break;
+
+	/**************************************************************************/
+	/*							mm_hdlrs									  */
+	/**************************************************************************/
+	case MM_CHANNEL_SWITCH_IND:
+		break;
+	case MM_CHANNEL_PRE_SWITCH_IND:
+		break;
+	case MM_REMAIN_ON_CHANNEL_EXP_IND:
+		break;
+	case MM_PS_CHANGE_IND:
+		break;
+	case MM_TRAFFIC_REQ_IND:
+		break;
+	case MM_P2P_VIF_PS_CHANGE_IND:
+		break;
+	case MM_CSA_COUNTER_IND:
+		break;
+	case MM_CSA_FINISH_IND:
+		break;
+	case MM_CSA_TRAFFIC_IND:
+		break;
+	case MM_CHANNEL_SURVEY_IND:
+		break;
+	case MM_P2P_NOA_UPD_IND:
+		break;
+
+	case MM_RSSI_STATUS_IND:
+		//NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT
+		break;
+
+#ifdef CONFIG_SAE_EXTERNAL
+	case SM_EXTERNAL_AUTH_REQUIRED_IND: {
+	    struct ke_msg *msg_ptr;
+	    struct sm_external_auth_required_ind *ind;
+
+	    msg_ptr = (struct ke_msg *)rx_msg;
+	    ind = (struct sm_external_auth_required_ind *)msg_ptr->param;
+
+		wpa_ctrl_event_copy(WPA_CTRL_EVENT_EXTERNAL_AUTH_IND, ind, sizeof(*ind));
+	}	break;
+#endif
+
+	default:
+		break;
+	}
 }
 
 void rwnx_recv_msg(void)

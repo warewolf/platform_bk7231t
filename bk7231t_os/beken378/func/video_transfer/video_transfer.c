@@ -328,9 +328,7 @@ static void tvideo_poll_handler(void)
         elem = (TVIDEO_ELEM_PTR)co_list_pick(&tvideo_pool.ready);        
         if(elem) {
             if(tvideo_pool.send_func) {
-                REG_WRITE((0x00802800+(18*4)), 0x02);
                 send_len = tvideo_pool.send_func(elem->buf_start, elem->buf_len);
-                REG_WRITE((0x00802800+(18*4)), 0x00);
                 if(send_len != elem->buf_len) {
                     break;
                 }

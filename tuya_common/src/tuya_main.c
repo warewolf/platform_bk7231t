@@ -12,6 +12,10 @@
 #include "wf_basic_intf.h"
 #include "BkDriverUart.h"
 #include "uni_log.h"
+#include "ws_db_gw.h"
+#include "application.h"
+#include "tuya_hal_bt.h"
+#include "tuya_hal_storge.h"
 
 /***********************************************************
 *************************micro define***********************
@@ -101,6 +105,7 @@ STATIC UINT_T __tuya_mf_recv(OUT BYTE_T *buf,IN CONST UINT_T len)
     return ty_uart_read_data(TY_UART,buf,len);
 }
 extern OPERATE_RET gw_cfg_flash_reset_fac(VOID);
+BOOL_T wd_mf_test_close_if_read(VOID);
 STATIC BOOL_T scan_test_ssid(VOID)
 {
     BOOL_T mf_close;
@@ -155,7 +160,7 @@ STATIC BOOL_T scan_test_ssid(VOID)
     }
 
     if(app_prod_test) {
-	    PR_DEBUG("gw cfg flash info reset factory!");
+        PR_DEBUG("gw cfg flash info reset factory!");
         GW_WORK_STAT_MAG_S *wsm = (GW_WORK_STAT_MAG_S *)Malloc(SIZEOF(GW_WORK_STAT_MAG_S));
         if(NULL != wsm){
             memset(wsm,0,SIZEOF(GW_WORK_STAT_MAG_S));
@@ -165,7 +170,7 @@ STATIC BOOL_T scan_test_ssid(VOID)
             }
             Free(wsm);
         }        
-		
+
         app_prod_test(flag, ap->rssi);
     }
     return TRUE;
@@ -184,6 +189,7 @@ OPERATE_RET tuya_bt_close(VOID)
 { 
     extern bool if_start_adv_after_disconnect;
     uint8_t app_status = 0;
+    uint8_t appm_get_app_status(void);
     app_status = appm_get_app_status();
     bk_printf("!!!!!!!!!!tuya_bt_close:%d\r\n", app_status);
     if(app_status == 3)
@@ -195,7 +201,7 @@ OPERATE_RET tuya_bt_close(VOID)
         if_start_adv_after_disconnect = false;
         appm_disconnect(0x13);
     }
-	
+
     return OPRT_OK;
 }
 
@@ -281,6 +287,21 @@ STATIC VOID __app_mqtt_monitor(VOID)
 }
 
 /***********************************************************
+*  Function: 需要快速启动的应用可以在tuya_device中实现该函数，
+            并在函数中注册 EVENT_SDK_EARLY_INIT_OK 事件
+*  Input: none
+*  Output: none
+*  Return: none
+***********************************************************/
+#ifndef WEAK
+#define WEAK __attribute__((weak))
+#endif
+WEAK VOID pre_app_init(VOID)
+{
+    ;
+}
+
+/***********************************************************
 *  Function: user_main 
 *  Input: none
 *  Output: none
@@ -289,6 +310,8 @@ STATIC VOID __app_mqtt_monitor(VOID)
 void user_main(void)
 {
     OPERATE_RET op_ret = OPRT_OK;
+    
+    pre_app_init(); // 应用初始化前置准备工作，用户在此处可以进行一些设置，为后续继续标准化预留
     
     TY_INIT_PARAMS_S init_param = {0};
     init_param.init_db = FALSE;
@@ -304,13 +327,13 @@ void user_main(void)
 
     pre_device_init();
     tuya_iot_kv_flash_init(NULL);
-	if(pre_app_cb)
-	{
-		pre_app_cb();
-	}
+    if(pre_app_cb)
+    {
+        pre_app_cb();
+    }
     PR_NOTICE("**********[%s] [%s] compiled at %s %s**********", APP_BIN_NAME, USER_SW_VER, __DATE__,__TIME__);
 
-	extended_app_waiting_for_launch();
+    extended_app_waiting_for_launch();
 
     // to add prodect test code
     mf_reg_gw_ug_cb(__mf_gw_ug_inform_cb, __gw_upgrage_process_cb, __mf_gw_upgrade_notify_cb);
@@ -370,41 +393,50 @@ void user_main(void)
     __app_mqtt_monitor();
 }
 
+UCHAR_T *frist_block_databuf = NULL;
+UCHAR_T first_block = 1;
+#define OTA_UG_FILE_MAX_SIZE (664 * 1024)
+
 extern OPERATE_RET tuya_hal_flash_set_protect(IN CONST BOOL_T enable);
 // mf gateway upgrade start 
 VOID __mf_gw_ug_inform_cb(UINT_T file_size, UINT_T file_crc)
 {
-	#if 1
-    ug_proc = Malloc(SIZEOF(UG_PROC_S));
+    if(ug_proc == NULL) {
+        ug_proc = Malloc(SIZEOF(UG_PROC_S));
+    }
+    
     if(NULL == ug_proc) {
         PR_ERR("malloc err");
         return;
     }
     memset(ug_proc,0,SIZEOF(UG_PROC_S));
-	#endif
+    first_block = 1;
 }
 
 // gateway upgrade start
 STATIC VOID __gw_ug_inform_cb(INOUT BOOL_T *handled, IN CONST FW_UG_S *fw)
 {
-	OPERATE_RET op_ret = OPRT_OK;
+    OPERATE_RET op_ret = OPRT_OK;
 
-//	image_seq_t seq;
-	if(fw->tp != DEV_NM_ATH_SNGL)
+    //image_seq_t seq;
+    if(fw->tp != DEV_NM_ATH_SNGL)
     {
         *handled = FALSE;
         return;
     }
     *handled = TRUE;
 
-	PR_DEBUG("ota_notify_data_begin enter");
-	ug_proc = Malloc(SIZEOF(UG_PROC_S));
+    PR_DEBUG("ota_notify_data_begin enter");
+    if(ug_proc == NULL) {
+        ug_proc = Malloc(SIZEOF(UG_PROC_S));
+    }
+    
     if(NULL == ug_proc) {
         PR_ERR("malloc err");
         return;
     }
     memset(ug_proc,0,SIZEOF(UG_PROC_S));
-
+    first_block = 1;
     op_ret = tuya_iot_upgrade_gw(fw,__gw_upgrage_process_cb,__gw_upgrade_notify_cb,NULL);
     if(OPRT_OK != op_ret) {
         PR_ERR("tuya_iot_upgrade_gw err:%d",op_ret);
@@ -413,13 +445,20 @@ STATIC VOID __gw_ug_inform_cb(INOUT BOOL_T *handled, IN CONST FW_UG_S *fw)
 }
 
 #define BUF_SIZE 4096
+
 // mf gateway upgrade result notify
 OPERATE_RET __mf_gw_upgrade_notify_cb(VOID)
 {
-	#if 1
-    u32 ret = 0,i = 0,k = 0,rlen = 0,addr = 0;
-    u32 flash_checksum=0;
-    u8 *pTempbuf;
+    u32 i = 0,k = 0,rlen = 0,addr = 0;
+    u32 flash_checksum = 0;
+    u8 *pTempbuf = NULL;
+
+    if(ug_proc == NULL) {
+        PR_ERR("ota don't start or start err, can't notify inform!\r\n");
+        return OPRT_INVALID_PARM;
+    }
+    
+    
     pTempbuf = Malloc(BUF_SIZE);
     if(pTempbuf == NULL) {
         PR_ERR("Malloc failed!!");
@@ -430,6 +469,11 @@ OPERATE_RET __mf_gw_upgrade_notify_cb(VOID)
         rlen  = ((ug_proc->file_header.bin_len - i) >= BUF_SIZE) ? BUF_SIZE : (ug_proc->file_header.bin_len - i);
         addr = ug_proc->start_addr + i;
         tuya_hal_flash_read(addr, pTempbuf, rlen);
+
+        if(0 == i) {
+            memcpy(pTempbuf, frist_block_databuf ,RT_IMG_WR_UNIT); //first 4k block 
+        }
+        
         for(k = 0; k < rlen; k++) {
             flash_checksum += pTempbuf[k];
         }
@@ -437,70 +481,136 @@ OPERATE_RET __mf_gw_upgrade_notify_cb(VOID)
     
     if(flash_checksum != ug_proc->file_header.bin_sum) {
         PR_ERR("verify_ota_checksum err  checksum(0x%x)  file_header.bin_sum(0x%x)",flash_checksum,ug_proc->file_header.bin_sum);
-        tuya_hal_flash_set_protect(FALSE);
-        tuya_hal_flash_erase(UG_START_ADDR,0x1000);            //擦除OTA区的首地址4K
-        tuya_hal_flash_set_protect(TRUE);
-    	Free(pTempbuf);
-    	Free(ug_proc);
+        if(pTempbuf != NULL) {
+            Free(pTempbuf);
+            pTempbuf = NULL;
+        }
+
+        if(ug_proc != NULL) {
+            Free(ug_proc);
+            ug_proc = NULL;
+        }
+
+        if(frist_block_databuf != NULL) {
+            Free(frist_block_databuf);
+            frist_block_databuf = NULL;
+        }
         return OPRT_COM_ERROR;
     }
+    tuya_hal_flash_read(ug_proc->start_addr, pTempbuf, BUF_SIZE);
+    tuya_hal_flash_set_protect(FALSE);
+    tuya_hal_flash_erase(ug_proc->start_addr, BUF_SIZE);
+    tuya_hal_flash_set_protect(TRUE);
+
+    memcpy(pTempbuf, frist_block_databuf, RT_IMG_WR_UNIT); // 还原头部信息的512byte
+    tuya_hal_flash_set_protect(FALSE);
+    tuya_hal_flash_write(ug_proc->start_addr, pTempbuf, BUF_SIZE);
+    tuya_hal_flash_set_protect(TRUE);
     
     PR_NOTICE("the gateway upgrade success");
     Free(pTempbuf);
+    pTempbuf = NULL;
     Free(ug_proc);
-    //PR_DEBUG("the gateway upgrade succes,now go to reset!!");
-	#endif
+    ug_proc = NULL;
+    Free(frist_block_databuf);
+    frist_block_databuf = NULL;
+
     return OPRT_OK;
+
 }
 
 // gateway upgrade result notify
 STATIC VOID __gw_upgrade_notify_cb(IN CONST FW_UG_S *fw, IN CONST INT_T download_result, IN PVOID_T pri_data)
 {
+    if(ug_proc == NULL) {
+        PR_ERR("ota don't start or start err, can't notify inform!\r\n");
+        return OPRT_INVALID_PARM;
+    }
+     
     if(OPRT_OK == download_result) { // update success
         // verify 
-        u32 ret = 0,i = 0,k = 0,rlen = 0,addr = 0;
-        u32 flash_checksum=0;
-        u8 *pTempbuf;
+        u32 i = 0, k = 0, rlen = 0, addr = 0;
+        u32 flash_checksum = 0;
+        u8 *pTempbuf = NULL;
+        
         pTempbuf = Malloc(BUF_SIZE);
-        if(pTempbuf == NULL){
+        if(pTempbuf == NULL) {
             PR_ERR("Malloc failed!!");
             return;
         }
+        
         for(i = 0; i < ug_proc->file_header.bin_len; i += BUF_SIZE){
             rlen  = ((ug_proc->file_header.bin_len - i) >= BUF_SIZE) ? BUF_SIZE : (ug_proc->file_header.bin_len - i);
             addr = ug_proc->start_addr + i;
             tuya_hal_flash_read(addr, pTempbuf, rlen);
-            for(k = 0; k < rlen; k++){
+            if(0 == i) {
+                memcpy(pTempbuf, frist_block_databuf ,RT_IMG_WR_UNIT); //first 4k block 
+            }
+            
+            for(k = 0; k < rlen; k++) {
                 flash_checksum += pTempbuf[k];
             }
         }
-        if(flash_checksum != ug_proc->file_header.bin_sum){
-            PR_ERR("verify_ota_checksum err  checksum(0x%x)  file_header.bin_sum(0x%x)",flash_checksum,ug_proc->file_header.bin_sum);
-        	
-            tuya_hal_flash_set_protect(FALSE);
-        	tuya_hal_flash_erase(UG_START_ADDR,0x1000);            //擦除OTA区的首地址4K
-            tuya_hal_flash_set_protect(TRUE);
-            
-        	Free(pTempbuf);
-            return;
+        
+        if(flash_checksum != ug_proc->file_header.bin_sum) {
+            if(pTempbuf != NULL) {
+                Free(pTempbuf);
+                pTempbuf = NULL;
+            }
+
+            if(ug_proc != NULL) {
+                Free(ug_proc);
+                ug_proc = NULL;
+            }
+
+            if(frist_block_databuf != NULL) {
+                Free(frist_block_databuf);
+                frist_block_databuf = NULL;
+            }
+
+            return ;
         }
+
+        tuya_hal_flash_read(ug_proc->start_addr, pTempbuf, BUF_SIZE);
+        tuya_hal_flash_set_protect(FALSE);
+        tuya_hal_flash_erase(ug_proc->start_addr, BUF_SIZE);
+        tuya_hal_flash_set_protect(TRUE);
+
+        memcpy(pTempbuf, frist_block_databuf, RT_IMG_WR_UNIT); // 还原头部信息的512byte
+        tuya_hal_flash_set_protect(FALSE);
+        tuya_hal_flash_write(ug_proc->start_addr, pTempbuf, BUF_SIZE);
+        tuya_hal_flash_set_protect(TRUE);
+
         PR_NOTICE("the gateway upgrade success");
+
+
         Free(pTempbuf);
+        pTempbuf = NULL;
         Free(ug_proc);
-        //os_printf("the gateway upgrade succes,now go to reset!!\r\n");
-        //OTA完成回调
-        if(_ota_finish_notify)
+        ug_proc = NULL;
+        Free(frist_block_databuf);
+        frist_block_databuf = NULL;
+
+        if(_ota_finish_notify) {
             _ota_finish_notify();
+        }
         
         tuya_hal_system_reset();
-        return;
-    }else {
-        tuya_hal_flash_set_protect(FALSE);
-        tuya_hal_flash_erase(UG_START_ADDR,0x1000);            //擦除OTA区的首地址4K
-        tuya_hal_flash_set_protect(TRUE);
-        Free(ug_proc);
-        PR_ERR("the gateway upgrade failed");
+        
+    }else { // download err
+
+        if(ug_proc != NULL) {
+            Free(ug_proc);
+            ug_proc = NULL;
+        }
+
+        if(frist_block_databuf != NULL) {
+            Free(frist_block_databuf);
+            frist_block_databuf = NULL;
+        }
     }
+
+    return;
 }
 
 // gateway upgrade process
@@ -509,40 +619,43 @@ STATIC OPERATE_RET __gw_upgrage_process_cb(IN CONST FW_UG_S *fw, IN CONST UINT_T
 {
     u32 sum_tmp = 0,i=0;
     u32 write_len = 0;
+    UCHAR_T *buf = NULL;
+    
+    if(ug_proc == NULL) {
+        PR_ERR("ugprage process err!");
+        return OPRT_INVALID_PARM;
+    }
+    
     switch(ug_proc->stat) {
         case UGS_RECV_HEADER: {
             if(len < SIZEOF(UPDATE_FILE_HDR_S)) {
                 *remain_len = len;
                 break;
             }
-            //memcpy((unsigned char*)&ug_proc->file_header,data,SIZEOF(UPDATE_FILE_HDR_S));
             
             ug_proc->file_header.tail_flag = (data[28]<<24)|(data[29]<<16)|(data[30]<<8)|data[31];
             ug_proc->file_header.head_sum = (data[24]<<24)|(data[25]<<16)|(data[26]<<8)|data[27];
             ug_proc->file_header.bin_sum = (data[20]<<24)|(data[21]<<16)|(data[22]<<8)|data[23];
             ug_proc->file_header.bin_len = (data[16]<<24)|(data[17]<<16)|(data[18]<<8)|data[19];
-            for(i=0;i<12;i++) {
+            for(i = 0; i < 12; i++) {
                 ug_proc->file_header.sw_version[i] = data[4 + i];
             }
             
             ug_proc->file_header.header_flag = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|data[3];
             
-            for(i = 0;i < SIZEOF(UPDATE_FILE_HDR_S) - 8;i++) {
+            for(i = 0; i < SIZEOF(UPDATE_FILE_HDR_S) - 8; i++) {
                 sum_tmp += data[i];
             } 
             PR_NOTICE("header_flag(0x%x) tail_flag(0x%x) head_sum(0x%x-0x%x) bin_sum(0x%x)",ug_proc->file_header.header_flag,ug_proc->file_header.tail_flag,ug_proc->file_header.head_sum,sum_tmp,ug_proc->file_header.bin_sum);
-            //PR_DEBUG("sw_version:%s  bin_len = 0x%x   bin_sum = 0x%x\r\n",ug_proc->file_header.sw_version, ug_proc->file_header.bin_len,ug_proc->file_header.bin_sum);
             if((ug_proc->file_header.header_flag !=  UG_PKG_HEAD) || (ug_proc->file_header.tail_flag !=  UG_PKG_TAIL) || (ug_proc->file_header.head_sum != sum_tmp )) {
                 memset(&ug_proc->file_header, 0, SIZEOF(UPDATE_FILE_HDR_S));
                 PR_ERR("bin_file data header err: header_flag(0x%x) tail_flag(0x%x) bin_sum(0x%x) get_sum(0x%x)",ug_proc->file_header.header_flag,ug_proc->file_header.tail_flag,ug_proc->file_header.head_sum,sum_tmp);
-//                return OPRT_OTA_BIN_CHECK_ERROR;
                 return OPRT_COM_ERROR;
             }
-            if(ug_proc->file_header.bin_len >= (664 * 1024)) {
+            if(ug_proc->file_header.bin_len >= OTA_UG_FILE_MAX_SIZE) {
                 //ug文件最大为664K
                 memset(&ug_proc->file_header, 0, SIZEOF(UPDATE_FILE_HDR_S));
                 PR_ERR("bin_file too large.... %d", ug_proc->file_header.bin_len);
-//                return OPRT_OTA_BIN_SIZE_ERROR;
                 return OPRT_COM_ERROR;
             }
             
@@ -558,32 +671,68 @@ STATIC OPERATE_RET __gw_upgrage_process_cb(IN CONST FW_UG_S *fw, IN CONST UINT_T
             tuya_hal_flash_erase(ug_proc->start_addr,ug_proc->file_header.bin_len);
             tuya_hal_flash_set_protect(TRUE);
             
-        	PR_DEBUG("erase success  remain_len: %d  file size: %d!!!!!",*remain_len,ug_proc->file_header.bin_len);
+            PR_DEBUG("erase success  remain_len: %d  file size: %d!!!!!",*remain_len,ug_proc->file_header.bin_len);
         } 
         break;
         
         case UGS_RECV_IMG_DATA: {    //dont have set lock for flash! 
-//            PR_DEBUG("ug_proc->recv_data_cnt : %d,len : %d",ug_proc->recv_data_cnt,len);
             *remain_len = len;
             if((len < RT_IMG_WR_UNIT) && (ug_proc->recv_data_cnt <= (ug_proc->file_header.bin_len - RT_IMG_WR_UNIT))) {
                 break;
             }
             write_len = len;
             while(write_len >= RT_IMG_WR_UNIT) {
-                tuya_hal_flash_set_protect(FALSE);
-                if(tuya_hal_flash_write(ug_proc->flash_addr, &data[len - write_len], RT_IMG_WR_UNIT)) {
+                if(first_block) {
+                   if(NULL == frist_block_databuf) {
+                        frist_block_databuf = Malloc(RT_IMG_WR_UNIT);
+                        if(NULL == frist_block_databuf) {
+                            PR_ERR("frist block malloc err!");
+                            return OPRT_MALLOC_FAILED;
+                        }
+                   }
+                                    
+                    memcpy(frist_block_databuf, &data[len - write_len], RT_IMG_WR_UNIT);
+                    
+                    buf = Malloc(RT_IMG_WR_UNIT);
+                    if(NULL == buf) {
+                        PR_ERR("dummy buf malloc err!");
+                        return OPRT_MALLOC_FAILED;
+                    }
+
+                    memset(buf, 0xFF , RT_IMG_WR_UNIT);  // make dummy data 
+                    tuya_hal_flash_set_protect(FALSE);
+                    if(tuya_hal_flash_write(ug_proc->flash_addr, buf, RT_IMG_WR_UNIT)) {
+                        tuya_hal_flash_set_protect(TRUE);
+                        PR_ERR("Write sector failed");
+                        if(buf) {
+                            Free(buf);
+                            buf = NULL;
+                        }
+                        return OPRT_COM_ERROR;
+                    }
                     tuya_hal_flash_set_protect(TRUE);
-                    PR_ERR("Write sector failed");
-                    return OPRT_WR_FLASH_ERROR;
+                    if(buf) {
+                        Free(buf);
+                        buf = NULL;
+                    }
+                    first_block = 0;    
+                } else {
+                    tuya_hal_flash_set_protect(FALSE);
+                    if(tuya_hal_flash_write(ug_proc->flash_addr, &data[len - write_len], RT_IMG_WR_UNIT)) {
+                        tuya_hal_flash_set_protect(TRUE);
+                        PR_ERR("Write sector failed");
+                        return OPRT_COM_ERROR;
+                    }
+                    tuya_hal_flash_set_protect(TRUE);
                 }
-                tuya_hal_flash_set_protect(TRUE);
                 ug_proc->flash_addr += RT_IMG_WR_UNIT;
                 ug_proc->recv_data_cnt += RT_IMG_WR_UNIT;
                 write_len -= RT_IMG_WR_UNIT; 
                 *remain_len = write_len;
             }
+
             if((ug_proc->recv_data_cnt > (ug_proc->file_header.bin_len - RT_IMG_WR_UNIT)) \
-				&& (write_len >= (ug_proc->file_header.bin_len - ug_proc->recv_data_cnt))) {//last 512 (write directly when get data )
+                && (write_len >= (ug_proc->file_header.bin_len - ug_proc->recv_data_cnt))) {//last 512 (write directly when get data )
                 tuya_hal_flash_set_protect(FALSE);
                 if(tuya_hal_flash_write(ug_proc->flash_addr, &data[len - write_len], write_len)) {
                     tuya_hal_flash_set_protect(TRUE);
@@ -628,7 +777,7 @@ void set_prod_ssid(CHAR_T *ssid)
 
 void pre_app_cfg_set(after_mf_test_cb callback)
 {    
-	pre_app_cb = callback;
+    pre_app_cb = callback;
 }
 
 
@@ -646,6 +795,7 @@ void set_mf_enter_cb(MF_USER_CALLBACK callback)
 {
     user_enter_mf_cb = callback;
 }
+
 
 
 

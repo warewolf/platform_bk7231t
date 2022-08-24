@@ -320,8 +320,8 @@ void *pvPortMalloc( size_t xWantedSize )
 	pvReturn = malloc_without_lock(xWantedSize);
 	#if OSMALLOC_STATISTICAL
 	{
-	if(pvReturn) {
-	BlockLink_t *pxLink = (BlockLink_t *)((u8*)pvReturn - xHeapStructSize);    
+	if(pvReturn && call_func_name) {
+	BlockLink_t *pxLink = (BlockLink_t *)((u8*)pvReturn - xHeapStructSize);
 	bk_printf("\r\nm:%p,%d|%s,%d\r\n", pxLink, (pxLink->xBlockSize & ~xBlockAllocatedBit), call_func_name, line);
 	}
 	}
@@ -369,6 +369,7 @@ BlockLink_t *pxLink;
 				vTaskSuspendAll();
 				{
 					#if OSMALLOC_STATISTICAL
+					if (call_func_name)
 					bk_printf("\r\nf:%p,%d|%s,%d\r\n", pxLink, pxLink->xBlockSize, call_func_name, line);
 					#endif
 					/* Add this block to the list of free blocks. */

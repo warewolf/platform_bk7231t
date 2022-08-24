@@ -755,6 +755,11 @@ int bkreg_run_command(const char *content, int cnt)
 
     return 0;
 }
+#else
+int bkreg_run_command(const char *content, int cnt)
+{
+	return 0;
+}
 #endif // CFG_SUPPORT_BKREG
 #else
 int bkreg_run_command(const char *content, int cnt)

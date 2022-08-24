@@ -581,6 +581,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 	sm->wpa_ie_len = wpa_ie_len;
 
 	return WPA_IE_OK;
+	(void)i;
 }
 
 /**

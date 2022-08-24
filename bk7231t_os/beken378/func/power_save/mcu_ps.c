@@ -329,7 +329,7 @@ void mcu_ps_cal_increase_tick(UINT32 *lost_p)
     GLOBAL_INT_RESTORE();
 }
 
-
+extern void mcu_ps_cal_increase_tick(UINT32 *lost_p);
 uint32_t mcu_ps_need_pstick(void)
 {
     static uint32_t need_pass = 0;
@@ -343,7 +343,7 @@ uint32_t mcu_ps_need_pstick(void)
     
     if(((need_pass ++)%5) == 0)
     {
-        uint32_t lost = FCLK_DURATION_MS;
+        UINT32 lost = FCLK_DURATION_MS;
         mcu_ps_cal_increase_tick(&lost);
         if(!lost)
         {

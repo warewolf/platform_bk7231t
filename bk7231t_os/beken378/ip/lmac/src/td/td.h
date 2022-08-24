@@ -94,7 +94,9 @@ struct td_env_tag
 
     // Bit field indicating traffic old status
     uint8_t old_status;
-    
+    // Bit field indicating traffic now status
+    uint8_t now_status;
+
     // Indicate if the Traffic Detection is activated for a VIF (<=> td_timer running)
     bool is_on;
 

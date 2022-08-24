@@ -55,4 +55,7 @@ void rf_not_share_for_ble(void);
 void rf_can_share_for_ble(void);
 void ble_ps_dump(void);
 
+
+extern void appm_update_adv_data( uint8_t* adv_buff, uint8_t adv_len, uint8_t* scan_buff, uint8_t scan_len);
+extern uint8_t appm_adv_data_decode(uint8_t len,const uint8_t *data,uint8_t *find_str,uint8_t str_len);
 #endif /* _BLE_PUB_H_ */

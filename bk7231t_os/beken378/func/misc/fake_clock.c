@@ -43,6 +43,10 @@ typedef struct
 static CAL_TICK_T cal_tick_save;
 UINT32 use_cal_net = 0;
 
+extern uint32_t mcu_ps_need_pstick(void);
+extern uint32_t preempt_delayed_schedule_get_flag(void);
+extern void preempt_delayed_schedule_clear_flag(void);
+
 void fclk_hdl(UINT8 param)
 {
     GLOBAL_INT_DECLARATION();
@@ -74,8 +78,11 @@ void fclk_hdl(UINT8 param)
         second_countdown = FCLK_SECOND;
     }
     
-    if( xTaskIncrementTick() != pdFALSE )
+    if((xTaskIncrementTick() != pdFALSE) 
+			|| preempt_delayed_schedule_get_flag())
     {
+    	preempt_delayed_schedule_clear_flag();
+		
         /* Select a new task to run. */
         vTaskSwitchContext();
     }
@@ -196,7 +203,6 @@ extern int increase_tick;
 UINT32 timer_cal_tick(void)
 {
     UINT32 fclk, tmp2;
-    UINT32 machw;
     INT32 lost;
     GLOBAL_INT_DECLARATION();
 
@@ -213,7 +219,6 @@ UINT32 timer_cal_tick(void)
     {
         if(lost > 200)
         {
-            //os_printf("m cal_:%x %x\r\n", lost, machw);
         }
 
         lost -= FCLK_DURATION_MS;
@@ -227,24 +232,21 @@ UINT32 timer_cal_tick(void)
         {
             if(lost < (-50000))
             {
-                os_printf("m reset:%x %x\r\n", lost, machw);
+                os_printf("m reset:%x %x\r\n", lost);
             }
             increase_tick = lost + FCLK_DURATION_MS;
         }
     }
     #endif
-    //os_printf("tc:%d\r\n",lost);
     
     mcu_ps_machw_init();
     GLOBAL_INT_RESTORE();
     return 0 ;
 
-CAL_RESET:
     timer_cal_init();
     GLOBAL_INT_RESTORE();
     return 0 ;
 }
-
 
 void cal_timer_hdl(UINT8 param)
 {

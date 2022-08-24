@@ -1239,6 +1239,7 @@ static struct hostapd_hw_modes *hostap_get_hw_feature_data(void *priv,
     mode->rates[2] = 55;
     mode->rates[3] = 110;
 
+#if CFG_SUPPORT_80211G
     mode->rates[4] = 60;
     mode->rates[5] = 90;
     mode->rates[6] = 120;
@@ -1247,6 +1248,7 @@ static struct hostapd_hw_modes *hostap_get_hw_feature_data(void *priv,
     mode->rates[9] = 360;
     mode->rates[10] = 480;
     mode->rates[11] = 540;
+#endif
 
     return mode;
 }
@@ -1305,8 +1307,8 @@ static void hostap_poll_client_null_frame(void *priv, const u8 *own_addr,
     struct prism2_hostapd_param param;
 	
 	param.cmd = PRISM2_HOSTAPD_POLL_CLIENT_NULL_DATA;
-	param.u.poll_null_data.own_addr = own_addr;
-	param.u.poll_null_data.sta_addr = addr;
+	param.u.poll_null_data.own_addr = (u8*)own_addr;
+	param.u.poll_null_data.sta_addr = (u8*)addr;
 		
 	ret = hostapd_ioctl(drv, &param, sizeof(param));
 
@@ -1691,7 +1693,7 @@ int wpa_driver_get_ssid(void *priv, u8 *ssid)
         return -1;
     }
 
-	len = MIN(SSID_MAX_LEN, os_strlen(param->u.bss_info.ssid));
+	len = MIN(SSID_MAX_LEN, os_strlen((char*)param->u.bss_info.ssid));
     os_memcpy(ssid, param->u.bss_info.ssid, len);
     os_free(buf);
 

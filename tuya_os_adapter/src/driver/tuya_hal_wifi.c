@@ -73,11 +73,10 @@ int tuya_hal_wifi_all_ap_scan(AP_IF_S **ap_ary, uint32_t *num)
     AP_IF_S *item;
     AP_IF_S *array;
     OPERATE_RET ret;
-    INT_T i,index;
+    INT_T i;
     INT_T scan_cnt;
-    struct scanu_rst_upload *scan_rst;
-    struct sta_scan_res *scan_rst_ptr;
-
+    ScanResult_adv apList;
+    
     if((NULL == ap_ary) || (NULL == num)) {
         return OPRT_INVALID_PARM;
     }
@@ -92,43 +91,49 @@ int tuya_hal_wifi_all_ap_scan(AP_IF_S **ap_ary, uint32_t *num)
     tuya_hal_semaphore_wait(scanHandle);
     tuya_hal_semaphore_release(scanHandle);
 
-    scan_rst = sr_get_scan_results();
-    if( scan_rst == NULL ) {
-        return OPRT_COM_ERROR;
+    if ((wlan_sta_scan_result(&apList) != 0) || (0 == apList.ApNum)) {
+       goto SCAN_ERR;
     }
 
-    scan_cnt = bk_wlan_get_scan_ap_result_numbers();
+    scan_cnt = apList.ApNum;
 
     if(scan_cnt > SCAN_MAX_AP) {
         scan_cnt = SCAN_MAX_AP;
     }
-
-    if(0 == scan_cnt) {
-        sr_release_scan_results(scan_rst);
-        return OPRT_COM_ERROR;
-    }
     
     array = tuya_hal_internal_malloc(SIZEOF(AP_IF_S) * scan_cnt);
     if(NULL == array){
-        sr_release_scan_results(scan_rst);
-        return OPRT_MALLOC_FAILED;
+        goto SCAN_ERR;
     }
     
     for(i = 0; i < scan_cnt; i++) {
-        scan_rst_ptr = scan_rst->res[i];
         item = &array[i];
 
-        item->channel = scan_rst_ptr->channel;
-        item->rssi = scan_rst_ptr->level;
-        os_memcpy(item->bssid, scan_rst_ptr->bssid, 6);
-        os_strcpy(item->ssid, scan_rst_ptr->ssid);
+        item->channel = apList.ApList[i].channel;
+        item->rssi = apList.ApList[i].ApPower;
+        os_memcpy(item->bssid, apList.ApList[i].bssid, 6);
+        os_strcpy(item->ssid, apList.ApList[i].ssid);
         item->s_len = os_strlen(item->ssid);
     }
     
     *ap_ary = array;
     *num = scan_cnt & 0xff;
-    sr_release_scan_results(scan_rst);
-    return ret;
+    if(apList.ApList != NULL) {
+        os_free(apList.ApList);
+    }
+    
+    return OPRT_OK;
+    
+SCAN_ERR:
+    if(apList.ApList != NULL) {
+        os_free(apList.ApList);
+    }
+    
+    if(array) {
+        os_free(array);
+        array = NULL;
+    }
+    return OPRT_COM_ERROR;
 }
 
 /***********************************************************
@@ -142,14 +147,15 @@ int tuya_hal_wifi_assign_ap_scan(const char *ssid, AP_IF_S **ap)
     AP_IF_S *item;
     AP_IF_S *array;
     OPERATE_RET ret;
-    INT_T i, scan_cnt;
-    struct scanu_rst_upload *scan_rst;
-    struct sta_scan_res *scan_rst_ptr;
-
+    INT_T i,j, scan_cnt;
+    ScanResult_adv apList;
+    
     if((NULL == ssid) || (NULL == ap)) {
         return OPRT_INVALID_PARM;
     }
 
+    memset(&apList, 0, sizeof(ScanResult_adv));
+    
     ret = tuya_hal_semaphore_create_init(&scanHandle, 0, 1);
     if ( ret !=  OPRT_OK ) {
         return ret;
@@ -161,43 +167,64 @@ int tuya_hal_wifi_assign_ap_scan(const char *ssid, AP_IF_S **ap)
     tuya_hal_semaphore_wait(scanHandle);
     tuya_hal_semaphore_release(scanHandle);
 
-    scan_rst = sr_get_scan_results();
-    if( scan_rst == NULL ) {
-        return OPRT_COM_ERROR;
-    }       
+      
+    if ((wlan_sta_scan_result(&apList) != 0) || (0 == apList.ApNum)) {
 
-    scan_cnt = bk_wlan_get_scan_ap_result_numbers();
+        goto SCAN_ERR;
+    }   
+
+    scan_cnt = apList.ApNum;
     if(scan_cnt >= 1) {
         scan_cnt = 1;
     }
     
-    if(0 == scan_cnt) {
-        sr_release_scan_results(scan_rst);
-        return OPRT_COM_ERROR;
-    }
-    
     array = tuya_hal_internal_malloc(sizeof(AP_IF_S) * scan_cnt);
     if(NULL == array) {
-        sr_release_scan_results(scan_rst);
-        return OPRT_MALLOC_FAILED;
+        goto SCAN_ERR;
     }
 
-    for(i = 0; i < scan_cnt; i++) {
-        scan_rst_ptr = scan_rst->res[i];
-        item = &array[i];
+    /* iterate scan result list to find specified ssid */
+    for(i = 0, j = 0; i < apList.ApNum && j < scan_cnt; i++) {
+        /* skip non-matched ssid */
+        if (os_strcmp(apList.ApList[i].ssid, ssid))
+            continue;
 
-        item->channel = scan_rst_ptr->channel;
-        item->rssi = scan_rst_ptr->level;
-        os_memcpy(item->bssid, scan_rst_ptr->bssid, 6);
-        os_strcpy(item->ssid, scan_rst_ptr->ssid);
-        item->s_len = os_strlen(item->ssid);
+        /* found */
+        item = &array[j];
+
+        item->channel = apList.ApList[i].channel;
+        item->rssi = apList.ApList[i].ApPower;
+        os_memcpy(item->bssid, apList.ApList[i].bssid, 6);
+        os_strcpy((char*)item->ssid, apList.ApList[i].ssid);
+        item->s_len = os_strlen((char*)item->ssid);
+
+        j++;
+    }
+
+    if (j == 0) {
+        goto SCAN_ERR;
     }
 
     *ap = array;
-    sr_release_scan_results(scan_rst);
+    if(apList.ApList != NULL) {
+        os_free(apList.ApList);
+    }
 
     return OPRT_OK;
+    
+SCAN_ERR:
+    if(apList.ApList != NULL) {
+        os_free(apList.ApList);
+    }
+
+    if(array) {
+        os_free(array);
+        array = NULL;
+    }
+    return OPRT_COM_ERROR;
+
 }
+
 
 /***********************************************************
 *  Function: hwl_wf_release_ap

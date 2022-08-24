@@ -14,6 +14,7 @@
 #include "func_pub.h"
 #include "app.h"
 #include "ate_app.h"
+#include "start_type_pub.h"
 
 beken_semaphore_t extended_app_sema = NULL;
 uint32_t  extended_app_stack_size = 2048;

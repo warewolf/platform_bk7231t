@@ -54,5 +54,7 @@
 
 #define REG_READ(addr)          (*((volatile UINT32 *)(addr)))
 #define REG_WRITE(addr, _data) 	(*((volatile UINT32 *)(addr)) = (_data))
-
+#define REG_DUMMY_WRITE(addr, _data) 	
 #endif
+// EOF
+

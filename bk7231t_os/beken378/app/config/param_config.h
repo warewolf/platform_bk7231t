@@ -47,7 +47,7 @@ typedef struct ap_param
     uint8_t key_len;
 } ap_param_t;
 
-#define MAX_STA_RETRY_COUNT     16
+#define MAX_STA_RETRY_COUNT     4
 
 typedef struct sta_param
 {

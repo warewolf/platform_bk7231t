@@ -35,6 +35,7 @@
 #include "bk7011_cal_pub.h"
 #include "flash_pub.h"
 #include "mcu_ps_pub.h"
+#include "lwip/ping.h"
 
 #if CFG_SUPPORT_BOOTLOADER
 #include "wdt_pub.h"
@@ -1008,7 +1009,20 @@ void arp_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
 
 void ping_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    os_printf("ping_Command\r\n");
+#if CFG_PING_COMMAND
+    if (argc == 1)
+    {
+        os_printf("Please input: ping <host address>\n");
+    }
+    else
+    {
+		os_printf("ping IP address:%s\n",argv[1]);
+		ping(argv[1], 4, 0);
+	}
+#else
+    os_printf("ping_Command unsupported\r\n");
+#endif
+    return 0;
 }
 
 void dns_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
@@ -1577,6 +1591,15 @@ static const struct cli_command built_ins[] =
 #endif
 
 	{"cca", "cca open\\close\\show", phy_cca_test},
+
+	//{"cca", "cca open\\close\\show", phy_cca_test},
+    {"rfcali_cfg_mode",      "1:manual, 0:auto, others: clear flash mode",      cmd_rfcali_cfg_mode},
+    {"rfcali_cfg_tssi_g",    "0-255",                 cmd_rfcali_cfg_tssi_g},
+    {"rfcali_cfg_tssi_b",    "0-255",                 cmd_rfcali_cfg_tssi_b},
+    {"rfcali_cfg_tssi_n20",  "0-255",                 cmd_rfcali_cfg_tssi_n20},
+    {"rfcali_cfg_tssi_n40",  "0-255",                 cmd_rfcali_cfg_tssi_n40},
+    {"rfcali_show_data",     "",                      cmd_rfcali_show_data},
+    {"rfcali_cfg_rate_dist", "b g n40 ble (0-31)",    cmd_rfcali_cfg_rate_dist},
 };
 
 /* Built-in "help" command: prints all registered commands and their help
@@ -1785,6 +1808,39 @@ void pwr_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
     rw_msg_set_power(0,pwr);
 }
 
+static void Deep_Sleep_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+	PS_DEEP_CTRL_PARAM deep_sleep_param;
+
+	deep_sleep_param.wake_up_way			= 0;
+	
+	deep_sleep_param.gpio_index_map      	= os_strtoul(argv[1], NULL, 16);
+	deep_sleep_param.gpio_edge_map       	= os_strtoul(argv[2], NULL, 16);	
+	deep_sleep_param.gpio_last_index_map 	= os_strtoul(argv[3], NULL, 16);
+	deep_sleep_param.gpio_last_edge_map  	= os_strtoul(argv[4], NULL, 16);
+	deep_sleep_param.sleep_time     		= os_strtoul(argv[5], NULL, 16);
+	deep_sleep_param.wake_up_way     		= os_strtoul(argv[6], NULL, 16);
+	deep_sleep_param.gpio_stay_lo_map 	    = os_strtoul(argv[7], NULL, 16);
+	deep_sleep_param.gpio_stay_hi_map  	    = os_strtoul(argv[8], NULL, 16);
+            
+	if(argc == 9)
+	{		
+		os_printf("---deep sleep test param : 0x%0X 0x%0X 0x%0X 0x%0X %d %d\r\n", 
+					deep_sleep_param.gpio_index_map, 
+					deep_sleep_param.gpio_edge_map,
+					deep_sleep_param.gpio_last_index_map, 
+					deep_sleep_param.gpio_last_edge_map,
+					deep_sleep_param.sleep_time,
+					deep_sleep_param.wake_up_way);
+		
+		bk_enter_deep_sleep_mode(&deep_sleep_param);
+	}
+	else
+	{
+		os_printf("---argc error!!! \r\n");
+	}
+}
+
 static void Ps_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     UINT32 gpio_index = 0;
@@ -1809,8 +1865,6 @@ static void Ps_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
     
         gpio_index = os_strtoul(argv[2], NULL, 16);
         dtim = os_strtoul(argv[3], NULL, 16);
-
-        bk_enter_deep_sleep(gpio_index,dtim);
     }
 #endif
 #if CFG_USE_MCU_PS
@@ -2271,6 +2325,8 @@ static const struct cli_command user_clis[] =
     {"channel", "channel []", channel_Command},
     {"mac", "mac <mac>, Get mac/Set mac. <mac>: c89346000001", mac_command},
     {"ps", "ps [func] [param]", Ps_Command},
+    {"deep_sleep", "deep_sleep [param]", Deep_Sleep_Command},
+    
 #ifdef TCP_CLIENT_DEMO
     {"tcp_cont", "tcp_cont [ip] [port]", tcp_make_connect_server_command},
 #endif

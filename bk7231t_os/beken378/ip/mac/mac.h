@@ -118,6 +118,7 @@ enum
 enum
 {
 	HOSTAPD_MGMT = 0,
+	HOSTAPD_MGMT_ROBUST,
 	HOSTAPD_DATA
 };
 /**

@@ -97,7 +97,7 @@ static void kmsg_bk_thread_main( void *arg )
 
 static void init_thread_main( void *arg )
 {
-    GLOBAL_INT_START();
+    GLOBAL_INTERRUPT_START();
 
     bk_app_init();
     os_printf("app_init finished\r\n");
@@ -156,9 +156,10 @@ void bmsg_tx_handler(BUS_MSG_T *msg)
     bmsg_ps_handler_rf_ps_mode_real_wakeup();
     bk_wlan_dtim_rf_ps_mode_do_wakeup();
 #endif
-    rwm_transfer(vif_idx, q->payload, q->len, 0, 0);
-tx_handler_exit:
 
+    rwm_transfer(vif_idx, q->payload, q->len, 0, 0);
+
+tx_handler_exit:
     pbuf_free(q);
 }
 
@@ -770,6 +771,10 @@ static void test_timer_handler(void *data)
 void app_start(void)
 {
     app_pre_start();
+
+	#if CFG_UART2_CLI
+	cli_init();
+	#endif
 
 #if defined(SUPPORT_MIDEA_BLE)
     if(!get_ate_mode_state())

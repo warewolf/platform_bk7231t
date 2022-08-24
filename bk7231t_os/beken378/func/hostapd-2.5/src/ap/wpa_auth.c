@@ -298,6 +298,7 @@ static void wpa_rekey_ptk(void *eloop_ctx, void *timeout_ctx)
 	wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG, "rekeying PTK");
 	wpa_request_new_ptk(sm);
 	wpa_sm_step(sm);
+	(void)wpa_auth;
 }
 
 static int wpa_group_init_gmk_and_counter(struct wpa_authenticator *wpa_auth,
@@ -1362,6 +1363,7 @@ static void wpa_send_eapol_timeout(void *eloop_ctx, void *timeout_ctx)
 	wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG, "EAPOL-Key timeout");
 	sm->TimeoutEvt = TRUE;
 	wpa_sm_step(sm);
+	(void)wpa_auth;
 }
 
 

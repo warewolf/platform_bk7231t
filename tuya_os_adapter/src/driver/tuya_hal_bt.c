@@ -22,21 +22,21 @@ uint16_t ntf_enable;
 
 bk_attm_desc_t btl_att_db[6] =
 {
-	//  Service Declaration
-	[0]        =   {0x1910,  BK_PERM_SET(RD, ENABLE), 0, 0},
-	
-	//  Level Characteristic Declaration
-	[1]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
-	//  Level Characteristic Value
-	//[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
-	[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE)|BK_PERM_SET(WRITE_COMMAND, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
-	[3]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
-	//  Level Characteristic Value
-	[4]        =   {0x2b10,   BK_PERM_SET(NTF, ENABLE) , BK_PERM_SET(RI, ENABLE) , 20},
+    //  Service Declaration
+    [0]        =   {0x2800,  BK_PERM_SET(RD, ENABLE), 0, 0},
+    
+    //  Level Characteristic Declaration
+    [1]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
+    //  Level Characteristic Value
+    //[2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
+    [2]        =   {0x2b11,   BK_PERM_SET(WRITE_REQ, ENABLE)|BK_PERM_SET(WRITE_COMMAND, ENABLE), BK_PERM_SET(RI, ENABLE) , 20},
+    [3]        =   {0x2803,   BK_PERM_SET(RD, ENABLE), 0, 0},
+    //  Level Characteristic Value
+    [4]        =   {0x2b10,   BK_PERM_SET(NTF, ENABLE) , BK_PERM_SET(RI, ENABLE) , 20},
 
-	//  Level Characteristic - Client Characteristic Configuration Descriptor
+    //  Level Characteristic - Client Characteristic Configuration Descriptor
 
-	[5]        =   {0x2902,  BK_PERM_SET(RD, ENABLE)|BK_PERM_SET(WRITE_REQ, ENABLE), 0, 0},
+    [5]        =   {0x2902,  BK_PERM_SET(RD, ENABLE)|BK_PERM_SET(WRITE_REQ, ENABLE), 0, 0},
 };
 
 TY_BT_MSG_CB ty_bt_msg_cb;
@@ -97,16 +97,16 @@ void ble_event_callback(ble_event_t event, void *param)
         case BLE_CONNECT:
             bk_printf("BLE CONNECT\r\n");
 
-			if(((struct gapc_connection_req_ind *)param)->sup_to < 200)
-			{
-	            struct gapc_conn_param conn_param;
-				conn_param.intv_max = ((struct gapc_connection_req_ind *)param)->con_interval;
-				conn_param.intv_min = ((struct gapc_connection_req_ind *)param)->con_interval;
-				conn_param.latency = ((struct gapc_connection_req_ind *)param)->con_latency;
-				conn_param.time_out = 600;
-	        	appm_update_param(&conn_param);
-			}
-		
+            if(((struct gapc_connection_req_ind *)param)->sup_to < 200)
+            {
+                struct gapc_conn_param conn_param;
+                conn_param.intv_max = ((struct gapc_connection_req_ind *)param)->con_interval;
+                conn_param.intv_min = ((struct gapc_connection_req_ind *)param)->con_interval;
+                conn_param.latency = ((struct gapc_connection_req_ind *)param)->con_latency;
+                conn_param.time_out = 600;
+                appm_update_param(&conn_param);
+            }
+
             mcu_prevent_set(MCU_PS_BLE_FROBID);
             if(ty_bt_msg_cb!=NULL)
                 ty_bt_msg_cb(0, TY_BT_EVENT_CONNECTED ,NULL);
@@ -115,7 +115,7 @@ void ble_event_callback(ble_event_t event, void *param)
         case BLE_DISCONNECT:
         {
             bk_printf("BLE DISCONNECT\r\n");
-			ble_att_flag = 0;
+            ble_att_flag = 0;
             mcu_prevent_clear(MCU_PS_BLE_FROBID);
             if(ty_bt_msg_cb!=NULL)
                 ty_bt_msg_cb(0, TY_BT_EVENT_DISCONNECTED ,NULL);
@@ -139,7 +139,7 @@ void ble_event_callback(ble_event_t event, void *param)
         break;
         case BLE_TX_DONE:
             os_printf("BLE_TX_DONE\r\n");
-			ble_att_flag = 0;
+            ble_att_flag = 0;
         break;
         case BLE_GEN_DH_KEY:
         {
@@ -221,13 +221,13 @@ OPERATE_RET tuya_hal_bt_port_init(ty_bt_param_t *p)
 
 OPERATE_RET tuya_bt_port_deinit(void)
 {
-	bk_printf("!!!!!!!!!!tuya_bt_port_deinit\r\n");    
-	if(appm_stop_advertising() == ERR_SUCCESS)    
-	{        
-		rtos_delay_milliseconds(100);    
-	}
+    bk_printf("!!!!!!!!!!tuya_bt_port_deinit\r\n");    
+    if(appm_stop_advertising() == ERR_SUCCESS)    
+    {        
+        rtos_delay_milliseconds(100);    
+    }
 
-	return OPRT_OK;
+    return OPRT_OK;
 }
 
 OPERATE_RET tuya_hal_bt_gap_disconnect(void)
@@ -243,10 +243,10 @@ OPERATE_RET tuya_hal_bt_gap_disconnect(void)
 OPERATE_RET tuya_hal_bt_send(BYTE_T *data, UINT8_T len)
 {
     os_printf("!!!!!!!!!!tuya_bt_send\r\n");
-	while(ble_att_flag == 1){
-		rtos_delay_milliseconds(1);
-	}
-	ble_att_flag = 1;
+    while(ble_att_flag == 1){
+        rtos_delay_milliseconds(1);
+    }
+    ble_att_flag = 1;
 
     bk_ble_send_ntf_value(len, data, 0, 4);
 
@@ -311,14 +311,4 @@ OPERATE_RET tuya_hal_bt_assign_scan(IN OUT ty_bt_scan_info_t *info)
 }
 
 #endif
-
-
-
-
-
-
-
-
-
-
 

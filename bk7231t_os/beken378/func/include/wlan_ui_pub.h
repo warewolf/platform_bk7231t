@@ -7,21 +7,13 @@
 #include "rtos_pub.h"
 #include "rw_pub.h"
 
-#if CFG_SUPPORT_ALIOS
-#include <hal/wifi.h>
+#include "manual_ps_pub.h"
+#if CFG_WPA_CTRL_IFACE
+#include "wlan_defs.h"
+#include "notifier.h"
 #endif
 
-#define ICU_BASE                                     (0x00802000)
-#define ICU_INT_STATUS                               (ICU_BASE + 19 * 4)
-
-#if CFG_SUPPORT_ALIOS
-enum {
-    WLAN_ENC_OPEN,
-    WLAN_ENC_WEP,
-    WLAN_ENC_CCMP,
-    WLAN_ENC_TKIP,
-};
-#else
+#if 1
 #define WiFi_Interface  wlanInterfaceTypedef
 
 #define DHCP_DISABLE  (0)   /**< Disable DHCP service. */
@@ -69,6 +61,8 @@ enum wlan_sec_type_e
     SECURITY_TYPE_WPA2_TKIP,   /**< WPA2 /w TKIP */
     SECURITY_TYPE_WPA2_AES,    /**< WPA2 /w AES */
     SECURITY_TYPE_WPA2_MIXED,  /**< WPA2 /w AES or TKIP */
+    SECURITY_TYPE_WPA3_SAE,	  /**< WPA3 SAE */
+    SECURITY_TYPE_WPA3_WPA2_MIXED, /** WPA3 SAE or WPA2 AES */
     SECURITY_TYPE_AUTO,        /**< It is used when calling @ref bkWlanStartAdv, _BK_ read security type from scan result. */
 };
 #endif
@@ -122,11 +116,11 @@ typedef  struct  _ScanResult
 typedef  struct  _ScanResult_adv
 {
 	char ApNum; 	  /**< The number of access points found in scanning.*/
-	struct
+	struct ApListStruct
 	{
 		char ssid[32];	/**< The SSID of an access point.*/
 		char ApPower;	/**< Signal strength, min:0, max:100*/
-		char bssid[6];	/**< The BSSID of an access point.*/
+		uint8_t bssid[6];	/**< The BSSID of an access point.*/
 		char channel;	/**< The RF frequency, 1-13*/
 		wlan_sec_type_t security;	/**< Security type, @ref wlan_sec_type_t*/
 	} *ApList;
@@ -222,6 +216,18 @@ typedef struct
 	int8_t rssi;
 }hal_wifi_link_info_t;
 
+//same with RL_BSSID_INFO_T{}
+struct wlan_fast_connect_info
+{
+	uint8_t ssid[33];
+	uint8_t bssid[6];
+	uint8_t security;
+	uint8_t channel;
+	uint8_t psk[65];
+	uint8_t pwd[65];
+};
+
+
 typedef struct vif_addcfg_st {
     char *ssid;
     char *key;
@@ -230,6 +236,11 @@ typedef struct vif_addcfg_st {
     u8 adv;
 } VIF_ADDCFG_ST, *VIF_ADDCFG_PTR;
 
+enum
+{
+	MTR_GENERAL_SNIFFER_TYPE = 1,
+	MTR_PASSIVE_SCAN_SNIFFER_TYPE
+};
 typedef void (*monitor_data_cb_t)(uint8_t *data, int len, hal_wifi_link_info_t *info);
 #endif
 
@@ -374,6 +385,8 @@ int bk_wlan_monitor_rx_type(int type);
  *  @detail This function disconnect wifi station and softAP.
  *
  */
+int bk_wlan_start_passive_scan_sniffer(void);
+int bk_wlan_stop_passive_scan_sniffer(void);
 int bk_wlan_start_monitor(void);
 
 /** @brief  Stop wifi monitor mode
@@ -410,6 +423,7 @@ extern monitor_data_cb_t bk_wlan_get_bcn_cb(void);
 extern void bk_wlan_enable_lsig(void);
 extern void bk_wlan_disable_lsig(void);
 extern int bk_wlan_is_monitor_mode(void);
+extern int bk_wlan_is_general_sniffer_type(void);
 extern void bk_wlan_set_ap_monitor_coexist(int val);
 extern int bk_wlan_get_ap_monitor_coexist();
 extern uint32_t bk_sta_cipher_is_open(void);
@@ -423,15 +437,12 @@ extern uint32_t bk_wlan_get_INT_status(void);
 extern void bk_wlan_terminate_sta_rescan(void);
 extern int is_apm_bss_config_empty(void);
 
-/** @brief  Request deep sleep,and wakeup by gpio.
+/** @brief  Request deep sleep,and wakeup by gpio,rtc,or usb.
  *
- *  @param  gpio_index_map:The gpio bitmap which set 1 enable wakeup deep sleep.
- *              gpio_index_map is hex and every bits is map to gpio0-gpio31.
- *          gpio_edge_map:The gpio edge bitmap for wakeup gpios,
- *              gpio_edge_map is hex and every bits is map to gpio0-gpio31.
- *              0:rising,1:falling.
+ *  @param  first set PS_DEEP_CTRL_PARAM struct.
  */
-void bk_enter_deep_sleep(UINT32 gpio_index_map,UINT32 gpio_edge_map);
+extern void bk_enter_deep_sleep_mode ( PS_DEEP_CTRL_PARAM *deep_param );
+
 
 /** @brief  Enable dtim power save,close rf,and wakeup by ieee dtim dynamical
  *
@@ -493,6 +504,8 @@ void bk_wlan_ap_set_default_channel(uint8_t channel);
 void bk_wlan_phy_open_cca(void);
 void bk_wlan_phy_close_cca(void);
 void bk_wlan_phy_show_cca(void);
+extern void net_wlan_add_netif(void *mac);
+extern void wpa_hostapd_release_scan_rst(void);
 
 #ifdef CONFIG_AOS_MESH
 void wlan_register_mesh_monitor_cb(monitor_data_cb_t fn);
@@ -500,6 +513,43 @@ monitor_data_cb_t wlan_get_mesh_monitor_cb(void);
 int wlan_is_mesh_monitor_mode(void);
 int wlan_set_mesh_bssid(uint8_t *bssid);
 uint8_t *wlan_get_mesh_bssid(void);
+#endif
+#if CFG_WPA_CTRL_IFACE
+int wlan_sta_set(uint8_t *ssid, uint8_t ssid_len, uint8_t *psk);
+int wlan_sta_set_config(wlan_sta_config_t *config);
+int wlan_sta_get_config(wlan_sta_config_t *config);
+int wlan_sta_set_autoconnect(int enable);
+int wlan_sta_get_bss_size(uint32_t * size);
+int wlan_sta_get_bss(wlan_sta_bss_info_t * bss_get);
+int wlan_sta_set_bss(wlan_sta_bss_info_t * bss_set);
+int wlan_sta_enable(void);
+int wlan_sta_disable(void);
+int wlan_sta_scan_once(void);
+int wlan_sta_scan(wlan_sta_scan_param_t *param);
+int wlan_sta_scan_result(ScanResult_adv *results);
+int wlan_sta_scan_interval(int sec);
+int wlan_sta_bss_max_count(uint8_t count);
+int wlan_sta_bss_flush(int age);
+int wlan_sta_connect(int chan);
+int wlan_sta_disconnect(void);
+int wlan_sta_state(wlan_sta_states_t *state);
+int wlan_sta_ap_info(struct ApListStruct *ap);
+int wlan_sta_gen_psk(wlan_gen_psk_param_t *param);
+int wlan_ap_set(uint8_t *ssid, uint8_t ssid_len, uint8_t *psk);
+
+int wlan_ap_set_config(wlan_ap_config_t *config);
+int wlan_ap_get_config(wlan_ap_config_t *config);
+int wlan_ap_enable(void);
+int wlan_ap_reload(void);
+int wlan_ap_disable(void);
+int wlan_ap_sta_num(int *num);
+int wlan_ap_sta_info(wlan_ap_stas_t *stas);
+int wlan_register_notifier(notify_func func, void *arg);
+int wlan_unregister_notifier(notify_func func, void *arg);
+
+void wlan_read_fast_connect_info(struct wlan_fast_connect_info *fci);
+void wlan_write_fast_connect_info(struct wlan_fast_connect_info *fci);
+void wlan_clear_fast_connect_info(void);
 #endif
 
 
@@ -509,6 +559,18 @@ uint32_t bk_wlan_stop_ez_of_sta(void);
 int bk_wlan_send_80211_raw_frame(uint8_t *buffer, int len);
 int bk_wlan_send_raw_frame_with_cb(uint8_t *buffer, int len, void *cb, void *param);
 
+extern void bk_wlan_start_assign_scan(UINT8 **ssid_ary, UINT8 ssid_num);
+extern int bk_wlan_get_channel(void);
+
+extern int bk_wlan_dtim_rf_ps_timer_pause(void);
+extern int bk_wlan_dtim_rf_ps_timer_start(void);
+extern int bk_wlan_dtim_rf_ps_mode_disable(void);
+
+extern int wifi_set_mac_address(char *mac);
+extern void wifi_get_mac_address(char *mac, u8 type);
+
+
+extern void bk_reboot(void);
 #if CFG_SUPPORT_ALIOS
 /**********************for alios*******************************/
 static void scan_cb(void *ctxt, void *user);

@@ -11,21 +11,10 @@
 
 #ifndef _CHAN_H_
 #define _CHAN_H_
-
-/**
- *****************************************************************************************
- * @defgroup CHAN CHAN
- * @ingroup LMAC
- * @brief LMAC MAC Management module.
- * @{
- *****************************************************************************************
- */
-
 /*
  * INCLUDE FILES
  ****************************************************************************************
  */
-
 #include "co_int.h"
 #include "co_bool.h"
 #include "mac_common.h"
@@ -35,6 +24,34 @@
 #include "mm_timer.h"
 #include "hal_desc.h"
 #include "hal_machw.h"
+
+/**
+ * DEBUG (DEFINES, MACROS, ...)
+ ****************************************************************************************
+ */
+
+/// Enable or disable TBTT Switch scheduling debug
+#define CHAN_DEBUG_TBTT_EN      (0)
+
+/**
+ * Debug Configuration for CHAN Module
+ *      0 - Traces are disabled
+ *      1:3 - Level of verbosity
+ */
+#define CHAN_DEBUG_TRACES_EN    (0)
+
+#if (CHAN_DEBUG_TRACES_EN)
+/// Function used to print module information
+#define CHAN_DEBUG_PRINT(lvl, format, ...)                       \
+    do {                                                            \
+        if (lvl <= CHAN_DEBUG_TRACES_EN)                         \
+        {                                                           \
+        }                                                           \
+    } while (0);
+#else
+#define CHAN_DEBUG_PRINT(lvl, format, ...)
+#endif //(CHAN_DEBUG_TRACES_EN)
+
 
 #if (NX_CHNL_CTXT)
 
@@ -73,12 +90,15 @@
  * Delay between the start of a channel switch procedure and the time the new channel
  * should be active (in us)
  */
-#define CHAN_SWITCH_DELAY      (2500)
+#define CHAN_SWITCH_DELAY         (2500)
 /// Switch timeout duration
-#define CHAN_SWITCH_TO_DUR     (4000)
+#define CHAN_SWITCH_TO_DUR        (4000)
 /* Delay before switching on a Scan or a ROC channel, indicate minimal 
    duration between two successive scan/roc operations*/
-#define CHAN_CONN_LESS_DELAY   (90000)
+#define CHAN_CONN_LESS_DELAY       (9000) 
+
+#define CHAN_MIN_CONN_LESS_DELAY   (60 * 1000)
+#define CHAN_MIN_SCAN_TIME         (10 * 1000)
 
 /**
  * ENUMERATIONS
@@ -232,6 +252,9 @@ struct chan_env_tag
     struct mm_timer_tag tmr_ctxt_op;
     /// Scan/RoC Delay Timer
     struct mm_timer_tag tmr_conn_less;
+
+	/* for more probe request*/
+    struct mm_timer_tag secondary_active_tmr;
 
     /// Channel Distribution Event Duration
     uint32_t cde_dur_us;
