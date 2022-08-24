@@ -65,7 +65,12 @@ static const TUYA_OS_BT_INTF m_tuya_os_bt_intfs = {
 };
 /* add end */
 
-void ble_write_callback(write_req_t *write_req)
+
+/**
+ * @brief tuya_os_adapt_bt 蓝牙写cb
+ * @return none
+ */
+static void ble_write_callback(write_req_t *write_req)
 {
     tuya_ble_data_buf_t data;
 
@@ -79,12 +84,17 @@ void ble_write_callback(write_req_t *write_req)
         data.len = write_req->len;
 
         os_printf("%s len:%d\r\n", __FUNCTION__, data.len);
-        if(ty_bt_msg_cb!=NULL)
+        if(ty_bt_msg_cb!=NULL) {
             ty_bt_msg_cb(0, TY_BT_EVENT_RX_DATA, &data);
+        }
     }
 }
 
-unsigned char ble_read_callback(read_req_t *read_req)
+/**
+ * @brief tuya_os_adapt_bt 蓝牙读取cb
+ * @return none
+ */
+static unsigned char ble_read_callback(read_req_t *read_req)
 {
     if(read_req->att_idx == 5)
     {
@@ -93,7 +103,11 @@ unsigned char ble_read_callback(read_req_t *read_req)
     return 2;
 }
 
-void ble_event_callback(ble_event_t event, void *param)
+/**
+ * @brief tuya_os_adapt_bt 蓝牙事件cb
+ * @return none
+ */
+static void ble_event_callback(ble_event_t event, void *param)
 {
     switch(event)
     {
@@ -201,7 +215,11 @@ void ble_event_callback(ble_event_t event, void *param)
     }
 }
 
-void ble_recv_adv_callback(uint8_t *buf, uint8_t len)
+/**
+ * @brief tuya_os_adapt_bt 蓝牙接收cb
+ * @return OPERATE_RET 
+ */
+static void ble_recv_adv_callback(uint8_t *buf, uint8_t len)
 {
 #if (BLE_APP_CLIENT)
     uint8_t find = 0;
@@ -220,16 +238,20 @@ void ble_recv_adv_callback(uint8_t *buf, uint8_t len)
 #endif
 }
 
-
+/**
+ * @brief tuya_os_adapt_bt 蓝牙初始化
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_bt_port_init(ty_bt_param_t *p)
 {
 
     bk_printf("!!!!!!!!!!tuya_os_adapt_bt_port_init\r\n");
 
-    if((p!=NULL)&&(p->cb!=NULL))
+    if((p!=NULL)&&(p->cb!=NULL)) {
         ty_bt_msg_cb = p->cb;
-    else
+    } else {
         bk_printf("!!!!!!!!!!tuya_os_adapt_bt_port_init, p is null\r\n");
+    }
 
     ble_activate(NULL);
     ble_set_write_cb(ble_write_callback);
@@ -240,17 +262,20 @@ int tuya_os_adapt_bt_port_init(ty_bt_param_t *p)
     return OPRT_OS_ADAPTER_OK;
 }
 
+/**
+ * @brief tuya_os_adapt_bt 蓝牙断开关闭
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_bt_port_deinit(void)
 {
-
     unsigned char app_status = 0;
     app_status = appm_get_app_status();
-    bk_printf("!!!!!!!!!!tuya_bt_close:%d\r\n", app_status);
-    if(app_status == 3)
+    bk_printf("!!!!!!!!!!tuya_os_adapt_bt_port_deinit status:%d\r\n", app_status);
+    if(APPM_ADVERTISING == app_status) 
     {
         appm_stop_advertising();
     }
-    if(app_status == 9)
+    if(APPM_CONNECTED == app_status)
     {
         if_start_adv_after_disconnect = false;
         appm_disconnect(0x13);
@@ -264,6 +289,10 @@ int tuya_os_adapt_bt_port_deinit(void)
     return OPRT_OS_ADAPTER_OK;
 }
 
+/**
+ * @brief tuya_os_adapt_bt 蓝牙断开
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_bt_gap_disconnect(void)
 {
     bk_printf("!!!!!!!!!!tuya_os_adapt_bt_gap_disconnect\r\n");
@@ -273,10 +302,14 @@ int tuya_os_adapt_bt_gap_disconnect(void)
     return OPRT_OS_ADAPTER_OK;
 }
 
-int tuya_os_adapt_bt_send(BYTE_T *data, UINT8_T len)
+/**
+ * @brief tuya_os_adapt_bt 蓝牙发送
+ * @return OPERATE_RET 
+ */
+int tuya_os_adapt_bt_send(unsigned char *data, unsigned char len)
 {
     os_printf("!!!!!!!!!!tuya_os_adapt_bt_send\r\n");
-    while(ble_att_flag == 1){
+    while(ble_att_flag == 1) {
         rtos_delay_milliseconds(1);
     }
     ble_att_flag = 1;
@@ -286,14 +319,13 @@ int tuya_os_adapt_bt_send(BYTE_T *data, UINT8_T len)
     return OPRT_OS_ADAPTER_OK;
 }
 
+/**
+ * @brief tuya_os_adapt_bt 广播包重置
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_bt_reset_adv(tuya_ble_data_buf_t *adv, tuya_ble_data_buf_t *scan_resp)
 {
     bk_printf("!!!!!!!!!!tuya_os_adapt_bt_reset_adv\r\n");
-    /*if (kernel_state_get(TASK_APP) == APPM_ADVERTISING)
-    {
-        appm_stop_advertising();
-        rtos_delay_milliseconds(100);
-    }*/
 
     memset(&adv_info, 0x00, sizeof(adv_info));
 
@@ -308,42 +340,76 @@ int tuya_os_adapt_bt_reset_adv(tuya_ble_data_buf_t *adv, tuya_ble_data_buf_t *sc
     adv_info.respDataLen = scan_resp->len;
 
     appm_update_adv_data(adv->data, adv->len, scan_resp->data, scan_resp->len);
-    //appm_start_advertising();
 
     return OPRT_OS_ADAPTER_OK;
 }
 
-int tuya_os_adapt_bt_get_rssi(SCHAR_T *rssi)
+
+/**
+ * @brief tuya_os_adapt_bt 获取rssi信号值
+ * @return OPERATE_RET 
+ */
+int tuya_os_adapt_bt_get_rssi(signed char *rssi)
 {
-    //bk_printf("!!!!!!!!!!tuya_os_adapt_bt_get_rssi");
 
     return OPRT_OS_ADAPTER_OK;
 }
 
-int tuya_os_adapt_bt_start_adv()
+/**
+ * @brief tuya_os_adapt_bt 停止广播
+ * @return OPERATE_RET 
+ */
+int tuya_os_adapt_bt_start_adv(void)
 {
     bk_printf("!!!!!!!!!!tuya_os_adapt_bt_start_advn\r\n");
-    if(appm_start_advertising() == OPRT_OS_ADAPTER_OK)
+    if(OPRT_OS_ADAPTER_OK == appm_start_advertising()) {
         return OPRT_OS_ADAPTER_OK;
+
+    }
 
     return OPRT_OS_ADAPTER_BT_ADV_START_FAILED;
 }
 
-int tuya_os_adapt_bt_stop_adv()
+/**
+ * @brief tuya_os_adapt_bt 停止广播
+ * @return OPERATE_RET 
+ */
+int tuya_os_adapt_bt_stop_adv(void)
 {
-    bk_printf("!!!!!!!!!!tuya_os_adapt_bt_stop_adv\r\n");
-    if(appm_stop_advertising()==OPRT_OS_ADAPTER_OK)
-        return OPRT_OS_ADAPTER_OK;
+    unsigned char app_status;
 
-    return OPRT_OS_ADAPTER_BT_ADV_STOP_FAILED;
+    app_status = appm_get_app_status();
+    if(APPM_ADVERTISING == app_status)
+    {
+        if(appm_stop_advertising() != OPRT_OS_ADAPTER_OK) {
+            bk_printf("!!!!!!!!!!tuya_os_adapt_bt_stop_adv stop err\r\n");
+            return OPRT_OS_ADAPTER_BT_ADV_STOP_FAILED;
+        }
+    }
+    if(APPM_CONNECTED == app_status)
+    {
+        if_start_adv_after_disconnect = false;
+        appm_disconnect(0x13);
+        bk_printf("!!!!!!!!!!tuya_os_adapt_bt_stop_adv 0x13 \r\n");
+    }
+    
+    return OPRT_OS_ADAPTER_OK;
+
 }
 
+/**
+ * @brief tuya_os_adapt_bt 主动扫描
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_bt_assign_scan(IN OUT ty_bt_scan_info_t *info)
 {
     return OPRT_OS_ADAPTER_OK;
 }
 
-/* add begin: by sunkz, interface regist */
+/**
+ * @brief tuya_os_adapt_bt 接口注册
+ * @return OPERATE_RET 
+ */
 int tuya_os_adapt_reg_bt_intf(void)
 {
     return tuya_os_adapt_reg_intf(INTF_BT, &m_tuya_os_bt_intfs);

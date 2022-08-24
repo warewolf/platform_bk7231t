@@ -1171,6 +1171,10 @@ struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 	return selected;
 }
 
+void wpa_supplicant_rescan_terminal(void)
+{
+	mhdr_set_station_status_when_reconnect_over();
+}
 
 static void wpa_supplicant_req_new_scan(struct wpa_supplicant *wpa_s,
 					int timeout_sec, int timeout_usec)
@@ -1423,12 +1427,19 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 			return -1;
 		if (!own_request)
 			return -1;
-		os_printf("Failed to get scan results - try scanning again, retry cnt = %d.\r\n", g_sta_param_ptr->retry_cnt);
+		
+		os_printf("Failed to get scan results - try scanning again, retry cnt = %d.\r\n", 
+							g_sta_param_ptr->retry_cnt);
 		if(g_sta_param_ptr->retry_cnt)
 		{
 			g_sta_param_ptr->retry_cnt--;
 			wpa_supplicant_req_new_scan(wpa_s, 1, 0);
 		}
+		else
+		{
+			wpa_supplicant_rescan_terminal();
+		}
+		
 		ret = -1;
 		goto scan_work_done;
 	}
@@ -1584,7 +1595,7 @@ static int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 			return 0;
 		}
 #endif /* CONFIG_MESH */
-		os_printf("No suitable network found\r\n");
+	os_printf("No suitable network found\r\n");
 
 	extern u8 supplicant_main_is_exit(void);
 	// if del sta command has send, return;

@@ -1063,9 +1063,17 @@ void wpa_supplicant_req_scan(struct wpa_supplicant *wpa_s, int sec, int usec)
 	} 
 	else 
 	{
-		os_printf("Setting scan request: %d.%06d sec\r\n",
-					sec, usec);		
-		eloop_register_timeout(sec, usec, wpa_supplicant_scan, wpa_s, NULL);
+		os_printf("Setting scan[retry%d] request: %d.%06d sec\r\n", g_sta_param_ptr->retry_cnt, sec, usec);		
+
+		if(g_sta_param_ptr->retry_cnt)
+		{
+			g_sta_param_ptr->retry_cnt--;
+			eloop_register_timeout(sec, usec, wpa_supplicant_scan, wpa_s, NULL);
+		}
+		else
+		{
+			wpa_supplicant_rescan_terminal();
+		}
 	}
 }
 

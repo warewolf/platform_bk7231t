@@ -227,7 +227,6 @@ static void wm_netif_status_static_callback(struct netif *n)
     }
 }
 	
-
 static void wm_netif_status_callback(struct netif *n)
 {
 	uint32_t val;

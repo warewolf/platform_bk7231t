@@ -186,16 +186,26 @@ STATIC BOOL_T scan_test_ssid(VOID)
 {
     OPERATE_RET op_ret = OPRT_OK;
     GW_WORK_STAT_MAG_S read_gw_wsm;
+    BOOL_T mf_close = FALSE;
 
+    mf_close = mf_test_is_timeout();
+    if(TRUE == mf_close) {
+        PR_NOTICE("have actived over 15min, don't scan prod test ssid");
+        return FALSE;
+    }
+    
     op_ret = wd_gw_wsm_read(&read_gw_wsm);
-    if(gwcm_mode == GWCM_OLD_PROD ) {
-        if(read_gw_wsm.nc_tp >= GWNS_TY_SMARTCFG && read_gw_wsm.nc_tp != GWNS_UNCFG_SMC_AP) {
+
+    if((gwcm_mode == GWCM_OLD_PROD ) || (gwcm_mode == GWCM_LOW_POWER_AUTOCFG) || (gwcm_mode == GWCM_SPCL_AUTOCFG)) {
+        if(read_gw_wsm.nc_tp >= GWNS_TY_SMARTCFG) {
             return FALSE;
         }
-    } else if (gwcm_mode == GWCM_SPCL_MODE || gwcm_mode == GWCM_LOW_POWER){
-        if(read_gw_wsm.nc_tp >= GWNS_UNCFG_SMC && read_gw_wsm.nc_tp != GWNS_UNCFG_SMC_AP) {
+    } else if (gwcm_mode == GWCM_SPCL_MODE || gwcm_mode == GWCM_LOW_POWER) {
+        if(read_gw_wsm.nc_tp >= GWNS_UNCFG_SMC) {
             return FALSE;
         }
+    } else {
+        ;
     }
     
     wf_wk_mode_set(WWM_STATION);
@@ -208,12 +218,14 @@ STATIC BOOL_T scan_test_ssid(VOID)
         PR_DEBUG("wf_assign_ap_scan failed(%d)",op_ret);
         return FALSE;
     }
+    
     //check if has authorized
     op_ret = wd_gw_base_if_read(&(get_gw_cntl()->gw_base));
     if(OPRT_OK != op_ret) {
         PR_DEBUG("read flash err");
         flag = FALSE;
     }
+    
     // gateway base info verify
     #if TY_SECURITY_CHIP
     if(!get_gw_cntl()->gw_base.has_auth) {
@@ -231,6 +243,7 @@ STATIC BOOL_T scan_test_ssid(VOID)
     if(app_prod_test) {
         app_prod_test(flag, ap->rssi);
     }
+    
     return TRUE;
 }
 

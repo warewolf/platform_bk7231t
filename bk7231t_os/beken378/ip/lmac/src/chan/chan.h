@@ -97,7 +97,7 @@
    duration between two successive scan/roc operations*/
 #define CHAN_CONN_LESS_DELAY       (9000) 
 
-#define CHAN_MIN_CONN_LESS_DELAY   (2 * 1000)
+#define CHAN_MIN_CONN_LESS_DELAY   (60 * 1000)
 #define CHAN_MIN_SCAN_TIME         (10 * 1000)
 
 /**

@@ -16,13 +16,17 @@
 #include "mcu_ps_pub.h"
 #include "role_launch.h"
 
-typedef VOID (*MHDR_STATION_ERR_STATUS)(rw_evt_type err_value);
-
 uint32_t resultful_scan_cfm = 0;
 uint8_t *ind_buf_ptr = 0;
 struct co_list rw_msg_rx_head;
 struct co_list rw_msg_tx_head;
-rw_evt_type connect_flag = RW_EVT_STA_IDLE;
+
+/* transient status is the passing status of station connection,
+   abnormal status is exceptional status, which maybe is uploaded to upper layer.
+   the application will go with the status.
+ */
+static rw_evt_type g_connect_transient_status = RW_EVT_STA_IDLE;
+static rw_evt_type g_connect_abnormal_status = RW_EVT_STA_IDLE;
 
 SCAN_RST_UPLOAD_T *scan_rst_set_ptr = 0;
 IND_CALLBACK_T scan_cfm_cb = {0};
@@ -30,10 +34,6 @@ IND_CALLBACK_T assoc_cfm_cb = {0};
 IND_CALLBACK_T deassoc_evt_cb = {0};
 IND_CALLBACK_T deauth_evt_cb = {0};
 IND_CALLBACK_T wlan_connect_user_cb = {0};
-
-MHDR_STATION_ERR_STATUS err_status_cb = NULL;
-
-
 
 extern void app_set_sema(void);
 extern int get_security_type_from_ie(u8 *, int, u16);
@@ -96,13 +96,14 @@ void sr_release_scan_results(SCAN_RST_UPLOAD_PTR ptr)
     {
         sr_free_all(ptr);
     }
+	
     scan_rst_set_ptr = 0;
 	resultful_scan_cfm = 0;
 	wpa_clear_scan_results();
 }
 #endif
 
-#if 2
+#if 2 /*rx msg process*/
 void mr_kmsg_init(void)
 {
     co_list_init(&rw_msg_tx_head);
@@ -271,33 +272,64 @@ void mhdr_connect_ind(void *msg, UINT32 len)
     mcu_prevent_clear(MCU_PS_CONNECT);
 }
 
-void mhdr_set_station_status_err_cb(MHDR_STATION_ERR_STATUS status_cb)
+void mhdr_set_station_status_when_reconnect_over(void)
 {
-    if(status_cb){
-        err_status_cb = status_cb;
-    }
+	if(RW_EVT_STA_CONNECTED != g_connect_transient_status)
+	{
+		g_connect_transient_status = g_connect_abnormal_status;
+	}
+}
+
+void mhdr_set_abnormal_status(rw_evt_type val)
+{
+	rw_evt_type pre_status = g_connect_abnormal_status;
+	
+	if((RW_EVT_STA_PASSWORD_WRONG == pre_status)
+			|| (RW_EVT_STA_NO_AP_FOUND == pre_status))
+	{
+		goto set_exit;
+	}
+
+	g_connect_abnormal_status = val;
+
+set_exit:
+	return;
+}
+
+uint32_t mhdr_is_station_abnormal_status(rw_evt_type val)
+{
+	uint32_t unusual_flag = 0;
+
+	if((RW_EVT_STA_PASSWORD_WRONG == val)
+		|| (RW_EVT_STA_NO_AP_FOUND == val)
+		|| (RW_EVT_STA_BEACON_LOSE == val)
+		|| (RW_EVT_STA_ASSOC_FULL == val)
+		|| (RW_EVT_STA_DISCONNECTED == val)
+		|| (RW_EVT_STA_CONNECT_FAILED == val))
+	{	
+		unusual_flag = 1;
+	}
+	
+	return unusual_flag;
 }
 
 void mhdr_set_station_status(rw_evt_type val)
 {
     GLOBAL_INT_DECLARATION();
+	
     GLOBAL_INT_DISABLE();
-    connect_flag = val;
-    if((connect_flag == RW_EVT_STA_BEACON_LOSE) || 
-        (connect_flag == RW_EVT_STA_PASSWORD_WRONG) || 
-        (connect_flag == RW_EVT_STA_NO_AP_FOUND) ||
-        (connect_flag == RW_EVT_STA_ASSOC_FULL) ||
-        (connect_flag == RW_EVT_STA_CONNECT_FAILED)) {
-        if(err_status_cb) {
-            err_status_cb(connect_flag);
-        }
-    }
+    g_connect_transient_status = val;
+
+	if(mhdr_is_station_abnormal_status(val))
+	{
+		mhdr_set_abnormal_status(val);
+	}
     GLOBAL_INT_RESTORE();
 }
 
 rw_evt_type mhdr_get_station_status(void)
 {
-    return connect_flag;
+    return g_connect_transient_status;
 }
 
 static void sort_scan_result(SCAN_RST_UPLOAD_T *ap_list)
@@ -526,6 +558,7 @@ void rwnx_handle_recv_msg(struct ke_msg *rx_msg)
     case SM_DISCONNECT_IND:
         os_printf("SM_DISCONNECT_IND\r\n");
         mhdr_disconnect_ind(rx_msg);
+	
 		extern UINT32 rwnx_sys_is_enable_hw_tpc(void);
         if(rwnx_sys_is_enable_hw_tpc() == 0)
             rwnx_cal_set_txpwr(20, 11);

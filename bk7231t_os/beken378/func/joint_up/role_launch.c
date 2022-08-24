@@ -461,14 +461,31 @@ uint32_t rl_sta_cache_request_enter(void)
 
 	JL_PRT("sta_cache_request\r\n");
     GLOBAL_INT_DISABLE();
-	if(g_sta_cache.sta_req_flag)
+	
+	do
 	{
-		rl_sta_request_enter(&g_sta_cache.sta_param, g_sta_cache.sta_completion);
+		if(g_sta_param_ptr->retry_cnt)
+		{
+			os_printf("g_sta_param_ptr->retry_cnt:%d\r\n", g_sta_param_ptr->retry_cnt);
+			g_sta_param_ptr->retry_cnt--;
+		}
+		else
+		{
+			mhdr_set_station_status_when_reconnect_over();
 
-		ret = 1;
-	}
+			/* the opportunity of reconnecting is over*/
+			break;
+		}
+			
+		if(g_sta_cache.sta_req_flag)
+		{
+			rl_sta_request_enter(&g_sta_cache.sta_param, g_sta_cache.sta_completion);
 
-	os_memset(&g_sta_cache, 0, sizeof(g_sta_cache));
+			ret = 1;
+		}
+
+		os_memset(&g_sta_cache, 0, sizeof(g_sta_cache));
+	}while(0);
 	
     GLOBAL_INT_RESTORE();
 
@@ -641,7 +658,8 @@ uint32_t rl_sta_may_next_launch(void)
         yes = 1;
     }
 	else if(g_role_launch.pre_sta_cancel
-        && (RL_STATUS_STA_DHCPING == rl_pre_sta_get_status()))
+        && ((RL_STATUS_STA_DHCPING == rl_pre_sta_get_status())
+        || (RL_STATUS_STA_CONNECTING == rl_pre_sta_get_status())))
 	{
 		yes = 2;
 	}

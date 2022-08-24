@@ -1842,8 +1842,6 @@ static void Ps_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
     
         gpio_index = os_strtoul(argv[2], NULL, 16);
         dtim = os_strtoul(argv[3], NULL, 16);
-
-        bk_enter_deep_sleep(gpio_index,dtim);
     }
 #endif
 #if CFG_USE_MCU_PS

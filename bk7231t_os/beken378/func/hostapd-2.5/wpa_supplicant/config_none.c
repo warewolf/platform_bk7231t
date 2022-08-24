@@ -317,7 +317,6 @@ static struct wpa_ssid * wpa_config_read_network(int *line, int id)
 	}
 	
 	errors += wpa_config_validate_network(ssid, *line);
-
 	if(errors){
 		wpa_config_free_ssid(ssid);
 		ssid = NULL;

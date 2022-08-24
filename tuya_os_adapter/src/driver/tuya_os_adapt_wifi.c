@@ -48,7 +48,6 @@ static WF_WK_MD_E wf_mode = WWM_STATION; //WWM_LOWPOWER
 static SNIFFER_CALLBACK snif_cb = NULL;
 
 static SEM_HANDLE scanHandle = NULL;
-static int last_err_status = 0;
 
 static bool lp_mode = FALSE;
 
@@ -79,7 +78,6 @@ static const TUYA_OS_WIFI_INTF m_tuya_os_wifi_intfs = {
     .register_recv_mgnt_callback  = tuya_os_adapt_wifi_register_recv_mgnt_callback,
     .set_lp_mode                  = tuya_os_adapt_set_wifi_lp_mode,
     .rf_calibrated                = tuya_os_adapt_wifi_rf_calibrated,
-    .station_get_err_stat         = tuya_os_adapt_wifi_err_status_get,
 };
 /* add end */
 
@@ -449,36 +447,6 @@ static int _wf_wk_mode_exit(WF_WK_MD_E mode)
 }
 
 /**
- * @brief set wifi connect err status callback
- * 
- * @param[in]      rw_evt_type err_value
- * @return none
- */
-static void wifi_connect_err_status_cb(rw_evt_type err_value)
-{   
-     switch(err_value) {
-   
-        case RW_EVT_STA_PASSWORD_WRONG:         
-             last_err_status = WSS_PASSWD_WRONG;       
-            break;
-        case RW_EVT_STA_NO_AP_FOUND:
-            last_err_status = WSS_NO_AP_FOUND;
-            break;
-        case RW_EVT_STA_ASSOC_FULL:             
-        case RW_EVT_STA_BEACON_LOSE:            
-        case RW_EVT_STA_DISCONNECTED:           
-        case RW_EVT_STA_CONNECT_FAILED: 
-            if(last_err_status == 0) { 
-                last_err_status = WSS_CONN_FAIL;  //保证密码错误或者AP找不到状态不会消失
-            }
-            break;
-    }
-
-    return;
-
-}
-
-/**
  * @brief set wifi work mode
  * 
  * @param[in]       mode        wifi work mode
@@ -492,7 +460,6 @@ int tuya_os_adapt_wifi_set_work_mode(const WF_WK_MD_E mode)
 
     if(first_set_flag) {
         extended_app_waiting_for_launch();
-        mhdr_set_station_status_err_cb(wifi_connect_err_status_cb);
         first_set_flag = FALSE;
     }
 
@@ -630,10 +597,7 @@ int tuya_os_adapt_wifi_station_get_status(WF_STATION_STAT_E *stat)
             case RW_EVT_STA_BEACON_LOSE:            *stat = WSS_CONN_FAIL;          break;
             case RW_EVT_STA_DISCONNECTED:           *stat = WSS_CONN_FAIL;          break;
             case RW_EVT_STA_CONNECT_FAILED:         *stat = WSS_CONN_FAIL;          break;
-            case RW_EVT_STA_CONNECTED:              
-                *stat = WSS_CONN_SUCCESS; 
-                last_err_status = 0;       
-                break;
+            case RW_EVT_STA_CONNECTED:              *stat = WSS_CONN_SUCCESS;       break;
             case RW_EVT_STA_GOT_IP:                 *stat = WSS_GOT_IP;             break;
         }
     }
@@ -655,25 +619,6 @@ int tuya_os_adapt_wifi_station_get_status(WF_STATION_STAT_E *stat)
     
     return OPRT_OS_ADAPTER_OK;
 }
-
-/**
- * @brief get wifi err status 
- * @param[in] none
- * @return last err status, 0 meaning no error
- */
-int tuya_os_adapt_wifi_err_status_get(WF_STATION_STAT_E *stat)
-{
-    
-    rw_evt_type type ;
-
-    if(stat == NULL) {
-        return OPRT_OS_ADAPTER_INVALID_PARM;
-    }
-
-    *stat = last_err_status;
-    return OPRT_OS_ADAPTER_OK;
-}
-
 
 /**
  * @brief start a soft ap

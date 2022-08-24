@@ -38,85 +38,64 @@
 
 #if defined(TY_BT_MOD) && TY_BT_MOD == 1
 
-//hz-低功耗时，只支持蓝牙配网，不支持蓝牙控制，该宏的作用只是框住相关代码，便于管理
-#define ONLY_SUPPORT_BT_CONFIG      (1)
-
 /**
- * @brief tuya_os_adapt_bt_port_init
- * 
- * @param[in] p 
+ * @brief tuya_os_adapt_bt 蓝牙初始化
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_port_init(ty_bt_param_t *p);
+int tuya_os_adapt_bt_port_init(ty_bt_param_t *p);
 
 /**
- * @brief tuya_os_adapt_bt_port_deinit
- * 
+ * @brief tuya_os_adapt_bt 蓝牙断开关闭
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_port_deinit(void);
+int tuya_os_adapt_bt_port_deinit(void);
 
 /**
- * @brief tuya_os_adapt_bt_gap_disconnect
- * 
+ * @brief tuya_os_adapt_bt 蓝牙断开
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_gap_disconnect(void);
+int tuya_os_adapt_bt_gap_disconnect(void);
 
 /**
- * @brief tuya_os_adapt_bt_send
- * 
- * @param[in] data: send buffer
- * @param[in] len: send buffer length
+ * @brief tuya_os_adapt_bt 蓝牙发送
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_send(BYTE_T *data, UINT8_T len);
+int tuya_os_adapt_bt_send(unsigned char *data, unsigned char len);
 
 /**
- * @brief tuya_os_adapt_bt_reset_adv
- * 
- * @param[out] adv 
- * @param[out] scan_resp 
+ * @brief tuya_os_adapt_bt 广播包重置
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_reset_adv(tuya_ble_data_buf_t *adv, tuya_ble_data_buf_t *scan_resp);
+int tuya_os_adapt_bt_reset_adv(tuya_ble_data_buf_t *adv, tuya_ble_data_buf_t *scan_resp);
 
 /**
- * @brief tuya_os_adapt_bt_get_rssi
- * 
- * @param[out] rssi 
+ * @brief tuya_os_adapt_bt 获取rssi信号值
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_get_rssi(SCHAR_T *rssi);
+int tuya_os_adapt_bt_get_rssi(signed char *rssi);
 
 /**
- * @brief tuya_os_adapt_bt_start_adv
- * 
+ * @brief tuya_os_adapt_bt 停止广播
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_start_adv(void);
+int tuya_os_adapt_bt_start_adv(void);
 
 /**
- * @brief tuya_os_adapt_bt_stop_adv
- * 
+ * @brief tuya_os_adapt_bt 停止广播
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_stop_adv(void);
+int tuya_os_adapt_bt_stop_adv(void);
 
 /**
- * @brief 
- * 
- * @param ty_bt_scan_info_t 
+ * @brief tuya_os_adapt_bt 主动扫描
  * @return OPERATE_RET 
  */
-OPERATE_RET tuya_os_adapt_bt_assign_scan(INOUT ty_bt_scan_info_t *info);
+int tuya_os_adapt_bt_assign_scan(IN OUT ty_bt_scan_info_t *info);
 
-//给sdk使用：
-OPERATE_RET tuya_os_adapt_bt_scan_init(IN TY_BT_SCAN_ADV_CB scan_adv_cb);
-OPERATE_RET tuya_os_adapt_bt_start_scan(VOID_T);
-OPERATE_RET tuya_os_adapt_bt_stop_scan(VOID_T);
-
-/* add begin: by sunkz, interface regist */
+/**
+ * @brief tuya_os_adapt_bt 接口注册
+ * @return OPERATE_RET 
+ */
 OPERATE_RET tuya_os_adapt_reg_bt_intf(void);
 /* add end */
 
