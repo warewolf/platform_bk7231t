@@ -2,14 +2,16 @@
 #define _I2C1_H_
 
 #include "uart_pub.h"
-#define I2C1_DEBUG
+//#define I2C1_DEBUG
 
 #ifdef I2C1_DEBUG
 #define I2C1_PRT                 os_printf
 #define I2C1_WPRT                warning_prf
+#define I2C1_EPRT                os_printf
 #else
 #define I2C1_PRT                 os_null_printf
 #define I2C1_WPRT                os_null_printf
+#define I2C1_EPRT                os_printf
 #endif
 
 #define I2C1_BASE_ADDR                       (0x0802300)

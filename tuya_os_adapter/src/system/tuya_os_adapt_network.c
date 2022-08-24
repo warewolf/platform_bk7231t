@@ -92,7 +92,7 @@ static const TUYA_OS_NETWORK_INTF m_tuya_os_network_intfs = {
     .accept           =    tuya_os_adapt_net_accept,
     .recv_nd_size     =    tuya_os_adapt_net_recv_nd_size,
     .str2addr         =    tuya_os_adapt_net_str2addr,
-    .addr2str         =    NULL,
+    .addr2str         =    tuya_os_adapt_net_addr2str,
     .set_keepalive    =    tuya_os_adapt_net_set_keepalive,
     .socket_bind      =    tuya_os_adapt_net_socket_bind,
     .set_cloexec      =    NULL,
@@ -153,6 +153,21 @@ UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(const char *ip)
 
     return addr2;
 }
+
+
+/**
+ * @brief : ip地址 转换为 ip字符串数据
+ * @param[in]            ip_str
+ * @return   Ascii网络字符串地址
+ */
+char* tuya_os_adapt_net_addr2str(const unsigned int ip_addr)
+{
+
+    unsigned int ip_addr_temp = ip_addr;
+
+    return ip4addr_ntoa(&ip_addr_temp);
+}
+
 
 /**
  * @brief : set fds

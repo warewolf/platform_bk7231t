@@ -111,15 +111,18 @@
 #endif // (SECURE_CONNECTIONS && (BT_EMB_PRESENT || BLE_EMB_PRESENT))
 
 #include "dbg.h"             // debug definition
-
 #include "gapm_task.h"
-
 #include "driver_sys_ctrl.h"
 #include "uart_pub.h"
 #include "ble.h"
 #include "ble_pub.h"
 #include "ble_api.h"
 #include "lld_scan.h"
+
+#if CFG_BLE_MALLOC_HEAP
+#include "sys_config.h"
+#include "mem_pub.h"
+#endif
 
 /*
  * DEFINES
@@ -266,26 +269,26 @@ struct rwip_rf_api rwip_rf;
 
 /// Heap definitions - use uint32 to ensure that memory blocks are 32bits aligned.
 #if (KERNEL_MEM_RW)
-
+#if (CFG_BLE_MALLOC_HEAP)
+uint32_t *rwip_heap_env;
+#if (BLE_HOST_PRESENT)
+uint32_t *rwip_heap_db;
+#endif
+uint32_t *rwip_heap_msg;
+uint32_t *rwip_heap_non_ret;
+#else
 /// Memory allocated for environment variables
 uint32_t KERNEL_HEAP rwip_heap_env[RWIP_CALC_HEAP_LEN(RWIP_HEAP_ENV_SIZE)];
-//uint32_t rwip_heap_env[RWIP_CALC_HEAP_LEN(RWIP_HEAP_ENV_SIZE)];
 #if (BLE_HOST_PRESENT)
 /// Memory allocated for Attribute database
 uint32_t KERNEL_HEAP rwip_heap_db[RWIP_CALC_HEAP_LEN(RWIP_HEAP_DB_SIZE)];
-//uint32_t rwip_heap_db[RWIP_CALC_HEAP_LEN(RWIP_HEAP_DB_SIZE)];
 #endif // (BLE_HOST_PRESENT)
-
-/// Memory allocated for kernel messages
-//uint32_t rwip_heap_msg[RWIP_CALC_HEAP_LEN(RWIP_HEAP_MSG_SIZE)];
-/// Non Retention memory block
-//uint32_t rwip_heap_non_ret[RWIP_CALC_HEAP_LEN(RWIP_HEAP_NON_RET_SIZE)];
 
 /// Memory allocated for kernel messages
 uint32_t KERNEL_HEAP rwip_heap_msg[RWIP_CALC_HEAP_LEN(RWIP_HEAP_MSG_SIZE)];
 /// Non Retention memory block
 uint32_t KERNEL_HEAP rwip_heap_non_ret[RWIP_CALC_HEAP_LEN(RWIP_HEAP_NON_RET_SIZE)];
-
+#endif // CFG_BLE_MALLOC_HEAP
 #endif // (KERNEL_MEM_RW)
 
 /*
@@ -361,10 +364,8 @@ void rwip_reg_init(void)
 {
     ble_set_power_up(1);
     
-	//ICU_TL410_BLE_CLK = 0x0;  //enable ble clock  icu 0x04
 	ble_clk_power_up();
 
-    //REG_ICU_INT_ENABLE |= (1<<30);  //enable ble INT    icu 0x10
     GLOBAL_INT_DIS();
 	ble_intack_clear(ble_intstat_get());
     ble_intc_set(1);
@@ -373,11 +374,10 @@ void rwip_reg_init(void)
 
 	unsigned char *p = (unsigned char *)0x00814000;
 	memset(p,0,4 * 1024);
+	
 	REG_BLE_XVR_SLOT_TIME = 0x0D123B6D;  // BLE_XVR 0x2a
 	REG_BLE_XVR_TX_CONFIG = REG_BLE_XVR_TX_CONFIG | 0x80; // BLE_XVR 0x30
 	REG_BLE_XVR_AGC_CONFIG = 0x03371C02; // BLE_XVR 0x3c
-
-    //ble_switch_rf_to_ble();
 }
 
 void rwip_reg_deinit(void)
@@ -402,7 +402,6 @@ void rwip_reg_reinit(void)
 	ble_clk_power_up();
 
     ble_intc_set(1);
-	//ble_switch_rf_to_ble();
 }
 
 /*
@@ -410,7 +409,95 @@ void rwip_reg_reinit(void)
  ****************************************************************************************
  */
 extern uint8_t cur_read_buf_idx;
+
+#if CFG_BLE_MALLOC_HEAP
+uint8_t *s_rwip_heap_ptr = NULL;
+
+int rwip_init_heap(void)
+{
+#if (KERNEL_MEM_RW)
+	int env_heap_len;
+	int db_heap_len = 0;
+	int msg_heap_len;
+	int non_ret_heap_len;
+#endif
+	int heap_len = 0;
+	int ret = -1;
 	
+#if (KERNEL_MEM_RW)
+	env_heap_len = sizeof(uint32_t) * RWIP_CALC_HEAP_LEN(RWIP_HEAP_ENV_SIZE);
+#if (BLE_HOST_PRESENT)
+	db_heap_len = sizeof(uint32_t) * RWIP_CALC_HEAP_LEN(RWIP_HEAP_DB_SIZE);
+#endif
+	msg_heap_len = sizeof(uint32_t) * RWIP_CALC_HEAP_LEN(RWIP_HEAP_MSG_SIZE);
+	non_ret_heap_len = sizeof(uint32_t) * RWIP_CALC_HEAP_LEN(RWIP_HEAP_NON_RET_SIZE);
+#endif
+
+	heap_len = 0
+	#if (KERNEL_MEM_RW)
+		+ env_heap_len
+		#if (BLE_HOST_PRESENT)
+		+ db_heap_len
+		#endif
+		+ msg_heap_len
+		+ non_ret_heap_len
+	#endif
+		;
+
+	if(s_rwip_heap_ptr)
+	{
+		ret = 0;
+		bk_printf("rwip_inited_heap\r\n");
+		goto init_heap_exit;
+	}
+	
+	s_rwip_heap_ptr = os_malloc(heap_len);
+	if(s_rwip_heap_ptr)
+	{
+		bk_printf("rwip_init_heap\r\n");
+#if (KERNEL_MEM_RW)
+		rwip_heap_env = (uint32_t *)&s_rwip_heap_ptr[0];
+		bk_printf("rwip_heap_env:%d:0x%x\r\n", env_heap_len, rwip_heap_env);
+#if (BLE_HOST_PRESENT)
+		rwip_heap_db = (uint32_t *)&s_rwip_heap_ptr[env_heap_len];
+		bk_printf("rwip_heap_db:%d:0x%x\r\n", db_heap_len, rwip_heap_db);
+#endif
+		rwip_heap_msg = (uint32_t *)&s_rwip_heap_ptr[env_heap_len + db_heap_len];
+		bk_printf("rwip_heap_msg:%d:0x%x\r\n", msg_heap_len, rwip_heap_msg);
+		
+		rwip_heap_non_ret = (uint32_t *)&s_rwip_heap_ptr[env_heap_len + db_heap_len + msg_heap_len];
+		bk_printf("rwip_heap_non_ret:%d:0x%x\r\n", non_ret_heap_len, rwip_heap_non_ret);
+#endif
+		ret = 0;
+	}
+	
+init_heap_exit:	
+	return ret;
+}
+
+int rwip_deinit_heap(void)
+{
+	bk_printf("rwip_deinit_heap\r\n");
+	if(s_rwip_heap_ptr)
+	{
+		bk_printf("rwip_deinit_heap successfully\r\n");
+		os_free(s_rwip_heap_ptr);
+		s_rwip_heap_ptr = NULL;
+		
+#if (KERNEL_MEM_RW)
+		rwip_heap_env = NULL;
+#if (BLE_HOST_PRESENT)
+		rwip_heap_db = NULL;
+#endif
+		rwip_heap_msg = NULL;
+		rwip_heap_non_ret = NULL;
+#endif
+	}
+	
+	return 0;
+}
+#endif
+
 void rwip_init(uint32_t error)
 {
     #if (NVDS_SUPPORT && DEEP_SLEEP)
@@ -418,13 +505,20 @@ void rwip_init(uint32_t error)
     uint8_t sleep_enable;
     uint8_t ext_wakeup_enable;
     #endif //NVDS_SUPPORT && DEEP_SLEEP
+	
     #if (DEEP_SLEEP)
     // Reset RW environment
     memset(&rwip_env, 0, sizeof(rwip_env));
     #endif //DEEPSLEEP
+	
     #if (KERNEL_SUPPORT)
     // Initialize kernel
     kernel_init();
+
+	#if CFG_BLE_MALLOC_HEAP
+	rwip_init_heap();
+	#endif
+	
     // Initialize memory heap used by kernel.
     #if (KERNEL_MEM_RW)
     // Memory allocated for environment variables
@@ -439,6 +533,7 @@ void rwip_init(uint32_t error)
     kernel_mem_init(KERNEL_MEM_NON_RETENTION, (uint8_t*)rwip_heap_non_ret, RWIP_HEAP_NON_RET_SIZE);
     #endif // (KERNEL_MEM_RW)
     #endif //KERNEL_SUPPORT
+	
     // Initialize RF
     #if (BT_EMB_PRESENT || BLE_EMB_PRESENT)
      rf_init(&rwip_rf);
@@ -566,13 +661,6 @@ void rwip_init(uint32_t error)
 
 void rwip_reset(void)
 {
-#if (NVDS_SUPPORT && DEEP_SLEEP)
-    //uint8_t length = 1;
-    //uint8_t sleep_enable;
-    //uint8_t ext_wakeup_enable;
- #endif //NVDS_SUPPORT && DEEP_SLEEP
-
-	
     // Disable interrupts until reset procedure is completed
     GLOBAL_INT_DIS();
 
@@ -600,37 +688,6 @@ void rwip_reset(void)
     // Reset BLE
     rwble_reset();
     #endif //BLE_EMB_PRESENT
-
-#if 0
-	#if (NVDS_SUPPORT && DEEP_SLEEP)
-    // Activate deep sleep feature if enabled in NVDS
-    if(nvds_get(NVDS_TAG_SLEEP_ENABLE, &length, &sleep_enable) == NVDS_OK)
-    {
-        if(sleep_enable != 0)
-        {
-            rwip_env.sleep_enable    = true;
-            rwip_env.sleep_acc_error = 0;
-
-            // Set max sleep duration depending on wake-up mode
-            if(nvds_get(NVDS_TAG_EXT_WAKEUP_ENABLE, &length, &ext_wakeup_enable) == NVDS_OK)
-            {
-                if(ext_wakeup_enable != 0)
-                {
-                    rwip_env.ext_wakeup_enable = true;
-                }
-            }
-
-            // Set max sleep duration depending on wake-up mode
-            length = NVDS_LEN_SLEEP_ALGO_DUR;
-            if(nvds_get(NVDS_TAG_SLEEP_ALGO_DUR, &length,  (uint8_t*) &rwip_env.sleep_algo_dur) != NVDS_OK)
-            {
-                // set a default duration: 200 us
-                rwip_env.sleep_algo_dur = 200;
-            }
-        }
-    }
-    #endif //NVDS_SUPPORT && DEEP_SLEEP
-#endif
 
     #if (EA_PRESENT)
     ea_init(true);

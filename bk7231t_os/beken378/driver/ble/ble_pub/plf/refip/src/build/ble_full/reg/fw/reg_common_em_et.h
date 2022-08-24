@@ -161,11 +161,11 @@ __INLINE uint32_t em_common_extab1_csptr_getf_get_csptr(int elt_idx)
     ///return ((localVal & (0x00007FFFU)) >> 0);
 }
 
-__INLINE uint32_t em_common_extab1_csptr_get_value(int elt_idx)
+__INLINE uint16_t em_common_extab1_csptr_get_value(int elt_idx)
 {
     uint32_t csptr = em_common_extab1_csptr_getf(elt_idx);
 	////bk_printf("csptr:%x\r\n",csptr);
-	uint32_t value = EM_RD(REG_COMMON_EM_ET_BASE_ADDR + csptr);
+	uint16_t value = EM_RD(REG_COMMON_EM_ET_BASE_ADDR + csptr);
 
 	return value;
 }

@@ -148,6 +148,15 @@ void vApplicationIdleHook( void )
 	}
 }
 
+#if CFG_REUSE_ISTACK_SPACE
+extern uint8_t *xtask_get_idle_stack_pointer(void);
+
+uint8_t *platform_get_reuse_pointer(void)
+{
+	return xtask_get_idle_stack_pointer();
+}
+#endif
+
 /*-----------------------------------------------------------*/
 /*
  * Initialize the stack of a task to look exactly as if a call to
@@ -505,7 +514,6 @@ uint32_t platform_sp_content( void )
 }
 
 /*-----------------------------------------------------------*/
-
 uint32_t platform_cpsr_content( void )
 {
     uint32_t mode;

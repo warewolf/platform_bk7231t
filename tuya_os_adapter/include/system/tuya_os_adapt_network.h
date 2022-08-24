@@ -52,6 +52,14 @@ UNW_IP_ADDR_T tuya_os_adapt_net_addr(const        char *ip);
 UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(const         char *ip);
 
 /**
+ * @brief : ip地址 转换为 ip字符串数据
+ * @param[in]            ip_str
+ * @return   Ascii网络字符串地址
+ */
+char* tuya_os_adapt_net_addr2str(const unsigned int ip_addr);
+
+
+/**
  * @brief : set fds
  * @param[in]      fd
  * @param[inout]      fds

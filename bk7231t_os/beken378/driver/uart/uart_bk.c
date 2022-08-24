@@ -1,38 +1,34 @@
 #include "include.h"
 #include "arm_arch.h"
-
 #include "uart_pub.h"
 #include "uart.h"
-
 #include "drv_model_pub.h"
 #include "sys_ctrl_pub.h"
 #include "mem_pub.h"
 #include "icu_pub.h"
 #include "gpio_pub.h"
 #include "sys_version.h"
-
 #include <stdio.h>
-
 #include "mem_pub.h"
 #include "intc_pub.h"
+
 #if CFG_USE_STA_PS
 #include "power_save_pub.h"
 #endif
 #include "mcu_ps_pub.h"
-
-#if CFG_SUPPORT_RTT
-#include <rtthread.h>
-#include <rthw.h>
-#endif
+#include "rtos_pub.h"
 
 static struct uart_callback_des uart_receive_callback[2] = {{NULL}, {NULL}};
 static struct uart_callback_des uart_txfifo_needwr_callback[2] = {{NULL}, {NULL}};
 static struct uart_callback_des uart_tx_end_callback[2] = {{NULL}, {NULL}};
 
-extern uint32_t get_ate_mode_state(void);
+#ifndef CONFIG_PRINTF_BUF_SIZE
+#define CONFIG_PRINTF_BUF_SIZE    (128)
+#endif
 
-#ifndef KEIL_SIMULATOR
-#if CFG_UART_DEBUG_COMMAND_LINE
+static char s_printf_buf[CONFIG_PRINTF_BUF_SIZE];
+static UINT8 s_pirntf_port = 2;
+
 UART_S uart[2] =
 {
     {0, 0, 0}, 
@@ -56,7 +52,9 @@ static DD_OPERATIONS uart2_op =
     uart2_write,
     uart2_ctrl
 };
-#endif
+
+extern uint32_t get_ate_mode_state(void);
+extern uint32_t platform_cpsr_content(void);
 
 UINT8 uart_is_tx_fifo_empty(UINT8 uport)
 {
@@ -104,42 +102,96 @@ void bk_send_string(UINT8 uport, const char *string)
         bk_send_byte(uport, *string++);
     }
 }
-static UINT8 pirntf_port = 2;
 UINT8 get_printf_port(void)
 {
-    return pirntf_port;
+    return s_pirntf_port;
 }
 void set_printf_port(UINT8 port)
 {
-    pirntf_port = port;
+    s_pirntf_port = port;
 }
 
-char string[256];
-void bk_printf(const char *fmt, ...)
+UINT32 uart_write_string(UINT8 id, const char *string)
 {
-    va_list ap;
+	const char *p = string;
 
-    va_start(ap, fmt);
-    vsnprintf(string, sizeof(string) - 1, fmt, ap);
-    string[255] = 0;
+	while (*string) {
+		if (*string == '\n') {
+			if (p == string || *(string - 1) != '\r')
+				uart_write_byte(id, '\r'); /* append '\r' */
+		}
+		uart_write_byte(id, *string++);
+	}
 
+	return 0;
+}
+
+UINT8 uart_get_log_port(void)
+{
+	UINT8 port = 0;
+	
 #if CFG_UART2_CLI
-	bk_send_string(UART2_PORT, string);
+	port = UART2_PORT;
 #elif ATE_APP_FUN
 	if(get_ate_mode_state())
 	{
-    	bk_send_string(UART1_PORT, string);
+		port = UART1_PORT;
 	}
 	else
 #else
 	{
         if(get_printf_port() == 1)
-        	bk_send_string(UART1_PORT, string);
+			port = UART1_PORT;
         else
-            bk_send_string(UART2_PORT, string);
+			port = UART2_PORT;
 	}
 #endif
-    va_end(ap);
+
+	return port;
+}
+
+uint32_t uart_log_string(const char *string)
+{
+	UINT8 id;
+
+	id = uart_get_log_port();
+	return uart_write_string(id, string);
+}
+
+static void uart_global_buf_printf(const char *fmt, va_list ap)
+{
+	vsnprintf(s_printf_buf, sizeof(s_printf_buf) - 1, fmt, ap);
+	s_printf_buf[CONFIG_PRINTF_BUF_SIZE - 1] = 0;
+	uart_write_string(uart_get_log_port(), s_printf_buf);
+}
+
+void uart_local_buf_printf(const char *fmt, va_list ap)
+{
+	char string[CONFIG_PRINTF_BUF_SIZE];
+
+    vsnprintf(string, sizeof(string) - 1, fmt, ap);
+    string[CONFIG_PRINTF_BUF_SIZE - 1] = 0;
+
+	bk_send_string(uart_get_log_port(), string);
+}
+
+void bk_printf(const char *fmt, ...)
+{
+	uint32_t cpsr_val = platform_cpsr_content();
+	uint32_t arm_mode = cpsr_val & ARM968_MODE_MASK;
+	va_list args;
+
+	va_start(args, fmt);
+
+	if ((ARM_MODE_FIQ == arm_mode)
+		|| (ARM_MODE_ABT == arm_mode)
+		|| (ARM_MODE_UND == arm_mode)
+		|| (!rtos_is_scheduler_started()))
+		uart_global_buf_printf(fmt, args);
+	else
+		uart_local_buf_printf(fmt, args);
+
+	va_end(args);
 }
 
 void print_hex_dump(const char *prefix, void *buf, int len)
@@ -281,8 +333,6 @@ void uart_hw_set_change(UINT8 uport, uart_config_t *uart_config)
     REG_WRITE(intr_ena_reg_addr, reg);
 }
 
-
-#if CFG_UART_DEBUG_COMMAND_LINE
 UINT32 uart_sw_init(UINT8 uport)
 {
     uart[uport].rx = kfifo_alloc(RX_RB_LENGTH);
@@ -454,7 +504,7 @@ UINT32 uart_read_fifo_frame(UINT8 uport, KFIFO_PTR rx_ptr)
     }
 
 	if(unused <= rx_count)
-		os_printf("uart rx fifo full\r\n");
+		//bk_printf("uart rx fifo full\r\n");
 
     return rx_count;
 }
@@ -747,7 +797,6 @@ UINT32 uart1_ctrl(UINT32 cmd, void *parm)
 
 void uart2_isr(void)
 {
-#if CFG_UART_DEBUG_COMMAND_LINE
     UINT32 status;
     UINT32 intr_en;
     UINT32 intr_status;
@@ -811,8 +860,6 @@ void uart2_isr(void)
 	if(status & UART_RXD_WAKEUP_STA)
     {
     }
-
-#endif
 }
 void uart2_init(void)
 {
@@ -998,9 +1045,6 @@ void uart_wait_tx_over()
     {
     }	
 }
-#endif // (!CFG_UART_DEBUG_COMMAND_LINE)
-
-#endif // KEIL_SIMULATOR
 
 INT32 os_null_printf(const char *fmt, ...)
 {

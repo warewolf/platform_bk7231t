@@ -68,6 +68,8 @@ INCLUDES += -I./beken378/app
 INCLUDES += -I./beken378/app/config
 INCLUDES += -I./beken378/app/standalone-station
 INCLUDES += -I./beken378/app/standalone-ap
+INCLUDES += -I./beken378/app/video_work
+INCLUDES += -I./beken378/app/net_work
 INCLUDES += -I./beken378/ip/common
 INCLUDES += -I./beken378/ip/ke/
 INCLUDES += -I./beken378/ip/mac/
@@ -116,6 +118,8 @@ INCLUDES += -I./beken378/driver/gpio
 INCLUDES += -I./beken378/driver/general_dma
 INCLUDES += -I./beken378/driver/spidma
 INCLUDES += -I./beken378/driver/icu
+INCLUDES += -I./beken378/driver/i2c
+INCLUDES += -I./beken378/driver/jpeg
 INCLUDES += -I./beken378/driver/ble 
 INCLUDES += -I./beken378/driver/ble/ble_pub/ip/ble/hl/inc 
 INCLUDES += -I./beken378/driver/ble/ble_pub/ip/ble/profiles/sdp/api 
@@ -189,6 +193,8 @@ INCLUDES += -I./beken378/func/spidma_intf
 INCLUDES += -I./beken378/func/rwnx_intf
 INCLUDES += -I./beken378/func/joint_up
 INCLUDES += -I./beken378/func/bk_tuya_pwm
+INCLUDES += -I./beken378/func/camera_intf
+INCLUDES += -I./beken378/func/video_transfer
 INCLUDES += -I./beken378/os/include
 INCLUDES += -I./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/Keil/ARM968es
 INCLUDES += -I./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/include
@@ -248,6 +254,9 @@ SRC_C += ./beken378/driver/uart/Retarget.c
 SRC_C += ./beken378/driver/uart/uart_bk.c
 SRC_C += ./beken378/driver/uart/printf.c
 SRC_C += ./beken378/driver/wdt/wdt.c
+SRC_C += ./beken378/driver/i2c/i2c1.c
+SRC_C += ./beken378/driver/i2c/i2c2.c
+SRC_C += ./beken378/driver/jpeg/jpeg_encoder.c
 SRC_C += ./beken378/driver/ble/ble.c
 SRC_C += ./beken378/driver/ble/ble_pub/ip/ble/hl/src/prf/prf.c
 SRC_C += ./beken378/driver/ble/ble_pub/ip/ble/profiles/sdp/src/sdp_service.c
@@ -272,11 +281,20 @@ SRC_C += ./beken378/driver/ble/ble_pub/modules/ecc_p256/src/ecc_p256.c
 SRC_C += ./beken378/driver/ble/ble_pub/plf/refip/src/driver/uart/uart.c           
 
 #function layer
+SRC_C += ./beken378/app/net_work/video_demo_main.c
+SRC_C += ./beken378/app/net_work/video_demo_softap.c
+SRC_C += ./beken378/app/net_work/video_demo_station.c
+SRC_C += ./beken378/app/video_work/video_transfer_tcp.c
+SRC_C += ./beken378/app/video_work/video_transfer_udp.c
+SRC_C += ./beken378/app/video_work/video_buffer.c
 SRC_C += ./beken378/func/func.c
 SRC_C += ./beken378/func/bk7011_cal/bk7231U_cal.c
 SRC_C += ./beken378/func/bk7011_cal/manual_cal_bk7231U.c
 SRC_C += ./beken378/func/joint_up/role_launch.c
 SRC_C += ./beken378/func/hostapd_intf/hostapd_intf.c
+SRC_C += ./beken378/func/camera_intf/camera_intf.c
+SRC_C += ./beken378/func/camera_intf/camera_intf_gc2145.c
+SRC_C += ./beken378/func/video_transfer/video_transfer.c
 SRC_C += ./beken378/func/$(WPA_VERSION)/bk_patch/ddrv.c
 SRC_C += ./beken378/func/$(WPA_VERSION)/bk_patch/signal.c
 SRC_C += ./beken378/func/$(WPA_VERSION)/bk_patch/sk_intf.c
@@ -623,7 +641,8 @@ SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/croutine.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/event_groups.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/list.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/Keil/ARM968es/port.c
-SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/MemMang/heap_4.c
+#SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/MemMang/heap_4.c
+SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/portable/MemMang/heap_6.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/queue.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/tasks.c
 SRC_OS += ./beken378/os/FreeRTOSv9.0.0/FreeRTOS/Source/timers.c
@@ -723,8 +742,7 @@ SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.cpp))
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.s)) 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.S)) 
 
-TY_INC_DIRS += $(TOP_DIR)/sdk/include
-
+TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk/include -type d)
 TY_INC_DIRS += $(shell find ../tuya_os_adapter/include -type d)
 TY_INC_DIRS += $(shell find ../tuya_common -type d)
 TY_INC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/include -type d)
@@ -744,8 +762,8 @@ CUR_PATH = $(shell pwd)
 .PHONY: application
 application: prerequirement $(OBJ_LIST) $(OBJ_S_LIST) $(OBJ_OS_LIST) $(TY_IOT_LIB)
 ifeq ("${ota_idx}", "1")
-	$(Q)$(ECHO) "  $(GREEN)LD   $(APP_BIN_NAME)_$(APP_VERSION).axf$(NC)"
-	$(Q)$(LD) $(LFLAGS) -o $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf  $(OBJ_LIST) $(OBJ_S_LIST) $(OBJ_OS_LIST) $(LIBFLAGS) -T./beken378/build/bk7231_ota.ld
+	$(Q)$(ECHO) "  $(GREEN)LD   $(APP_BIN_NAME)_$(APP_VERSION).elf$(NC)"
+	$(Q)$(LD) $(LFLAGS) -o $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).elf  $(OBJ_LIST) $(OBJ_S_LIST) $(OBJ_OS_LIST) $(LIBFLAGS) -T./beken378/build/bk7231_ota.ld
 else ifeq ("${ota_idx}", "2")
 else
 	@echo ===========================================================
@@ -753,9 +771,9 @@ else
 	@echo ===========================================================
 endif
 
-	$(NM) $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf | sort > $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).map
-	$(OBJDUMP) -d $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf > $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).asm
-	$(OBJCOPY) -O binary $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).bin
+	$(NM) $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).elf | sort > $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).map
+	$(OBJDUMP) -d $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).elf > $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).asm
+	$(OBJCOPY) -O binary $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).elf $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).bin
 # Generate build info
 # -------------------------------------------------------------------	
 

@@ -49,7 +49,7 @@
 #define DEFAULT_THREAD_PRIO             1
 
 /* Disable lwIP asserts */
-#define LWIP_NOASSERT			1
+#define LWIP_NOASSERT			        1
 
 #define LWIP_DEBUG                      0
 #define LWIP_DEBUG_TRACE                0
@@ -87,7 +87,7 @@
 #define SNMP_MSG_DEBUG                  LWIP_DBG_OFF
 #define SNMP_MIB_DEBUG                  LWIP_DBG_OFF
 #define DNS_DEBUG                       LWIP_DBG_OFF
-#define LWIP_COMPAT_MUTEX      		1
+#define LWIP_COMPAT_MUTEX      		    1
 /**
  * SYS_LIGHTWEIGHT_PROT==1: if you want inter-task protection for certain
  * critical regions during buffer allocation, deallocation and memory
@@ -224,7 +224,7 @@
 /**
  * LWIP_RAW==1: Enable application layer to hook into the IP layer itself.
  */
-#define LWIP_RAW                        1
+#define LWIP_RAW                         1
 #ifdef CONFIG_IPV6
 #define LWIP_IPV6                        1
 #endif
@@ -244,23 +244,23 @@
 /**
  * LWIP_SOCKET==1: Enable Socket API (require to use sockets.c)
  */
-#define LWIP_SOCKET                     1
-#define LWIP_NETIF_API			1
+#define LWIP_SOCKET                   1
+#define LWIP_NETIF_API			      1
 
 /**
  * LWIP_RECV_CB==1: Enable callback when a socket receives data.
  */
-#define LWIP_RECV_CB                1
+#define LWIP_RECV_CB                 1
 /**
  * SO_REUSE==1: Enable SO_REUSEADDR option.
  */
-#define SO_REUSE                        1
-#define SO_REUSE_RXTOALL 				1
+#define SO_REUSE                    1
+#define SO_REUSE_RXTOALL 		    1
 
 /**
  * Enable TCP_KEEPALIVE
  */
-#define LWIP_TCP_KEEPALIVE              1
+#define LWIP_TCP_KEEPALIVE         1
 
 /*
    ----------------------------------------
@@ -270,7 +270,7 @@
 /**
  * LWIP_STATS==1: Enable statistics collection in lwip_stats.
  */
-#define LWIP_STATS                      1
+#define LWIP_STATS                1
 
 /**
  * LWIP_STATS_DISPLAY==1: Compile in the statistics output functions.

@@ -587,9 +587,9 @@ const uint32_t agc_ram_parameter[] =
 0x00000000,
 0x00000000,
 0x14010b0b
-
 };
 
+extern void bk7011_cal_pll(void);
 void phy_pre_agc_init(void)
 {
     uint32_t i;

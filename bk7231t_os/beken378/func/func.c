@@ -41,10 +41,8 @@ UINT32 func_init_extended(void)
     rwnxl_init();
 
 #if CFG_UART_DEBUG 
-	#ifndef KEIL_SIMULATOR
     FUNC_PRT("[FUNC]uart_debug_init\r\n");   
     uart_debug_init();
-	#endif
 #endif
 
 #if (!CFG_SUPPORT_RTT)

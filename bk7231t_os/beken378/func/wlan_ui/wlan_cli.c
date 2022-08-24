@@ -939,8 +939,6 @@ static void ble_entry_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc
         os_printf("Start adv\r\n");
         appm_start_advertising();
     }
-    
-    return 0;
 }
 #endif
 
@@ -948,23 +946,6 @@ void easylink_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
 {
     /*	mxchip_easy_link_start(120);*/
 }
-
-#if 0
-void airkiss_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
-{
-    u8 start = 0;
-
-    if(argc != 2)
-    {
-        os_printf("need 2 parameters: airkiss 1(start), 0(stop)\r\n");
-        return;
-    }
-
-    start = strtoul(argv[1], NULL, 0);
-
-    airkiss_process(start);
-}
-#endif
 
 #if CFG_USE_TEMPERATURE_DETECT
 void temp_detect_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
@@ -1022,7 +1003,8 @@ void ping_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
 #else
     os_printf("ping_Command unsupported\r\n");
 #endif
-    return 0;
+
+    return;
 }
 
 void dns_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
@@ -2340,6 +2322,7 @@ static const struct cli_command user_clis[] =
 #endif
 };
 
+extern int video_demo_register_cmd(void);
 int cli_init(void)
 {
     int ret;
@@ -2359,11 +2342,15 @@ int cli_init(void)
 
     cli_register_commands(user_clis, sizeof(user_clis) / sizeof(struct cli_command));
 
+    if (video_demo_register_cmd()) {
+        goto init_general_err;
+    }
+
     ret = rtos_create_thread(NULL,
                              BEKEN_DEFAULT_WORKER_PRIORITY,
                              "cli",
                              (beken_thread_function_t)cli_main,
-                             4096,
+                             2048,
                              0);
     if (ret != kNoErr)
     {

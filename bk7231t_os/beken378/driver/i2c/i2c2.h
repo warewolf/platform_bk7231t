@@ -2,14 +2,20 @@
 #define _I2C2_H_
 
 #include "uart_pub.h"
+
 #define I2C2_DEBUG
+//#undef I2C2_DEBUG
+
+#define I2C2_PRT                 os_null_printf//os_printf
 
 #ifdef I2C2_DEBUG
-#define I2C2_PRT                 os_printf
 #define I2C2_WPRT                warning_prf
+#define I2C2_EPRT                os_printf
+#define I2C2_DEBUG_PRINTF		 os_null_printf
 #else
-#define I2C2_PRT                 os_null_printf
 #define I2C2_WPRT                os_null_printf
+#define I2C2_EPRT                os_printf
+#define I2C2_DEBUG_PRINTF		 os_null_printf
 #endif
 
 #define I2C2_BASE_ADDR                       (0x0802600)
@@ -28,7 +34,7 @@
 #define I2C2_SMB_TOE                           (1 << 28)
 #define I2C2_SMB_FTE                           (1 << 29)
 #define I2C2_INH                               (1 << 30)
-#define I2C2_ENSMB                             (1U << 31)
+#define I2C2_ENSMB                             (1 << 31)
 
 #define REG_I2C2_STA                         (I2C2_BASE_ADDR + 4 * 1)
 #define I2C2_SMBUS_SI                          (1 << 0)
@@ -36,8 +42,8 @@
 #define I2C2_ARB_LOST                          (1 << 3)
 #define I2C2_RXFIFO_EMPTY                      (1 << 4)
 #define I2C2_TXFIFO_FULL                       (1 << 5)
-#define I2C2_INT_MODE_POSI                     (6)
-#define I2C2_INT_MODE_MASK                     (0x3)
+#define I2C2_INT_MODE_POSI                     (6		)
+#define I2C2_INT_MODE_MASK                     (0x03<< 6)
 #define I2C2_SMBUS_ACK                         (1 << 8)
 #define I2C2_SMBUS_STOP                        (1 << 9)
 #define I2C2_SMBUS_STA                         (1 << 10)
@@ -45,7 +51,7 @@
 #define I2C2_ACK_REQ                           (1 << 12)
 #define I2C2_TX_MODE                           (1 << 13)
 #define I2C2_MASTER                            (1 << 14)
-#define I2C2_BUSSY                             (1 << 15)
+#define I2C2_BUSY                              (1 << 15)
 
 #define REG_I2C2_DAT                         (I2C2_BASE_ADDR + 4 * 2)
 #define I2C2_DAT_MASK                          (0xFF)

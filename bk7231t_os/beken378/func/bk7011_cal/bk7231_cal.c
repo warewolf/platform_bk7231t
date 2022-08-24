@@ -1697,54 +1697,36 @@ void bk7011_cal_bias(void)
             | PARAM_BIAS_CAL_MANUAL_BIT;
     sddev_control(SCTRL_DEV_NAME, CMD_SCTRL_BIAS_REG_WRITE, &param);
 
-
-    //param = ((0x3 & PARAM_VSEL_SYS_LDO_MASK)<< PARAM_VSEL_SYS_LDO_POSI);
-    //sddev_control(SCTRL_DEV_NAME, CMD_SCTRL_ANALOG_CTRL4_SET, &param);
-
     return;
 }
 
 void bk7011_cal_pll(void)
 {
-#if 1
-    //    uint32_t loop = 0, val;
+    /*reg0x10 enrfpll = 1*/
+    BK7011TRX.REG0x10->bits.enrfpll = 1;
+    BK7011TRX.REG0x10->bits.endpll = 1;
+    CAL_WR_TRXREGS(0x10);
 
-    //    do
-    {
-#if 0
+    /*reg0x00 spitrig = 0->1->0*/
+    BK7011TRX.REG0x0->bits.spitrig = 0;
+    CAL_WR_TRXREGS(0x0);
+    BK7011TRX.REG0x0->bits.spitrig = 1;
+    CAL_WR_TRXREGS(0x0);
+    BK7011TRX.REG0x0->bits.spitrig = 0;
+    CAL_WR_TRXREGS(0x0);
 
-#else
+    /*reg0x05 spitrigger = 0->1->0*/
+    BK7011TRX.REG0x5->bits.spitrigger = 0;
+    BK7011TRX.REG0x5->bits.errdetspien = 0;
+    CAL_WR_TRXREGS(0x5);
+    BK7011TRX.REG0x5->bits.spitrigger = 1;
+    CAL_WR_TRXREGS(0x5);
+    BK7011TRX.REG0x5->bits.spitrigger = 0;
+    CAL_WR_TRXREGS(0x5);
+    BK7011TRX.REG0x5->bits.errdetspien = 1;
+    CAL_WR_TRXREGS(0x5);
 
-        /*reg0x10 enrfpll = 1*/
-        BK7011TRX.REG0x10->bits.enrfpll = 1;
-        BK7011TRX.REG0x10->bits.endpll = 1;
-        CAL_WR_TRXREGS(0x10);
-
-        /*reg0x00 spitrig = 0->1->0*/
-        BK7011TRX.REG0x0->bits.spitrig = 0;
-        CAL_WR_TRXREGS(0x0);
-        BK7011TRX.REG0x0->bits.spitrig = 1;
-        CAL_WR_TRXREGS(0x0);
-        BK7011TRX.REG0x0->bits.spitrig = 0;
-        CAL_WR_TRXREGS(0x0);
-
-        /*reg0x05 spitrigger = 0->1->0*/
-        BK7011TRX.REG0x5->bits.spitrigger = 0;
-        BK7011TRX.REG0x5->bits.errdetspien = 0;
-        CAL_WR_TRXREGS(0x5);
-        BK7011TRX.REG0x5->bits.spitrigger = 1;
-        CAL_WR_TRXREGS(0x5);
-        BK7011TRX.REG0x5->bits.spitrigger = 0;
-        CAL_WR_TRXREGS(0x5);
-        BK7011TRX.REG0x5->bits.errdetspien = 1;
-        CAL_WR_TRXREGS(0x5);
-#endif
-
-        cpu_delay(DELAY1US * 10);
-
-    }
-
-#endif
+    cpu_delay(DELAY1US * 10);
 }
 
 

@@ -1623,8 +1623,6 @@ static void handle_auth(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_SAE_AP */
 
-bk_printf("%s:line:%d\r\n",__func__,__LINE__);
-
 	sta = ap_get_sta(hapd, mgmt->sa);
 	if (sta) {
 		sta->flags &= ~WLAN_STA_PENDING_FILS_ERP;
@@ -1670,7 +1668,6 @@ bk_printf("%s:line:%d\r\n",__func__,__LINE__);
 
 		sta = ap_sta_add(hapd, mgmt->sa);
 		if (!sta) {
-            bk_printf("%s: add fail\r\n", __func__);
 			wpa_printf(MSG_DEBUG, "ap_sta_add() failed");
 			resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
 			goto fail;

@@ -21,8 +21,10 @@
 	.globl irq_handler
 	.globl fiq_handler
 	.globl vPortStartFirstTask
+	.globl uxIdleTaskStack
 
 #include "sys_config.h"
+#include "FreeRTOSConfig.h"
 
 /* ========================================================================
  *                                Macros
@@ -30,10 +32,12 @@
 #define _FIQ_STACK_SIZE_ 	              0x7F0
 #define _IRQ_STACK_SIZE_ 	              0xFF0
 #define _SVC_STACK_SIZE_ 	              0x3F0
+
+#if (0 == CFG_REUSE_ISTACK_SPACE)	 
 #define _SYS_STACK_SIZE_ 	              0x3F0
 #define _UND_STACK_SIZE_ 	              0x010
-#define _ABT_STACK_SIZE_                      0x010
-
+#define _ABT_STACK_SIZE_                  0x010
+#endif
 
 #define BOOT_MODE_MASK     	              0x1F
 #define BOOT_MODE_USR       	          0x10
@@ -236,18 +240,41 @@
 	ADDLT R0, R0, #4
 	BLT   3b           //branch to previous local label
 	.endm
+		
+	.macro	BOOT_SET_ISTACK, color
+	LDR   R0, =uxIdleTaskStack
+	MOV   R1, #1024  // sizeof(uxIdleTaskStack)
+
+	ADD   R1, R1, R0
+	MOV   SP, R1		//Set stack pointer
+
+	LDR   R2, =\color
+
+3:
+	CMP   R0, R1		//End of stack?
+	STRLT R2, [r0]		//Colorize stack word
+	ADDLT R0, R0, #4
+	BLT   3b		   //branch to previous local label
+	.endm
 
 
 	 .section .data
+#if (0 == CFG_REUSE_ISTACK_SPACE)	 
 	 .align 3
 	 .global und_stack_start
 und_stack_start:
 	 .space _UND_STACK_SIZE_
- 
+
 	.align 3
 	.global abt_stack_start
 abt_stack_start:
 	 .space _ABT_STACK_SIZE_
+ 
+	.align 3
+	.global sys_stack_start
+sys_stack_start:
+	 .space _SYS_STACK_SIZE_
+#endif
 
 	.align 3
 	.global fiq_stack_start
@@ -258,11 +285,6 @@ fiq_stack_start:
 	.global irq_stack_start
 irq_stack_start:
 	 .space _IRQ_STACK_SIZE_
- 
-	.align 3
-	.global sys_stack_start
-sys_stack_start:
-	 .space _SYS_STACK_SIZE_
 
 	.align 3
 	.global svc_stack_start
@@ -286,6 +308,7 @@ boot_reset:
     MSR   CPSR_c, R0
 
     //Setup all stacks //Note: Abt and Usr mode are not used
+#if (0 == CFG_REUSE_ISTACK_SPACE)	 
 	BOOT_CHANGE_MODE BOOT_MODE_SYS BOOT_MODE_MASK
 	BOOT_SET_STACK   boot_stack_base_SYS boot_stack_len_SYS BOOT_COLOR_SYS
 
@@ -294,7 +317,16 @@ boot_reset:
 
 	BOOT_CHANGE_MODE BOOT_MODE_UND BOOT_MODE_MASK
 	BOOT_SET_STACK   boot_stack_base_UNUSED boot_stack_len_UNUSED BOOT_COLOR_UNUSED
-
+#else
+	BOOT_CHANGE_MODE BOOT_MODE_SYS BOOT_MODE_MASK
+	BOOT_SET_ISTACK   BOOT_COLOR_SYS
+	
+	BOOT_CHANGE_MODE BOOT_MODE_ABT BOOT_MODE_MASK
+	BOOT_SET_ISTACK   BOOT_COLOR_SYS
+	
+	BOOT_CHANGE_MODE BOOT_MODE_UND BOOT_MODE_MASK
+	BOOT_SET_ISTACK   BOOT_COLOR_SYS
+#endif
 	BOOT_CHANGE_MODE BOOT_MODE_IRQ BOOT_MODE_MASK
 	BOOT_SET_STACK   boot_stack_base_IRQ boot_stack_len_IRQ BOOT_COLOR_IRQ
 
@@ -340,11 +372,19 @@ boot_reset:
 /* ========================================================================
  *								  Globals
  * ======================================================================== */
+#if (0 == CFG_REUSE_ISTACK_SPACE)	 
 boot_stack_base_UNUSED:
 	.word und_stack_start
 
 boot_stack_len_UNUSED:
 	.word _UND_STACK_SIZE_
+
+boot_stack_base_SYS:
+	 .word sys_stack_start
+
+boot_stack_len_SYS:
+	 .word _SYS_STACK_SIZE_  
+#endif
 
 boot_stack_base_IRQ:
 	.word irq_stack_start
@@ -363,12 +403,6 @@ boot_stack_base_FIQ:
 
 boot_stack_len_FIQ:
 	.word _FIQ_STACK_SIZE_
-
-boot_stack_base_SYS:
-	 .word sys_stack_start
-
-boot_stack_len_SYS:
-	 .word _SYS_STACK_SIZE_  
 
 /*FUNCTION:     _sysboot_copy_data_to_ram*/
 /*DESCRIPTION:  copy main stack code from FLASH/ROM to SRAM*/

@@ -1,17 +1,13 @@
 #include "include.h"
-
 #include "drv_model_pub.h"
 #include "intc_pub.h"
 #include "uart_pub.h"
-
 #include "ble.h"
 #include "ble_pub.h"
 #include "ble_api.h"
 #include "rwble.h"
 #include "app_task.h"
 #include "udebug.h"
-//#include "bkDriverUart.h"
-
 #include "typedef.h"
 #include "sys_ctrl_pub.h"
 #include "icu_pub.h"
@@ -60,8 +56,7 @@ static SDD_OPERATIONS ble_op =
     ble_ctrl
 };
 
-
-extern /*const */struct bd_addr common_default_bdaddr;
+extern struct bd_addr common_default_bdaddr;
 extern void uart_isr(void);
 extern void intc_service_change_handler(UINT8 int_num, FUNCPTR isr);
 extern void wifi_get_mac_address(char *mac, u8 type);
@@ -360,8 +355,7 @@ void ble_switch_rf_to_ble(void)
 void ble_request_rf_by_isr(void)
 {
     extern uint8_t ble_scan_status;
-    if ((BLE_SCAN_CLOSED == ble_scan_status) ||
-		((RF_USER_WIFI == rf_user) && (kernel_state_get(TASK_APP) == APPM_CONNECTED))) {
+    if (BLE_SCAN_CLOSED == ble_scan_status) {
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_WIFI)
         if (!ble_dut_flag) {
             ble_switch_rf_to_ble();
@@ -377,8 +371,7 @@ void ble_request_rf_by_isr(void)
 void ble_release_rf_by_isr(void)
 {
     extern uint8_t ble_scan_status;
-    if ((BLE_SCAN_CLOSED == ble_scan_status) ||
-		(ble_switch_mac_sleeped == 1)) {
+    if (BLE_SCAN_CLOSED == ble_scan_status) {
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_WIFI)
         if (!ble_dut_flag) {
             ble_switch_rf_to_wifi();
@@ -538,6 +531,8 @@ void ble_isr(void)
 
 static void ble_main( void *arg )
 {
+	beken_queue_t _ble_msg_queue_temp = NULL;
+	
     memcpy(&common_default_bdaddr, &ble_cfg.mac, sizeof(struct bd_addr));
     memcpy(&app_dflt_dev_name, &ble_cfg.name, APP_DEVICE_NAME_LENGTH_MAX); 
 
@@ -553,10 +548,10 @@ static void ble_main( void *arg )
 	GLOBAL_INT_RES();
 	rw_main();
 
-	beken_queue_t _ble_msg_queue_temp = NULL;
 	GLOBAL_INT_DIS();
 	_ble_msg_queue_temp = ble_msg_que;
 	ble_msg_que = NULL;
+	
 	GLOBAL_INT_RES();
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_BLE)
     rf_loop = 0;
@@ -564,6 +559,7 @@ static void ble_main( void *arg )
 	GLOBAL_INT_DIS();
     ble_thread_handle = NULL;
 	GLOBAL_INT_RES();
+	
 	rtos_delay_milliseconds(200);
 	rtos_deinit_queue(&_ble_msg_queue_temp);
 	rtos_delete_thread(NULL);
@@ -724,8 +720,6 @@ void ble_stop(void)
 void ble_activate(char *ble_name)
 {
     UINT32 len;
-
-//    bk_wlan_stop(1);
 
     if((!ble_name) && (!ble_dut_flag)) {
         os_printf("ble start no ble name\r\n");

@@ -100,8 +100,6 @@ bk_attm_desc_t btl_att_db[6] = {
 TY_BT_MSG_CB ty_bt_msg_cb;
 
 unsigned char ble_att_flag = 0;
-unsigned char ble_stack_init_ok = 0;
-unsigned char ble_scan_flag = 0;
 bool if_start_adv_after_disconnect = true;
 
 static ty_bt_scan_info_t *ble_scan_info = NULL;
@@ -257,7 +255,6 @@ static void ble_event_callback(ble_event_t event, void *param)
         case BLE_CREATE_DB_OK: {
             LOG_NOTICE("CREATE DB SUCCESS\r\n");
 
-            ble_stack_init_ok = 1;
             if (ty_bt_msg_cb != NULL) {
                 ty_bt_msg_cb(0, TY_BT_EVENT_ADV_READY, NULL);
             }
@@ -491,30 +488,18 @@ static void ty_ble_restart_thread(void *parameter)
         }
 
         tuya_os_adapt_system_sleep(100);
+        ble_activate(NULL);
         ble_set_write_cb(ble_write_callback);
         ble_set_read_cb(ble_read_callback);
         ble_set_event_cb(ble_event_callback);
         ble_set_recv_adv_cb(ble_recv_adv_callback);
-        ble_activate(NULL);
-        
         tuya_os_adapt_system_sleep(500);
-        
         //该模式适用于BK7231T下需要手工disconnect bt
         if (if_start_adv_after_disconnect) {
             tuya_os_adapt_bt_start_adv();
         } else {        //下次自动开启广播
             if_start_adv_after_disconnect = TRUE;
         }
-        
-        if (ble_scan_info) {
-            ble_set_rf_time(70, 30);    //设置rf使用时间
-            if (ble_scan_flag && (ERR_SUCCESS == appm_ll_scan_start())) {
-                LOG_DEBUG("ble restart goto scan\r\n");
-            } else {
-                
-            }
-        }
-        
         break;
     }
 
@@ -569,6 +554,7 @@ int tuya_os_adapt_bt_port_deinit(void)
     }
 
     if (ty_bt_msg_cb) {
+        tuya_os_adapt_system_free(ty_bt_msg_cb);
         ty_bt_msg_cb = NULL;
     }
 
@@ -626,10 +612,8 @@ int tuya_os_adapt_bt_reset_adv(tuya_ble_data_buf_t *adv, tuya_ble_data_buf_t *sc
     memcpy(adv_info.respData, scan_resp->data, scan_resp->len);
     adv_info.respDataLen = scan_resp->len;
 
-    if (ble_stack_init_ok) {
-        appm_update_adv_data(adv->data, adv->len, scan_resp->data, scan_resp->len);
-    }
-    
+    appm_update_adv_data(adv->data, adv->len, scan_resp->data, scan_resp->len);
+
     return OPRT_OS_ADAPTER_OK;
 }
 
@@ -773,7 +757,6 @@ OPERATE_RET tuya_os_adapt_bt_start_scan(void)
     if (ble_scan_info && (TY_BT_SCAN_BY_ADV == ble_scan_info->scan_type)) {
         LOG_DEBUG("<tuya_os_adapt_bt_start_scan> !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\r\n");
         if (ERR_SUCCESS == appm_ll_scan_start()) {
-            ble_scan_flag = 1;
             LOG_DEBUG("<tuya_os_adapt_bt_start_scan> start scan adv.\r\n");
             return OPRT_OS_ADAPTER_OK;
         }

@@ -67,6 +67,17 @@ int tuya_os_adapt_thread_release(THREAD_HANDLE thread);
 int tuya_os_adapt_thread_is_self(THREAD_HANDLE thread, BOOL_T* is_self);
 
 /**
+ * @brief get thread stack's watermark
+ * 
+ * @param[in] thread    the thread handle
+ * @param[out] watermark  watermark in Bytes
+ * @retval OPRT_OK      success
+ * @retval Other        fail
+ */
+int tuya_os_adapt_thread_get_watermark(THREAD_HANDLE thread, UINT_T* watermark);
+
+
+/**
  * @brief set name of self thread
  * 
  * @param[in] name      thread name

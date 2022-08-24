@@ -676,7 +676,8 @@ int UnSetTimer(void (*psysTimerHandler)(void));
 uint32_t rtos_get_timer_expiry_time( beken_timer_t* timer );
 uint32_t rtos_get_next_expire_time();
 uint32_t rtos_get_current_timer_count(void);
-
+void rtos_start_scheduler(void);
+uint32_t rtos_is_scheduler_started(void);
 
 /** @brief    Initialize an endpoint for a RTOS event, a file descriptor
   *           will be created, can be used for select

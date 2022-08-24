@@ -62,6 +62,7 @@ void tuya_os_init(void)
 #if defined(TY_RTC) && TY_RTC == 1
     platform_rtc_init();
 #endif
+    platform_iic_init();
 }
 
 char *tuya_os_adapt_get_ver(void)

@@ -10,6 +10,7 @@
 #include "BkDriverFlash.h"
 #endif
 #include "wlan_ui_pub.h"
+#include "wlan_cli_pub.h"
 #include "ate_app.h"
 
 #if CFG_UART_DEBUG
@@ -383,7 +384,6 @@ extern void bk_send_byte(UINT8 uport, UINT8 data);
 
 void bkreg_tx(HCI_EVENT_PACKET *pHCItxBuf)
 {
-#ifndef KEIL_SIMULATOR
     char *tmp;
     unsigned int i;
     unsigned int tx_len = HCI_EVENT_HEAD_LENGTH + pHCItxBuf->total;
@@ -394,9 +394,8 @@ void bkreg_tx(HCI_EVENT_PACKET *pHCItxBuf)
     tmp = (char *)pHCItxBuf;
     for(i = 0; i < tx_len; i ++)
     {
-        bk_send_byte(0,tmp[i]);//BK_UART_1
+        bk_send_byte(CLI_UART,tmp[i]);
     }
-#endif
 }
 
 cmd_tbl_t *cmd_find_tbl(const char *cmd, cmd_tbl_t *table, int table_len)

@@ -11,6 +11,8 @@
 #define CFG_UART2_CLI                              0
 #define CFG_JTAG_ENABLE                            0
 #define OSMALLOC_STATISTICAL                       0
+#define CFG_REUSE_ISTACK_SPACE                     1
+#define CFG_BLE_MALLOC_HEAP                        1
 
 /*section 0-----app macro config-----*/
 #define CFG_IEEE80211N                             1
@@ -46,6 +48,7 @@
 #undef CFG_ROLE_LAUNCH
 #define CFG_ROLE_LAUNCH							   0
 #endif
+
 #define CFG_WPA3								   1
 #if CFG_WPA3
 /* disable rl, enable ctrl iface, enable wpa29, pmf, sme */
@@ -61,6 +64,7 @@
 #define CFG_WPA_CRYPTO_MBEDTLS                     1
 #define CFG_WRAP_LIBC                              1
 #endif
+
 //#define CFG_MESH								   0
 #define CFG_WFA_CERT							   0
 #define CFG_ENABLE_BUTTON                          0
@@ -91,7 +95,6 @@
 
 /*section 4-----DEBUG macro config-----*/
 #define CFG_UART_DEBUG                             0
-#define CFG_UART_DEBUG_COMMAND_LINE                1
 #define CFG_SUPPORT_BKREG                          0
 #define CFG_ENABLE_WPA_LOG                         0
 #define CFG_IPERF_TEST                             0
@@ -134,12 +137,14 @@
 /*section 11-----temperature detect*/
 #define CFG_USE_TEMPERATURE_DETECT                 1
 
-/*section 12-----for SPIDMA interface*/
+/*section 12-----for video transfer*/
+#define CFG_USE_APP_DEMO_VIDEO_TRANSFER            0
+#define CFG_USE_HSLAVE_SPI                         0
 #define CFG_USE_SPIDMA                             0
 #define CFG_USE_CAMERA_INTF                        0
 
 /*section 13-----for GENERRAL DMA */
-#define CFG_GENERAL_DMA                            0
+#define CFG_GENERAL_DMA                            1
 
 /*section 14-----for FTPD UPGRADE*/
 #define CFG_USE_FTPD_UPGRADE                       0

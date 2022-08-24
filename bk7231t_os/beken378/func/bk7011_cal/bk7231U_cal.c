@@ -1880,14 +1880,6 @@ void bk7011_cal_pll(void)
 #if CFG_ENABLE_ATE_FEATURE
 void bk7011_set_rfcali_mode(int mode)
 {
-    #if 0
-    if((mode != CALI_MODE_AUTO) && (mode != CALI_MODE_MANUAL))
-    {
-        os_printf("rfcali_mode 0/1\r\n");
-        return;
-    }
-    #endif
-        
     if(g_cali_mode != mode)
     {
         if(g_cali_mode == CALI_MODE_AUTO)

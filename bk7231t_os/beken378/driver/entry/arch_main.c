@@ -110,7 +110,7 @@ void entry_main(void)
 	extended_app_launch();
 	
 #if (!CFG_SUPPORT_RTT)
-    vTaskStartScheduler();
+    rtos_start_scheduler();
 #endif
 }
 // eof

@@ -14,12 +14,17 @@
 
 #include "uart_pub.h"
 #define I2C_DEBUG
+#undef 	I2C_DEBUG
+
 #ifdef I2C_DEBUG
 #define I2C_PRT                    os_printf
 #else
 #define I2C_PRT                    null_prf
 #define I2C_WPRT                   null_prf
 #endif
+
+#define ADDR_WIDTH_8               1
+#define ADDR_WIDTH_16              2
 
 enum
 {
@@ -38,18 +43,56 @@ enum
 
 enum
 {
-    I2C2_CMD_SET_ENSMB = I2C2_CMD_MAGIC + 1,
- 
+    I2C2_CMD_SET_IDLE_CR = I2C2_CMD_MAGIC + 1,
+	I2C2_CMD_SET_SCL_CR,
+	I2C2_CMD_SET_FREQ_DIV,
+	I2C2_CMD_SET_SMBUS_CS,
+	I2C2_CMD_SET_TIMEOUT_EN,
+	I2C2_CMD_SET_FREE_DETECT,
+	I2C2_CMD_SET_SLAVE_EN,
+	I2C2_CMD_SET_SMBUS_EN,
+	I2C2_CMD_SET_POWER_UP,
+	I2C2_CMD_SET_POWER_DOWN,
+	I2C2_CMD_GET_MESSAGE,
+	I2C2_CMD_GET_BUSY,
 };
 
 typedef struct i2c_op_st {
+	UINT8 addr_width;
     UINT8 salve_id;
-    UINT8 op_addr;
+    UINT16 op_addr;
+	UINT8 slave_addr;
+	UINT8 mode;
 } I2C_OP_ST, *I2C_OP_PTR;
+
+
+typedef struct i2c2_msg {
+	UINT8 TxMode;		//0: Read;  1: Write
+	UINT8 WkMode;       // work mode
+                        //RW(bit 0):  0:write,  1:read
+                       // MS(bit 1):  0:master, 1:slave
+                       // AL(bit 2):  0:7bit address, 1:10bit address
+                       // IA(bit 3):  0:without inner address, 1: with inner address
+                       // reserved(bit [4:7]):  reserved
+	UINT8  InnerAddr;
+	UINT8  SendAddr;   //only master send address
+	UINT32 CurrentNum;
+	UINT32 AllDataNum;
+	UINT8 *pData;
+	UINT8  Slave_addr;	  //slave address
+	UINT8  AddrFlag;
+	UINT8  TransDone;
+	UINT8  ack_check;	//0: don't care ACK; 1: care ACK
+	UINT8  ErrorNO;
+} I2C2_MSG_ST, *I2C2_MSG_PTR;
 
 #define NUM_ROUND_UP(a,b)   ((a) / (b) + (((a) % (b)) ? 1 : 0))
 
+#if CFG_XTAL_FREQUENCE
+#define I2C1_DEFAULT_CLK     CFG_XTAL_FREQUENCE
+#else
 #define I2C1_DEFAULT_CLK     26000000
+#endif
 #define I2C_BAUD_1KHZ        1000
 #define I2C_BAUD_100KHZ      100000
 #define I2C_BAUD_400KHZ      400000
@@ -58,6 +101,13 @@ typedef struct i2c_op_st {
 #define I2C_CLK_DIVID(rate)  (NUM_ROUND_UP(NUM_ROUND_UP(I2C1_DEFAULT_CLK, rate) - 6, 3) - 1)
 #define I2C_DEF_DIV          0x16
 
+#define I2C2_MSG_WORK_MODE_RW_BIT        (1<<0)      /* 0:write,  1:read */
+#define I2C2_MSG_WORK_MODE_MS_BIT        (1<<1)      /* 0:master, 1:slave */
+#define I2C2_MSG_WORK_MODE_AL_BIT        (1<<2)      /* 0:7bit address, 1:10bit address */
+#define I2C2_MSG_WORK_MODE_IA_BIT        (1<<3)      /* 0:without inner address, 1: with inner address */
+
+#define I2C_READ_WAIT_TIMEOUT            (50)        /* ms */
+#define I2C_WRITE_WAIT_TIMEOUT           (50)        /* ms */
 
 void i2c1_init(void);
 void i2c1_exit(void);

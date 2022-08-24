@@ -583,50 +583,46 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
 static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 /*-----------------------------------------------------------*/
+TaskHandle_t xtask_create_static( TaskFunction_t pxTaskCode,
+								const char * const pcName,
+								const uint32_t ulStackDepth,
+								void * const pvParameters,
+								UBaseType_t uxPriority,
+								StackType_t * const puxStackBuffer,
+								StaticTask_t * const pxTaskBuffer ) /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+{
+TCB_t *pxNewTCB;
+TaskHandle_t xReturn;
 
-#if( configSUPPORT_STATIC_ALLOCATION == 1 )
+	configASSERT( puxStackBuffer != NULL );
+	configASSERT( pxTaskBuffer != NULL );
 
-	TaskHandle_t xTaskCreateStatic(	TaskFunction_t pxTaskCode,
-									const char * const pcName,
-									const uint32_t ulStackDepth,
-									void * const pvParameters,
-									UBaseType_t uxPriority,
-									StackType_t * const puxStackBuffer,
-									StaticTask_t * const pxTaskBuffer ) /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+	if( ( pxTaskBuffer != NULL ) && ( puxStackBuffer != NULL ) )
 	{
-	TCB_t *pxNewTCB;
-	TaskHandle_t xReturn;
+		/* The memory used for the task's TCB and stack are passed into this
+		function - use them. */
+		pxNewTCB = ( TCB_t * ) pxTaskBuffer; /*lint !e740 Unusual cast is ok as the structures are designed to have the same alignment, and the size is checked by an assert. */
+		pxNewTCB->pxStack = ( StackType_t * ) puxStackBuffer;
 
-		configASSERT( puxStackBuffer != NULL );
-		configASSERT( pxTaskBuffer != NULL );
-
-		if( ( pxTaskBuffer != NULL ) && ( puxStackBuffer != NULL ) )
+		#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 )
 		{
-			/* The memory used for the task's TCB and stack are passed into this
-			function - use them. */
-			pxNewTCB = ( TCB_t * ) pxTaskBuffer; /*lint !e740 Unusual cast is ok as the structures are designed to have the same alignment, and the size is checked by an assert. */
-			pxNewTCB->pxStack = ( StackType_t * ) puxStackBuffer;
-
-			#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 )
-			{
-				/* Tasks can be created statically or dynamically, so note this
-				task was created statically in case the task is later deleted. */
-				pxNewTCB->ucStaticallyAllocated = tskSTATICALLY_ALLOCATED_STACK_AND_TCB;
-			}
-			#endif /* configSUPPORT_DYNAMIC_ALLOCATION */
-
-			prvInitialiseNewTask( pxTaskCode, pcName, ulStackDepth, pvParameters, uxPriority, &xReturn, pxNewTCB, NULL );
-			prvAddNewTaskToReadyList( pxNewTCB );
+			/* Tasks can be created statically or dynamically, so note this
+			task was created statically in case the task is later deleted. */
+			pxNewTCB->ucStaticallyAllocated = tskSTATICALLY_ALLOCATED_STACK_AND_TCB;
 		}
-		else
-		{
-			xReturn = NULL;
-		}
+		#endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 
-		return xReturn;
+		prvInitialiseNewTask( pxTaskCode, pcName, ulStackDepth, pvParameters, uxPriority, &xReturn, pxNewTCB, NULL );
+		prvAddNewTaskToReadyList( pxNewTCB );
+	}
+	else
+	{
+		xReturn = NULL;
 	}
 
-#endif /* SUPPORT_STATIC_ALLOCATION */
+	return xReturn;
+}
+
 /*-----------------------------------------------------------*/
 
 #if( portUSING_MPU_WRAPPERS == 1 )
@@ -1829,21 +1825,31 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 #endif /* ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) ) */
 /*-----------------------------------------------------------*/
 
+TCB_t xIdleTaskTCB;
+StackType_t uxIdleTaskStack[ configMINIMAL_STACK_SIZE ];
+
+uint8_t *xtask_get_idle_stack_pointer(void)
+{
+	return (uint8_t *)uxIdleTaskStack;
+}
+
+uint32_t xtask_get_idle_stack_len(void)
+{
+	return sizeof(uxIdleTaskStack);
+}
+
+
 void vTaskStartScheduler( void )
 {
 BaseType_t xReturn;
 
 	/* Add the idle task at the lowest priority. */
-	#if( configSUPPORT_STATIC_ALLOCATION == 1 )
 	{
-		StaticTask_t *pxIdleTaskTCBBuffer = NULL;
-		StackType_t *pxIdleTaskStackBuffer = NULL;
-		uint32_t ulIdleTaskStackSize;
-
-		/* The Idle task is created using user provided RAM - obtain the
-		address of the RAM then create the idle task. */
-		vApplicationGetIdleTaskMemory( &pxIdleTaskTCBBuffer, &pxIdleTaskStackBuffer, &ulIdleTaskStackSize );
-		xIdleTaskHandle = xTaskCreateStatic(	prvIdleTask,
+		StaticTask_t *pxIdleTaskTCBBuffer = (StaticTask_t *)&xIdleTaskTCB;
+		StackType_t *pxIdleTaskStackBuffer = uxIdleTaskStack;
+		uint32_t ulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+		
+		xIdleTaskHandle = xtask_create_static(	prvIdleTask,
 												"IDLE",
 												ulIdleTaskStackSize,
 												( void * ) NULL,
@@ -1860,16 +1866,6 @@ BaseType_t xReturn;
 			xReturn = pdFAIL;
 		}
 	}
-	#else
-	{
-		/* The Idle task is being created using dynamically allocated RAM. */
-		xReturn = xTaskCreate(	prvIdleTask,
-								"idle", configMINIMAL_STACK_SIZE,
-								( void * ) NULL,
-								( tskIDLE_PRIORITY | portPRIVILEGE_BIT ),
-								&xIdleTaskHandle ); /*lint !e961 MISRA exception, justified as it is not a redundant explicit cast to all supported compilers. */
-	}
-	#endif /* configSUPPORT_STATIC_ALLOCATION */
 
 	#if ( configUSE_TIMERS == 1 )
 	{

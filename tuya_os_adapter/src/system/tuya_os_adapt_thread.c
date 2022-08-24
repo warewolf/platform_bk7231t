@@ -24,6 +24,7 @@ static const TUYA_OS_THREAD_INTF m_tuya_os_thread_intfs = {
     .release       = tuya_os_adapt_thread_release,
     .is_self       = tuya_os_adapt_thread_is_self,
     .set_self_name = tuya_os_adapt_thread_set_self_name,
+    .watermark     = tuya_os_adapt_thread_get_watermark,
 };
 
 /***********************************************************
@@ -92,6 +93,26 @@ int tuya_os_adapt_thread_is_self(THREAD_HANDLE thread, BOOL_T *is_self)
 
     return OPRT_OS_ADAPTER_OK;
 }
+
+/**
+ * @brief get thread stack's watermark
+ * 
+ * @param[in] thread    the thread handle
+ * @param[out] watermark  watermark in Bytes
+ * @retval OPRT_OK      success
+ * @retval Other        fail
+ */
+int tuya_os_adapt_thread_get_watermark(THREAD_HANDLE thread, UINT_T* watermark)
+{
+    if (NULL == thread || NULL == watermark) {
+        return OPRT_OS_ADAPTER_INVALID_PARM;
+    }
+
+    *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof(UBaseType_t);
+
+    return OPRT_OS_ADAPTER_OK;
+}
+
 
 /**
  * @brief set name of self thread

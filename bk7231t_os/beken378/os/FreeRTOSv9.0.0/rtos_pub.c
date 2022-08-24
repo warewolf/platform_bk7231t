@@ -75,8 +75,8 @@ static beken_time_t beken_time_offset = 0;
 
 uint32_t  max_syscall_int_prio;
 uint32_t  ms_to_tick_ratio = 2;
-
 uint32_t rtos_max_priorities = RTOS_HIGHEST_PRIORITY - RTOS_LOWEST_PRIORITY + 1;
+static uint32_t s_is_started_scheduler = false;
 
 /******************************************************
  *               Function Definitions
@@ -948,6 +948,15 @@ void *beken_realloc( void *pv, size_t xWantedSize )
 	return pvPortRealloc(pv, xWantedSize);
 }
 
+void rtos_start_scheduler(void)
+{
+	s_is_started_scheduler = true;
+	vTaskStartScheduler();
+}
 
-//#endif
+uint32_t rtos_is_scheduler_started(void)
+{
+	return s_is_started_scheduler;
+}
+// eof
 

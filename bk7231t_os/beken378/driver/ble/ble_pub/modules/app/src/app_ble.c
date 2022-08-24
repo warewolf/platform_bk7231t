@@ -306,7 +306,7 @@ struct app_env_tag app_env;
 char *dev_str_name = NULL;
 int *scan_check_result = NULL;
 uint8_t ble_scan_status = BLE_SCAN_CLOSED;
-beken_timer_t rf_switch_time= {0};
+beken_timer_t rf_switch_time;
 
 extern uint32_t rf_ble_time;
 extern uint32_t rf_wifi_time;
@@ -444,8 +444,7 @@ void appm_init()
 	#if (BLE_APP_OADS)
     app_oads_init();
     #endif //(BLE_APP_OADS)
-
-    appm_ll_scan_init();
+		
 }
 
 bool appm_add_svc(void)
@@ -659,11 +658,7 @@ ble_err_t appm_stop_advertising(void)
 #define MIN_POST_BEACON_RF_TIME 20
 void rf_switch_fun(void *arg)
 {
-	extern uint8_t ble_switch_mac_sleeped;
     GLOBAL_INT_DIS();
-	if(ble_switch_mac_sleeped == 1){
-		rtos_change_period(&rf_switch_time,5);
-	}else{
     if (rf_user == RF_USER_BLE) {
         if (RW_EVT_STA_GOT_IP == mhdr_get_station_status()) {
             rf_user = RF_USER_WIFI;
@@ -699,7 +694,6 @@ void rf_switch_fun(void *arg)
             rf_user = RF_USER_BLE;
             sddev_control(SCTRL_DEV_NAME, CMD_BLE_RF_BIT_SET, NULL);
             rtos_change_period(&rf_switch_time, rf_ble_time);
-	        }
         }
     }
     GLOBAL_INT_RES();
@@ -753,7 +747,6 @@ ble_err_t appm_ll_scan_stop(void)
 
         rtos_stop_timer(&rf_switch_time);
         rtos_deinit_timer(&rf_switch_time);
-        rf_switch_time.handle = NULL;
 
         ble_send_msg(BLE_MSG_POLL);
     } else {
@@ -763,20 +756,6 @@ ble_err_t appm_ll_scan_stop(void)
     return ret;
 }
 
-void appm_ll_scan_init(void)
-{
-    sddev_control(SCTRL_DEV_NAME, CMD_BLE_RF_BIT_CLR, NULL);
-    GLOBAL_INT_DIS();
-    ble_scan_status = BLE_SCAN_CLOSED;
-    rf_user = RF_USER_WIFI;
-    GLOBAL_INT_RES();
-
-    if (rf_switch_time.handle) {
-        rtos_stop_timer(&rf_switch_time);
-        rtos_deinit_timer(&rf_switch_time);
-        rf_switch_time.handle = NULL;
-    }
-}
 
 ble_err_t appm_stop_scan(void)
 {

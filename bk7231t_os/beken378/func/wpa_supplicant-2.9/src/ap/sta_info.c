@@ -639,7 +639,6 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
 
 	wpa_printf(MSG_DEBUG, "  New STA");
 	if (hapd->num_sta >= hapd->conf->max_num_sta) {
-        bk_printf("%s:no room to connect ap",__func__);
 		/* FIX: might try to remove some old STAs first? */
 		wpa_printf(MSG_DEBUG, "no more room for new STAs (%d/%d)",
 			   hapd->num_sta, hapd->conf->max_num_sta);
@@ -682,8 +681,6 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
 	sta->next = hapd->sta_list;
 	hapd->sta_list = sta;
 	hapd->num_sta++;
-    bk_printf("%s: sta:%d, %02x-%02x-%02x-%02x-%02x-%02x",__func__, hapd->num_sta,addr[0],addr[1],addr[2],addr[3],addr[4],addr[5]);
-    
 	ap_sta_hash_add(hapd, sta);
 	ap_sta_remove_in_other_bss(hapd, sta);
 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;

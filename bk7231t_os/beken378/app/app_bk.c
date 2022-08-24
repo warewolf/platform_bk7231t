@@ -777,6 +777,7 @@ void app_start(void)
 	cli_init();
 	#endif
 
+
 #if defined(SUPPORT_MIDEA_BLE)
     if(!get_ate_mode_state())
     {
