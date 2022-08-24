@@ -20,6 +20,8 @@ extern void hostapd_poll(void *param);
 extern int hostapd_channel_switch(int new_freq);
 extern int supplicant_main_entry(char *oob_ssid);
 extern void wpa_supplicant_poll(void *param);
+struct wpa_supplicant *wpa_suppliant_ctrl_get_wpas();
+struct hapd_interfaces *hostapd_ctrl_get_interfaces();
 
 #endif // _MAIN_NONE_H_
 // eof

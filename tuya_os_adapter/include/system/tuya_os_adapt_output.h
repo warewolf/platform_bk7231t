@@ -12,10 +12,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "tuya_os_adapter.h"
+#include "uart_pub.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+#define LOG_DEBUG(...)  bk_printf("[PLATFORM DEBUG]" __VA_ARGS__)
+#define LOG_TRACE(...)  bk_printf("[PLATFORM TRACE]" __VA_ARGS__)
+#define LOG_NOTICE(...) bk_printf("[PLATFORM NOTICE]" __VA_ARGS__)
+#define LOG_ERR(...)    bk_printf("[PLATFORM ERROR]" __VA_ARGS__)
+
 
 /**
  * @brief tuya_os_adapt_output_log用于输出log信息
@@ -23,7 +31,7 @@ extern "C" {
  * @param[in] *str log buffer指针
  * 函数实现在tuya_os_adapt_output.c
  */
-void tuya_os_adapt_output_log(const signed char *str);
+void tuya_os_adapt_output_log(const         char *str);
 
 /**
  * @brief 用于关闭原厂sdk默认的log口
@@ -37,10 +45,7 @@ int tuya_os_adapt_log_close(void);
  */
 int tuya_os_adapt_log_open(void);
 
-
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_output_intf(void);
-/* add end */
 
 
 #ifdef __cplusplus

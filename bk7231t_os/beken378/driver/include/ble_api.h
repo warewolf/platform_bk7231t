@@ -9,16 +9,7 @@
 
 #define BK_PERM_GET(perm, access)\
     (((perm) & (access ## _MASK)) >> (access ## _POS))
-
-
-/// Attribute & Service access mode
-enum
-{
-    /// Disable access
-    BK_PERM_RIGHT_DISABLE   = 0,
-    /// Enable access
-    BK_PERM_RIGHT_ENABLE   = 1,
-};
+ 
 
 typedef enum
 {
@@ -120,6 +111,62 @@ typedef enum
     RI_POS           = 15,
 }bk_ext_perm_mask;
 
+typedef enum
+{
+    /// Task that manage service is multi-instantiated
+    SVC_MI_MASK        = 0x01,
+    SVC_MI_POS         = 0,
+    /// Check Encryption key size for service Access
+    SVC_EKS_MASK       = 0x02,
+    SVC_EKS_POS        = 1,
+    /// Service Permission authentication
+    SVC_AUTH_MASK      = 0x0C,
+    SVC_AUTH_POS       = 2,
+    /// Disable the service
+    SVC_DIS_MASK       = 0x10,
+    SVC_DIS_POS        = 4,
+    /// Service UUID Length
+    SVC_UUID_LEN_MASK  = 0x60,
+    SVC_UUID_LEN_POS   = 5,
+    /// Service type Secondary
+    SVC_SECONDARY_MASK = 0x80,
+    SVC_SECONDARY_POS  = 7,
+}bk_svc_perm_mask;
+
+/// Attribute & Service access mode
+enum
+{
+    /// Disable access
+    BK_PERM_RIGHT_DISABLE   = 0,
+    /// Enable access
+    BK_PERM_RIGHT_ENABLE   = 1,
+};
+
+/// Attribute & Service access rights
+enum
+{
+    /// No Authentication
+    BK_PERM_RIGHT_NO_AUTH  = 0,
+    /// Access Requires Unauthenticated link
+    BK_PERM_RIGHT_UNAUTH   = 1,
+    /// Access Requires Authenticated link
+    BK_PERM_RIGHT_AUTH     = 2,
+    /// Access Requires Secure Connection link
+    BK_PERM_RIGHT_SEC_CON  = 3,
+};
+
+/// Attribute & Service UUID Length
+enum
+{
+    /// 16  bits UUID
+    BK_PERM_RIGHT_UUID_16         = 0,
+    /// 32  bits UUID
+    BK_PERM_RIGHT_UUID_32         = 1,
+    /// 128 bits UUID
+    BK_PERM_RIGHT_UUID_128        = 2,
+    /// Invalid
+    BK_PERM_RIGHT_UUID_RFU        = 3,
+};
 
 typedef enum
 {
@@ -193,6 +240,8 @@ typedef enum
     BLE_ATT_INFO_REQ,
     BLE_CREATE_DB_OK,
     BLE_CREATE_DB_FAIL,
+
+	BLE_HW_ERROR,
 } ble_event_t;
 
 typedef struct
@@ -219,6 +268,16 @@ typedef struct
     uint16_t size;
 } read_req_t;
 
+typedef struct
+{
+    uint8_t evt_type;
+    uint8_t adv_addr_type;
+    uint8_t adv_addr[6];
+    uint8_t data_len;
+    uint8_t *data;
+    uint8_t rssi;
+} recv_adv_t;
+
 struct ble_get_key_ind
 {
     uint8_t *pri_key;
@@ -241,7 +300,7 @@ struct ble_gen_dh_key_ind
 typedef struct
 {
     /// 16 bits UUID LSB First
-    uint16_t uuid;
+    uint8_t uuid[16];
     /// Attribute Permissions (@see enum attm_perm_mask)
     uint16_t perm;
     /// Attribute Extended Permissions (@see enum attm_value_perm_mask)
@@ -256,7 +315,7 @@ struct bk_ble_db_cfg
 {
     uint16_t prf_task_id;
     ///Service uuid
-    uint16_t uuid;
+    uint8_t uuid[16];
     ///Number of db
 	uint8_t att_db_nb;
     ///Start handler, 0 means autoalloc
@@ -268,7 +327,7 @@ struct bk_ble_db_cfg
 };
 
 typedef void (*ble_event_cb_t)(ble_event_t event, void *param);
-typedef void (*ble_recv_adv_cb_t)(uint8_t *buf, uint8_t len);
+typedef void (*ble_recv_adv_cb_t)(recv_adv_t *recv_adv);
 typedef uint8_t (*bk_ble_read_cb_t)(read_req_t *read_req);
 typedef void (*bk_ble_write_cb_t)(write_req_t *write_req);
 
@@ -284,6 +343,10 @@ void ble_set_write_cb(bk_ble_write_cb_t func);
 void ble_set_event_cb(ble_event_cb_t func);
 void ble_set_read_cb(bk_ble_read_cb_t func);
 void ble_set_recv_adv_cb(ble_recv_adv_cb_t func);
+//Set rf time in ms
+void ble_set_rf_time(uint32_t wifi_time_ms, uint32_t ble_time_ms);
+ble_err_t appm_ll_scan_start(void);
+ble_err_t appm_ll_scan_stop(void);
 ble_err_t bk_ble_create_db (struct bk_ble_db_cfg* ble_db_cfg);
 ble_err_t bk_ble_send_ntf_value(uint32_t len, uint8_t *buf, uint16_t prf_id, uint16_t att_idx);
 ble_err_t bk_ble_send_ind_value(uint32_t len, uint8_t *buf, uint16_t prf_id, uint16_t att_idx);

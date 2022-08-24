@@ -51,9 +51,7 @@ int tuya_os_adapt_mutex_unlock(const MUTEX_HANDLE mutexHandle);
  */
 int tuya_os_adapt_mutex_release(const MUTEX_HANDLE mutexHandle);
 
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_mutex_intf(void);
-/* add end */
 
 #ifdef __cplusplus
 }

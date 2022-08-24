@@ -69,15 +69,6 @@ enum rwble_pti_config_idx
 #define BLE_TESTER              0
 #endif // defined (CFG_BLE_TESTER)
 
-/// Flag indicating that Advertising Test mode is enabled or not
-#if defined(CFG_BLE_ADV_TEST_MODE)
-#define BLE_ADV_TEST_MODE 1
-#else  // !defined(CFG_BLE_ADV_TESTER)
-#define BLE_ADV_TEST_MODE 0
-#endif // defined(CFG_BLE_ADV_TESTER)
-
-
-
 
 /// Flag indicating if debug mode is activated or not
 #define BLE_DEBUG               RW_DEBUG

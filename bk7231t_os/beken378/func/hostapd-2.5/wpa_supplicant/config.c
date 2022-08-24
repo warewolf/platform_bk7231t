@@ -2202,6 +2202,8 @@ void wpa_config_free(struct wpa_config *config)
 	os_free(config->wowlan_triggers);
 	os_free(config->fst_group_id);
 	os_free(config);
+	(void)cred;
+	(void)cprev;
 }
 
 
@@ -3585,6 +3587,7 @@ static int wpa_config_process_load_dynamic_eap(
 	const struct global_parse_data *data, struct wpa_config *config,
 	int line, const char *so)
 {
+#ifdef CONFIG_FULL_SUPPLICANT
 	int ret;
 	wpa_printf(MSG_DEBUG, "load_dynamic_eap=%s", so);
 	ret = eap_peer_method_load(so);
@@ -3596,7 +3599,8 @@ static int wpa_config_process_load_dynamic_eap(
 			   "method '%s'.", line, so);
 		return -1;
 	}
-	
+#endif
+
 	return 0;
 }
 

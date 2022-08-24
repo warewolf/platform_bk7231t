@@ -27,6 +27,7 @@
 #include "fusb_pub.h"
 #endif
 #include "start_type_pub.h"
+#include "BkDriverFlash.h"
 
 UINT32 func_init_extended(void)
 {

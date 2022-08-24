@@ -1,10 +1,10 @@
- /*============================================================================
- *                                                                            *
- * Copyright (C) by Tuya Inc                                                  *
- * All rights reserved                                                        *
- *                                                                            *
- *                                                                            *
- =============================================================================*/
+/*============================================================================
+*                                                                            *
+* Copyright (C) by Tuya Inc                                                  *
+* All rights reserved                                                        *
+*                                                                            *
+*                                                                            *
+=============================================================================*/
 
 /*============================ INCLUDES ======================================*/
 #include "tuya_rtc.h"
@@ -13,11 +13,11 @@
 /*============================ MACROS ========================================*/
 /*============================ TYPES =========================================*/
 /*============================ PROTOTYPES ====================================*/
-static int rtc_dev_init      (void);
-static int rtc_dev_time_get  (time_t *timestamp);
-static int rtc_dev_time_set  (time_t  timestamp);
-static int rtc_dev_control   (uint8_t cmd, void *arg);
-static int rtc_dev_deinit    (void);
+static int rtc_dev_init(void);
+static int rtc_dev_time_get(time_t *timestamp);
+static int rtc_dev_time_set(time_t  timestamp);
+static int rtc_dev_control(uint8_t cmd, void *arg);
+static int rtc_dev_deinit(void);
 /*============================ LOCAL VARIABLES ===============================*/
 static const tuya_rtc_ops_t  rtc_dev_ops = {
     .init       = rtc_dev_init,
@@ -30,7 +30,7 @@ static const tuya_rtc_ops_t  rtc_dev_ops = {
 /*============================ IMPLEMENTATION ================================*/
 int platform_rtc_init(void)
 {
-    tuya_rtc_register(&rtc_dev_ops);
+    tuya_rtc_register((tuya_rtc_ops_t *) &rtc_dev_ops);
 
     return OPRT_OS_ADAPTER_OK;
 }
@@ -42,7 +42,7 @@ static int rtc_dev_init(void)
 
 
 static int rtc_dev_time_get(time_t *timestamp)
-{    
+{
     return OPRT_OS_ADAPTER_OK;
 }
 

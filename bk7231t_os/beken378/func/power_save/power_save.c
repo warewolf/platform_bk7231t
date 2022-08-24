@@ -25,6 +25,7 @@
 
 volatile static PS_MODE_STATUS    bk_ps_mode = PS_NO_PS_MODE;
 UINT32 last_rw_time = 0;
+extern void ble_used_rf_end(void);
 
 #if CFG_USE_STA_PS
 static STA_PS_INFO bk_ps_info =
@@ -448,6 +449,7 @@ void power_save_wakeup(void)
 
     ASSERT(!ps_lock);
     ps_lock ++;
+	ble_used_rf_end();
 }
 
 void power_save_dtim_exit_check()
@@ -927,6 +929,7 @@ int power_save_dtim_disable_handler(void)
 #if CFG_ROLE_LAUNCH
 	        rl_pre_sta_set_status(RL_STATUS_STA_LAUNCHED);
 #endif
+	ble_used_rf_end();
 
     GLOBAL_INT_RESTORE();
     os_printf("exit dtim ps!\r\n");

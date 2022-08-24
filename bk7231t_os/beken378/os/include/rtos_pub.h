@@ -452,6 +452,19 @@ OSStatus rtos_init_queue( beken_queue_t* queue, const char* name, uint32_t messa
 OSStatus rtos_push_to_queue( beken_queue_t* queue, void* message, uint32_t timeout_ms );
 
 
+/** @brief    Pushes an object onto a queue
+  *
+  * @param    queue : a pointer to the queue handle
+  * @param    message : the object to be added to the queue. Size is assumed to be
+  *                  the size specified in @ref rtos_init_queue
+  * @param    timeout_ms: the number of milliseconds to wait before returning
+  *
+  * @return   kNoErr        : on success.
+  * @return   kGeneralErr   : if an error or timeout occurred
+  */
+OSStatus rtos_push_to_queue_front( beken_queue_t* queue, void* message, uint32_t timeout_ms );
+
+
 /** @brief    Pops an object off a queue
   *
   * @param    queue : a pointer to the queue handle

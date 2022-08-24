@@ -25,7 +25,7 @@ typedef VOID (*SET_OTA_FINISH_NOTIFY)(VOID);
  * @retval  =0      成功
  * @retval  <0      错误码
  */
-int tuya_os_adapt_ota_start_inform(unsigned int file_size);
+int tuya_os_adapt_ota_start_inform(unsigned int file_size, OTA_TYPE type);
 
 /**
  * @brief ota数据包处理
@@ -56,7 +56,9 @@ void set_ota_finish_notify_cb(SET_OTA_FINISH_NOTIFY callback);
  * @retval  =0      成功
  * @retval  <0      错误码
  */
-int tuya_os_adapt_ota_end_inform(bool reset);
+int tuya_os_adapt_ota_end_inform(bool_t reset);
+
+OPERATE_RET tuya_os_adapt_reg_ota_intf(void);
 
 #ifdef __cplusplus
 }

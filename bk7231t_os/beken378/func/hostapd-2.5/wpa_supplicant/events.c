@@ -1171,6 +1171,7 @@ struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 	return selected;
 }
 
+extern void mhdr_set_station_status_when_reconnect_over(void);
 void wpa_supplicant_rescan_terminal(void)
 {
 	mhdr_set_station_status_when_reconnect_over();
@@ -3790,4 +3791,5 @@ void wpa_supplicant_event_sta(void *ctx, enum wpa_event_type event,
 		wpa_msg(wpa_s, MSG_INFO, "Unknown event %d", event);
 		break;
 	}
+	(void)resched;
 }

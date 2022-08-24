@@ -231,7 +231,7 @@ int tuya_os_adapt_wifi_register_recv_mgnt_callback(const BOOL_T enable, const WI
  * @param[in]       none
  * @return  true: rf param exist  Other: fail
  */
-bool tuya_os_adapt_wifi_rf_calibrated(void);
+bool_t tuya_os_adapt_wifi_rf_calibrated(void);
 
 /**
  * @brief set wifi lowerpower mode
@@ -240,11 +240,9 @@ bool tuya_os_adapt_wifi_rf_calibrated(void);
  * @param[in]       dtim
  * @return  OPRT_OS_ADAPTER_OK: success  Other: fail
  */
-int tuya_os_adapt_set_wifi_lp_mode(const BOOL_T en, const unsigned int dtim);
+int tuya_os_adapt_set_wifi_lp_mode(const BOOL_T en, const unsigned char dtim);
 
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_wifi_intf(void);
-/* add end */
 
 
 #ifdef __cplusplus

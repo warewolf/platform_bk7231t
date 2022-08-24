@@ -121,6 +121,8 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 			    sizeof(*hdr) + datalen);
 		return;
 	}
+	(void)key_mgmt;
+	(void)pmksa;
 }
 
 static void ieee802_1x_set_port_authorized(void *ctx, void *sta_ctx,

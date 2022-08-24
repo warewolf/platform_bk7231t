@@ -634,6 +634,12 @@ void eloop_timeout_run(void)
 }
 
 extern beken_queue_t wpah_queue;
+extern int hostapd_is_exiting(void);
+extern int hostapd_exit_handler(void);
+extern int hostapd_exit_done(void);
+extern int supplicant_is_exiting(void);
+extern int supplicant_exit_handler(void);
+extern int supplicant_exit_done(void);
 void eloop_run(void)
 {
 	struct os_reltime tv, now;

@@ -38,7 +38,9 @@
 #endif
 
 static SCTRL_PS_SAVE_VALUES ps_saves[2];
+#if CFG_USE_LOW_IDLE_PS
 static UINT32 ps_saves_gpio_cfgs[32];
+#endif
 static SCTRL_MCU_PS_INFO sctrl_mcu_ps_info =
 {
     .hw_sleep = 0,
@@ -493,13 +495,8 @@ void sctrl_hw_sleep(UINT32 peri_clk)
     reg &= ~(BLK_EN_DPLL_480M | BLK_EN_XTAL2RF );
     REG_WRITE(SCTRL_BLOCK_EN_CFG, reg);
     PS_DEBUG_DOWN_TRIGER;
-    /* center bias power down*/
-    reg = sctrl_analog_get(SCTRL_ANALOG_CTRL2);
-    reg &= (~(1 << 13));
-    sctrl_analog_set(SCTRL_ANALOG_CTRL2, reg);
-    sctrl_mcu_ps_info.hw_sleep = 1;
 
-    while(sctrl_analog_get(SCTRL_ANALOG_CTRL2) & (1 << 13));
+    sctrl_mcu_ps_info.hw_sleep = 1;
 
     PS_DEBUG_DOWN_TRIGER;
 #if PS_CLOSE_PERI_CLK
@@ -523,13 +520,6 @@ void sctrl_hw_wakeup()
     UINT32 reg;
     
 	PS_DEBUG_BCN_TRIGER;   
-    /* center bias power on*/ 
-    reg = sctrl_analog_get(SCTRL_ANALOG_CTRL2);
-    reg |= (1<<13);
-    sctrl_analog_set(SCTRL_ANALOG_CTRL2, reg); 
-    
-    while((sctrl_analog_get(SCTRL_ANALOG_CTRL2) & (1<<13))  == 0);
-    
     
     /*dpll(480m)  & xtal2rf enable*/
     reg = REG_READ(SCTRL_BLOCK_EN_CFG);
@@ -1278,7 +1268,10 @@ void sctrl_enter_rtos_deep_sleep(PS_DEEP_CTRL_PARAM *deep_param)
     /* Modem Subsystem clock 480m disable*/
     reg = REG_READ(SCTRL_CONTROL);
     REG_WRITE(SCTRL_CONTROL, reg | MODEM_CLK480M_PWD_BIT);
-	
+
+    /*Power Down USB!*/
+    sctrl_ctrl(CMD_SCTRL_USB_POWERDOWN, 0);
+        
     /* Flash 26MHz clock select dco clock*/
     flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
     ASSERT(DD_HANDLE_UNVALID != flash_hdl);

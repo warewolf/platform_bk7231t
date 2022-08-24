@@ -153,6 +153,23 @@ __INLINE uint16_t em_common_extab1_csptr_getf(int elt_idx)
     return ((localVal & ((uint16_t)0x00007FFF)) >> 0);
 }
 
+
+__INLINE uint32_t em_common_extab1_csptr_getf_get_csptr(int elt_idx)
+{
+    uint32_t localVal = REG_BLE_RD(EM_COMMON_EXTAB1_ADDR - 2 + (elt_idx * REG_COMMON_EM_ET_SIZE));
+	return localVal;
+    ///return ((localVal & (0x00007FFFU)) >> 0);
+}
+
+__INLINE uint32_t em_common_extab1_csptr_get_value(int elt_idx)
+{
+    uint32_t csptr = em_common_extab1_csptr_getf(elt_idx);
+	////bk_printf("csptr:%x\r\n",csptr);
+	uint32_t value = EM_RD(REG_COMMON_EM_ET_BASE_ADDR + csptr);
+
+	return value;
+}
+
 __INLINE void em_common_extab1_csptr_setf(int elt_idx, uint16_t csptr)
 {
     ASSERT_ERR((((uint16_t)csptr << 0) & ~((uint16_t)0x00007FFF)) == 0);

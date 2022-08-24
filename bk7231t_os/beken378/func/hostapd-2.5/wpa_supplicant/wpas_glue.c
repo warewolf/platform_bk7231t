@@ -55,7 +55,8 @@ static u8 * wpa_alloc_eapol(const struct wpa_supplicant *wpa_s, u8 type,
 	return (u8 *) hdr;
 }
 
-
+extern int l2_packet_send_sync(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
+		   const u8 *buf, size_t len);
 /**
  * wpa_ether_send - Send Ethernet frame
  * @wpa_s: Pointer to wpa_supplicant data

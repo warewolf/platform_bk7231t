@@ -70,7 +70,6 @@ extern uint32_t platform_is_in_interrupt_context( void );
 /******************************************************
  *               Variables Definitions
  ******************************************************/
-xTaskHandle  app_thread_handle;
 static beken_time_t beken_time_offset = 0;
 
 

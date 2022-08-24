@@ -204,6 +204,9 @@ void dump_data(uint8_t* data, uint16_t length);
  */
 #if PLF_DEBUG
 /// Assertions showing a critical error that could require a full system reset
+#ifdef ASSERT_ERR
+#undef ASSERT_ERR
+#endif
 #define ASSERT_ERR(cond)              ASSERT(cond)
 
 /// Assertions showing a critical error that could require a full system reset
@@ -222,11 +225,17 @@ void dump_data(uint8_t* data, uint16_t length);
 
 #else
 /// Assertions showing a critical error that could require a full system reset
+#ifdef ASSERT_ERR
+#undef ASSERT_ERR
+#endif
 #define ASSERT_ERR(cond)
 
 /// Assertions showing a critical error that could require a full system reset
 #define ASSERT_INFO(cond, param0, param1)
 
+#ifndef ASSERT_WARN
+#undef ASSERT_WARN
+#endif
 /// Assertions showing a non-critical problem that has to be fixed by the SW
 #define ASSERT_WARN(cond)
 

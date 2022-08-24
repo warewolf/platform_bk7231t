@@ -44,12 +44,8 @@ typedef void (*THREAD_FUNC_T)(void*);
  * @retval 0          success
  * @retval Other            fail
  */
-int tuya_os_adapt_thread_create(THREAD_HANDLE* thread,
-                           const char* name,
-                           const unsigned int stack_size,
-                           const unsigned int priority,
-                           const THREAD_FUNC_T func,
-                           const void* arg);
+int tuya_os_adapt_thread_create(THREAD_HANDLE* thread, const char* name, unsigned int stack_size, unsigned int priority, THREAD_FUNC_T func, void* const arg);
+
 
 /**
  * @brief terminal thread and release thread resources
@@ -113,9 +109,9 @@ void tuya_os_adapt_thread_priority_set(THREAD_HANDLE thread, int prio_thread);
 */
 int tuya_os_adapt_thread_priority_get(THREAD_HANDLE thread);
 
-/* add begin: by sunkz, interface regist */
+
 OPERATE_RET tuya_os_adapt_reg_thread_intf(void);
-/* add end */
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

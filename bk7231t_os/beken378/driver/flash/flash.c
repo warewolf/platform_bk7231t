@@ -11,20 +11,6 @@
 #include "sys_ctrl_pub.h"
 #include "mcu_ps_pub.h"
 
-#ifdef CFG_SUPPORT_ALIOS
-static const flash_config_t flash_config[] =
-{
-    {0x1C7016, 1, 0x400000, 2,  0, 2, 0x1F, 0x1F, 0x00, 0x16, 0x1B,            0, 0, 0xA5, 0x01}, //en_25qh32b
-    {0x1C7015, 1, 0x200000, 2,  0, 2, 0x1F, 0x1F, 0x00, 0x0d, 0x0d,            0, 0, 0xA5, 0x01}, //en_25qh16b
-    {0x0B4014, 2, 0x100000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0C, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xtx_25f08b
-    {0x0B4015, 2, 0x200000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0D, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xtx_25f16b
-    {0x0B4016, 2, 0x400000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xtx_25f32b
-    {0xC84015, 2, 0x200000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0D, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //gd_25q16c
-    {0x204016, 2, 0x400000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xmc_25qh32b
-    {0xC22315, 1, 0x200000, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x0A, 0x0E,            6, 1, 0xA5, 0x01}, //mx_25v16b
-    {0x000000, 2, 0x400000, 2,  0, 2, 0x1F, 0x00, 0x00, 0x00, 0x00,            0, 0, 0x00, 0x01}, //default
-};
-#else
 static const flash_config_t flash_config[] =
 {
     {0x1C7016, 1, 0x400000, 2,  0, 2, 0x1F, 0x1F, 0x00, 0x16, 0x01B, 0, 0, 0xA5, 0x01}, //en_25qh32b
@@ -38,9 +24,9 @@ static const flash_config_t flash_config[] =
     {0xEF4016, 2, 0x400000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x00, 0x101, 9, 1, 0xA0, 0x01}, //w_25q32(bfj)
     {0x204016, 2, 0x400000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x101, 9, 1, 0xA0, 0x01}, //xmc_25qh32b
     {0xC22315, 1, 0x200000, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x0A, 0x00E, 6, 1, 0xA5, 0x01}, //mx_25v16b
+    {0xEB6015, 2, 0x200000, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0D, 0x101, 9, 1, 0xA0, 0x01}, //zg_th25q16b
     {0x000000, 2, 0x400000, 2,  0, 2, 0x1F, 0x00, 0x00, 0x00, 0x000, 0, 0, 0x00, 0x01}, //default
 };
-#endif
 
 static const flash_config_t *flash_current_config = NULL;
 
@@ -151,6 +137,9 @@ static UINT16 flash_read_sr(UINT8 sr_width)
 static void flash_write_sr(UINT8 sr_width,  UINT16 val)
 {
     UINT32 value;
+    GLOBAL_INT_DECLARATION();
+
+    GLOBAL_INT_DISABLE();
     while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
 
     value = REG_READ(REG_FLASH_CONF);
@@ -173,6 +162,7 @@ static void flash_write_sr(UINT8 sr_width,  UINT16 val)
     }
 
     while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
+    GLOBAL_INT_RESTORE();
 }
 
 static UINT8 flash_read_qe(void)
@@ -439,6 +429,7 @@ static void flash_erase_sector(UINT32 address)
 {
     UINT32 value;
     UINT32 erase_addr = address & 0xFFF000;
+    GLOBAL_INT_DECLARATION();
 
     if(erase_addr >= flash_current_config->flash_size)
     {
@@ -446,6 +437,7 @@ static void flash_erase_sector(UINT32 address)
         return;
     }
 
+    GLOBAL_INT_DISABLE();
     while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
     value = REG_READ(REG_FLASH_OPERATE_SW);
     value = ((erase_addr << ADDR_SW_REG_POSI)
@@ -454,6 +446,7 @@ static void flash_erase_sector(UINT32 address)
              | (value & WP_VALUE));
     REG_WRITE(REG_FLASH_OPERATE_SW, value);
     while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
+    GLOBAL_INT_RESTORE();
 }
 
 static void flash_set_hpm(void)
@@ -476,12 +469,14 @@ static void flash_read_data(UINT8 *buffer, UINT32 address, UINT32 len)
     UINT32 addr = address & (~0x1F);
     UINT32 buf[8];
     UINT8 *pb = (UINT8 *)&buf[0];
+    GLOBAL_INT_DECLARATION();
 
     if(len == 0)
     {
         return;
     }
 
+    GLOBAL_INT_DISABLE();
     while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
     while(len)
     {
@@ -510,6 +505,7 @@ static void flash_read_data(UINT8 *buffer, UINT32 address, UINT32 len)
             }
         }
     }
+    GLOBAL_INT_RESTORE();
 }
 
 static void flash_write_data(UINT8 *buffer, UINT32 address, UINT32 len)
@@ -518,6 +514,7 @@ static void flash_write_data(UINT8 *buffer, UINT32 address, UINT32 len)
     UINT32 addr = address & (~0x1F);
     UINT32 buf[8];
     UINT8 *pb = (UINT8 *)&buf[0];
+    GLOBAL_INT_DECLARATION();
 
     if((addr >= flash_current_config->flash_size)
         || (len > flash_current_config->flash_size)
@@ -553,6 +550,7 @@ static void flash_write_data(UINT8 *buffer, UINT32 address, UINT32 len)
                 break;
         }
 
+        GLOBAL_INT_DISABLE();
         for (i = 0; i < 8; i++)
         {
             REG_WRITE(REG_FLASH_DATA_SW_FLASH, buf[i]);
@@ -565,6 +563,7 @@ static void flash_write_data(UINT8 *buffer, UINT32 address, UINT32 len)
                      | (reg_value & WP_VALUE));
         REG_WRITE(REG_FLASH_OPERATE_SW, reg_value);
         while(REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
+        GLOBAL_INT_RESTORE();
         addr += 32;
         memset(pb, 0xFF, 32);
     }

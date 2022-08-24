@@ -197,7 +197,7 @@
 // <h>  Config MAX Connect Device Numble
 // <o>  CFG_CON <1-10>
 // <i>  CFG MAX CONNECT NUM (1 -- 10)
-#define CFG_CON			1
+#define CFG_CON			8
 // </h>
 
 
@@ -288,7 +288,7 @@
 #endif //CFG_UART_DBG_PRINTF
 
 
-
+#define LLD_SCAN_MODE           1
 
 
 
@@ -462,7 +462,7 @@
 /// Number of elements in the TX Descriptor pool
 // Dedicated for DATA
 // Worst case (3 packets (251 bytes) fragmented into 27 byte =  10)
-#define BLE_TX_DESC_DATA            ((BLE_TX_BUFF_DATA) * 10)
+#define BLE_TX_DESC_DATA            ((BLE_TX_BUFF_DATA) * 3)
 // Dedicated for CONTROL
 #define BLE_TX_DESC_CNTL            (BLE_TX_BUFF_CNTL)
 // Dedicated for ADVERTISING

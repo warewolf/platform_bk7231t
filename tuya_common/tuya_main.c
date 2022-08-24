@@ -26,12 +26,15 @@
 #include "tuya_error_code.h"
 
 #if defined(TY_BT_MOD) && (TY_BT_MOD==1)
-#include "tuya_ble_api.h"
-#include "tuya_hal_bt.h"
+#include "tuya_bt.h"
 #endif
 
 #if TY_SECURITY_CHIP
 #include "Z32HUA_encrypt.h"
+#endif
+
+#if defined(ENABLE_PRODUCT_AUTOTEST) && (ENABLE_PRODUCT_AUTOTEST == 1)
+#include "prod_test.h"
 #endif
 
 /***********************************************************
@@ -196,12 +199,12 @@ STATIC BOOL_T scan_test_ssid(VOID)
     
     op_ret = wd_gw_wsm_read(&read_gw_wsm);
 
-    if((gwcm_mode == GWCM_OLD_PROD ) || (gwcm_mode == GWCM_LOW_POWER_AUTOCFG) || (gwcm_mode == GWCM_SPCL_AUTOCFG)) {
-        if(read_gw_wsm.nc_tp >= GWNS_TY_SMARTCFG) {
+    if((gwcm_mode == GWCM_OLD_PROD ) || (gwcm_mode == GWCM_LOW_POWER_AUTOCFG) || (gwcm_mode == GWCM_SPCL_AUTOCFG)) { /* 上电默认配网或者第一次是配网的模式 */
+        if((read_gw_wsm.nc_tp >= GWNS_TY_SMARTCFG) && (read_gw_wsm.nc_tp != GWNS_UNCFG_SMC_AP)){ /* 已经存在ssid等配网信息但是并不是EZ和AP共存配网 */
             return FALSE;
         }
-    } else if (gwcm_mode == GWCM_SPCL_MODE || gwcm_mode == GWCM_LOW_POWER) {
-        if(read_gw_wsm.nc_tp >= GWNS_UNCFG_SMC) {
+    } else if (gwcm_mode == GWCM_SPCL_MODE || gwcm_mode == GWCM_LOW_POWER) { /* 上电默认不配网 */
+        if(read_gw_wsm.nc_tp >= GWNS_UNCFG_SMC) { /* 处于配网的状态 */
             return FALSE;
         }
     } else {
@@ -284,6 +287,14 @@ void user_main(void)
     // 应用初始化
     app_init();
 
+#if defined(ENABLE_PRODUCT_AUTOTEST) && (ENABLE_PRODUCT_AUTOTEST == 1)
+    if (prodtest_ssid_scan(500)) {
+       return;
+    }
+    // 初始化设备
+    PR_DEBUG("device_init in");
+    TUYA_CALL_ERR_LOG(device_init());
+#else 
     // 功能启动，其中 GWCM_OLD 模式特殊，在任意时刻都可以扫描SSID，进入产测模式。
     PR_DEBUG("gwcm_mode %d", gwcm_mode);//默认没有低功耗模式
     if(gwcm_mode != GWCM_OLD) {
@@ -304,6 +315,7 @@ void user_main(void)
         PR_DEBUG("device_init in");
         TUYA_CALL_ERR_LOG(device_init());
     }
+#endif
 
     return;
 }

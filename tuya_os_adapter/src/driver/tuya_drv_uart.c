@@ -1,14 +1,15 @@
- /*============================================================================
- *                                                                            *
- * Copyright (C) by Tuya Inc                                                  *
- * All rights reserved                                                        *
- *                                                                            *
- *                                                                            *
- =============================================================================*/
+/*============================================================================
+*                                                                            *
+* Copyright (C) by Tuya Inc                                                  *
+* All rights reserved                                                        *
+*                                                                            *
+*                                                                            *
+=============================================================================*/
 
 /*============================ INCLUDES ======================================*/
 #include "tuya_uart.h"
 #include "tuya_os_adapter_error_code.h"
+
 #include "drv_model_pub.h"
 #include "uart_pub.h"
 #include "BkDriverUart.h"
@@ -16,22 +17,19 @@
 /*============================ MACROS ========================================*/
 #define UART_DEV_NUM            2
 
-#define UART1_TXPIN PB_1 							
-#define UART1_RXPIN PB_2 								
-
 /*============================ TYPES =========================================*/
 typedef struct {
-    tuya_uart_t         dev;  
+    tuya_uart_t         dev;
     bk_uart_t           port;
     tuya_uart_isr_cb    isr_cb;
 } uart_dev_t;
 
 /*============================ PROTOTYPES ====================================*/
-static int uart_dev_init        (tuya_uart_t *uart, tuya_uart_cfg_t *cfg);
-static int uart_dev_write_byte  (tuya_uart_t *uart, uint8_t byte);
-static int uart_dev_read_byte   (tuya_uart_t *uart, uint8_t *byte);
-static int uart_dev_control     (tuya_uart_t *uart, uint8_t cmd, void *arg);
-static int uart_dev_deinit      (tuya_uart_t *uart);
+static int uart_dev_init(tuya_uart_t *uart, tuya_uart_cfg_t *cfg);
+static int uart_dev_write_byte(tuya_uart_t *uart, uint8_t byte);
+static int uart_dev_read_byte(tuya_uart_t *uart, uint8_t *byte);
+static int uart_dev_control(tuya_uart_t *uart, uint8_t cmd, void *arg);
+static int uart_dev_deinit(tuya_uart_t *uart);
 /*============================ LOCAL VARIABLES ===============================*/
 static uart_dev_t s_uart_dev[UART_DEV_NUM];
 
@@ -46,9 +44,13 @@ static const tuya_uart_ops_t  uart_dev_ops = {
 /*============================ IMPLEMENTATION ================================*/
 int platform_uart_init(void)
 {
-    s_uart_dev[TUYA_UART0].dev.ops = &uart_dev_ops;
+    s_uart_dev[TUYA_UART0].dev.ops = (tuya_uart_ops_t *)&uart_dev_ops;
     TUYA_UART_8N1_CFG(&s_uart_dev[TUYA_UART0].dev, TUYA_UART_BAUDRATE_9600, 256, 0);
     tuya_driver_register(&s_uart_dev[TUYA_UART0].dev.node, TUYA_DRV_UART, TUYA_UART0);
+
+    tuya_driver_register(&s_uart_dev[TUYA_UART1].dev.node, TUYA_DRV_UART, TUYA_UART1);
+
+    return OPRT_OS_ADAPTER_OK;
 }
 
 void uart_dev_irq_handler(int uport, void *param)
@@ -58,25 +60,25 @@ void uart_dev_irq_handler(int uport, void *param)
     uart->isr_cb(&uart->dev, TUYA_UART_INT_RX_EVENT);
 }
 
-
 /**
  * @brief 用于初始化串口
- * 
+ *
  * @param[in]  uart     串口句柄
  * @param[in]  cfg      串口配置结构体
  */
 static int uart_dev_init(tuya_uart_t *uart, tuya_uart_cfg_t *cfg)
 {
-	uart_dev_t *uart_dev = (uart_dev_t *)uart;
-    bk_uart_config_t    bkcfg;
+    bk_uart_t port;
+    bk_uart_config_t bkcfg;
 
     if (TUYA_UART0 == uart->node.port) {
-        uart_dev->port = BK_UART_1;
+        port = BK_UART_1;
     } else if (TUYA_UART1 == uart->node.port) {
-        uart_dev->port = BK_UART_2;
+        port = BK_UART_2;
     } else {
         return OPRT_OS_ADAPTER_INVALID_PARM;
     }
+
     //! data bits
     if (TUYA_UART_DATA_BIT5 == cfg->databits) {
         bkcfg.data_width = DATA_WIDTH_5BIT;
@@ -102,7 +104,7 @@ static int uart_dev_init(tuya_uart_t *uart, tuya_uart_cfg_t *cfg)
         bkcfg.parity = BK_PARITY_NO;
     } else if (TUYA_UART_PARITY_EVEN == cfg->parity) {
         bkcfg.parity = BK_PARITY_EVEN;
-    } else if (BK_PARITY_ODD == cfg->parity) {
+    } else if (TUYA_UART_PARITY_ODD == cfg->parity) {
         bkcfg.parity = BK_PARITY_ODD;
     } else {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -113,7 +115,7 @@ static int uart_dev_init(tuya_uart_t *uart, tuya_uart_cfg_t *cfg)
     bkcfg.flow_control = 0;
     bkcfg.flags        = 0;
 
-    bk_uart_initialize(uart_dev->port, &bkcfg, NULL);
+    bk_uart_initialize(port, &bkcfg, NULL);
 
     return OPRT_OS_ADAPTER_OK;
 }
@@ -126,34 +128,34 @@ static int uart_dev_control(tuya_uart_t *uart, uint8_t cmd, void *arg)
     uart_dev_t *uart_dev = (uart_dev_t *)uart;
 
     switch (cmd) {
-    case TUYA_DRV_SET_INT_CMD:
-        if ((uint32_t)arg == TUYA_DRV_INT_RX_FLAG) {
-            //! TODO:
-        } else if ((uint32_t)arg == TUYA_DRV_INT_TX_FLAG) {
-            //! TODO:
-        } else {
-            result = OPRT_INVALID_PARM; 
-        }
-        break;
-    case TUYA_DRV_CLR_INT_CMD:
-        if ((uint32_t)arg == TUYA_DRV_INT_RX_FLAG) {
-            //! TODO:
-        } else if ((uint32_t)arg == TUYA_DRV_INT_TX_FLAG) {
-            //! TODO:
-        } else {
-            result = OPRT_INVALID_PARM;
-        }
-        break;
+        case TUYA_DRV_SET_INT_CMD:
+            if ((uint32_t)arg == TUYA_DRV_INT_RX_FLAG) {
+                //! TODO:
+            } else if ((uint32_t)arg == TUYA_DRV_INT_TX_FLAG) {
+                //! TODO:
+            } else {
+                result = OPRT_INVALID_PARM;
+            }
+            break;
+        case TUYA_DRV_CLR_INT_CMD:
+            if ((uint32_t)arg == TUYA_DRV_INT_RX_FLAG) {
+                //! TODO:
+            } else if ((uint32_t)arg == TUYA_DRV_INT_TX_FLAG) {
+                //! TODO:
+            } else {
+                result = OPRT_INVALID_PARM;
+            }
+            break;
 
-    case TUYA_DRV_SET_ISR_CMD:
-        uart_dev->isr_cb = (tuya_uart_isr_cb)arg;
-        bk_uart_set_rx_callback(uart_dev->port, uart_dev_irq_handler, uart);
-        break;
+        case TUYA_DRV_SET_ISR_CMD:
+            uart_dev->isr_cb = (tuya_uart_isr_cb)arg;
+            bk_uart_set_rx_callback(uart_dev->port, uart_dev_irq_handler, uart);
+            break;
 
-    case TUYA_DRV_ISR_MODE_CMD: {
-        uint8_t *isr_mode = (uint8_t *)arg;
-        *isr_mode = TUYA_UART_RX_ISR_FIFO_MODE;
-    }
+        case TUYA_DRV_ISR_MODE_CMD: {
+            uint8_t *isr_mode = (uint8_t *)arg;
+            *isr_mode = TUYA_UART_RX_ISR_FIFO_MODE;
+        }
 
     }
 
@@ -162,11 +164,10 @@ static int uart_dev_control(tuya_uart_t *uart, uint8_t cmd, void *arg)
 
 /**
  * @brief 用于发送一个字节
- * 
+ *
  * @param[in]  uart     串口句柄
  * @param[in]  byte     要发送的字节
  */
-
 static int uart_dev_write_byte(tuya_uart_t *uart, uint8_t byte)
 {
     uart_dev_t *uart_dev = (uart_dev_t *)uart;
@@ -178,7 +179,7 @@ static int uart_dev_write_byte(tuya_uart_t *uart, uint8_t byte)
 
 /**
  * @brief 用于读取一个字节
- * 
+ *
  * @param[in]   uart     串口句柄
  * @param[out]  ch       要读取的字节指针
  */
@@ -199,14 +200,15 @@ static int uart_dev_read_byte(tuya_uart_t *uart, uint8_t *byte)
 
 /**
  * @brief 用于释放串口
- * 
+ *
  * @param[in]  port     串口句柄
  */
 static int uart_dev_deinit(tuya_uart_t *uart)
 {
-	uart_dev_t *uart_dev = (uart_dev_t *)uart;
-    
+    uart_dev_t *uart_dev = (uart_dev_t *)uart;
+
     bk_uart_finalize(uart_dev->port);
-	
+
     return OPRT_OS_ADAPTER_OK;
 }
+

@@ -56,6 +56,12 @@ int tuya_os_adapt_flash_erase(const unsigned int addr, const unsigned int size);
  */
 UNI_STORAGE_DESC_S* tuya_os_adapt_storage_get_desc(void);
 
+/**
+ * @brief flash 设置保护,enable 设置ture为全保护，false为半保护
+ * 
+ * @return OPRT_OS_ADAPTER_OK 
+ */
+int tuya_os_adapt_flash_set_protect(const bool enable);
 
 /**
  * @brief get UF file description
@@ -63,6 +69,9 @@ UNI_STORAGE_DESC_S* tuya_os_adapt_storage_get_desc(void);
  * @return  pointer to descrtion of UF file
  */
 UF_PARTITION_TABLE_S* tuya_os_adapt_uf_get_desc(void);
+
+OPERATE_RET tuya_os_adapt_reg_storage_intf(void);
+
 
 
 #ifdef __cplusplus

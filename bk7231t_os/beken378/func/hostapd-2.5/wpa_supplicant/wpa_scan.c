@@ -1022,7 +1022,7 @@ void wpa_supplicant_update_scan_int(struct wpa_supplicant *wpa_s, int sec)
 	wpa_s->scan_interval = sec;
 }
 
-
+extern void wpa_supplicant_rescan_terminal(void);
 /**
  * wpa_supplicant_req_scan - Schedule a scan for neighboring access points
  * @wpa_s: Pointer to wpa_supplicant data
@@ -1352,6 +1352,17 @@ scan:
 		wpa_s->prev_sched_ssid = NULL;
 
 	return 0;
+#else
+	return 0;
+	(void)need_ssids;
+	(void)wildcard;
+	(void)max_sched_scan_ssids;
+	(void)ret;
+	(void)extra_ie;
+	(void)ssid;
+	(void)prev_state;
+	(void)scan_params;
+	(void)params;
 #endif
 }
 

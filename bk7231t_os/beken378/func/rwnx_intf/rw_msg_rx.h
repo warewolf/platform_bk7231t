@@ -7,6 +7,8 @@ extern void mhdr_assoc_cfm_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern void mhdr_scanu_reg_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern void mhdr_deauth_evt_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern void mhdr_deassoc_evt_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
+extern void mhdr_scanu_reg_cb_for_wpa(FUNC_2PARAM_PTR ind_cb, void *ctxt);
+extern void mhdr_set_station_status_when_reconnect_over(void);
 
 #endif // _RW_MSG_RX_H_
 // eof

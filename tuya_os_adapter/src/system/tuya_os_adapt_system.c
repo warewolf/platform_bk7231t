@@ -1,15 +1,16 @@
 /**
  * @file tuya_os_adapt_system.c
- * @brief ����ϵͳ��ؽӿ�
- * 
- * @copyright Copyright(C),2018-2020, Ϳѻ�Ƽ� www.tuya.com
- * 
+ * @brief system底层操作接口
+ *
+ * @copyright Copyright(C),2018-2020, 涂鸦科技 www.tuya.com
+ *
  */
 #define _UNI_SYSTEM_GLOBAL
 
 #include "tuya_os_adapt_system.h"
 #include "tuya_os_adapt_wifi.h"
 #include "tuya_os_adapter_error_code.h"
+#include "tuya_os_adapt_output.h"
 
 #include "wlan_ui_pub.h"
 #include "mem_pub.h"
@@ -28,7 +29,6 @@
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
-/* add begin: by sunkz, interface regist */
 static const TUYA_OS_SYSTEM_INTF m_tuya_os_system_intfs = {
     .get_systemtickcount   = tuya_os_adapt_get_systemtickcount,
     .get_tickratems        = tuya_os_adapt_get_tickratems,
@@ -43,24 +43,22 @@ static const TUYA_OS_SYSTEM_INTF m_tuya_os_system_intfs = {
     .get_random_data       = tuya_os_adapt_get_random_data,
     .set_cpu_lp_mode       = tuya_os_adapt_set_cpu_lp_mode,
 };
-/* add end */
 
 /***********************************************************
 *************************function define********************
 ***********************************************************/
 /**
- * @brief tuya_os_adapt_get_systemtickcount���ڻ�ȡϵͳ����ticket 
- * @return SYS_TICK_T 
+ * @brief tuya_os_adapt_get_systemtickcount用于获取系统运行ticket
+ * @return SYS_TICK_T
  */
 SYS_TICK_T tuya_os_adapt_get_systemtickcount(void)
 {
     return (SYS_TICK_T)xTaskGetTickCount();
 }
 
-
 /**
- * @brief tuya_os_adapt_get_tickratems
- * 
+ * @brief tuya_os_adapt_get_tickratems用于获取系统ticket是多少个ms
+ *
  * @return the time is ms of a system ticket
  */
 unsigned int tuya_os_adapt_get_tickratems(void)
@@ -68,79 +66,123 @@ unsigned int tuya_os_adapt_get_tickratems(void)
     return (unsigned int)portTICK_RATE_MS;
 }
 
-
 /**
- * @brief tuya_os_adapt_system_sleep
- * 
+ * @brief tuya_os_adapt_system_sleep用于系统sleep
+ *
  * @param[in] msTime sleep time is ms
  */
 void tuya_os_adapt_system_sleep(const unsigned long msTime)
 {
-    vTaskDelay((msTime)/(portTICK_RATE_MS));
+    vTaskDelay((msTime) / (portTICK_RATE_MS));
 }
-
 
 /**
  * @brief tuya_os_adapt_system_isrstatus
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool tuya_os_adapt_system_isrstatus(void)
 {
-    if(0 !=  bk_wlan_get_INT_status()) {
+    if (0 !=  bk_wlan_get_INT_status()) {
         return TRUE;
     }
 
     return FALSE;
 }
 
-
 /**
- * @brief tuya_os_adapt_system_reset
- * 
+ * @brief tuya_os_adapt_system_reset用于重启系统
+ *
  */
 void tuya_os_adapt_system_reset(void)
 {
-    bk_printf("tuya_os_adapt_system_reset\r\n");
+    LOG_NOTICE("tuya_os_adapt_system_reset\r\n");
     bk_reboot();
 }
 
+/**
+ * @brief 用于初始化并运行watchdog
+ *
+ * @param[in] timeval watch dog检测时间间隔：如果timeval大于看门狗的
+ * 最大可设置时间，则使用平台可设置时间的最大值，并且返回该最大值
+ * @return int [out] 实际设置的看门狗时间
+ */
+unsigned int tuya_os_adapt_watchdog_init_start(const unsigned int timeval)
+{
 
+    unsigned int ret;
+    //init
+    int cyc_cnt = timeval * 1000;
 
-/***********************************************************
-*  Function: tuya_os_adapt_system_getheapsize 
-*  Input: none
-*  Output: none 
-*  Return: int-> <0 means don't support to get heapsize
-***********************************************************/
+    if (cyc_cnt > 0xFFFF) { /* 60s */
+        cyc_cnt = 0xFFFF;
+    }
+
+    //init wdt
+    ret = sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &cyc_cnt);
+
+    // start wdt timer
+    ret |= sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
+
+    if (ret != 0) {
+        bk_printf("watch dog set error!\r\n");
+    }
+
+    return 15; /* 在OTA的过程中，可能由于XIP和优先级的问题，导致喂狗不及时会watchdog重启，直接返回成15s！！ */
+}
+
+/**
+ * @brief 用于刷新watch dog
+ *
+ */
+void tuya_os_adapt_watchdog_refresh(void)
+{
+    if (sddev_control(WDT_DEV_NAME, WCMD_RELOAD_PERIOD, NULL) != 0) {
+        bk_printf("refresh watchdog err!\r\n");
+    }
+}
+
+/**
+ * @brief 用于停止watch dog
+ *
+ */
+void tuya_os_adapt_watchdog_stop(void)
+{
+    sddev_control(WDT_DEV_NAME, WCMD_POWER_DOWN, NULL);
+}
+
+/**
+ * @brief tuya_os_adapt_system_getheapsize用于获取堆大小/剩余内存大小
+ *
+ * @return int <0: don't support  >=0: current heap size/free memory
+ */
 int tuya_os_adapt_system_getheapsize(void)
 {
     return (int)xPortGetFreeHeapSize();
 }
 
 /**
- * @brief tuya_os_adapt_system_getMiniheapsize/��Сʣ���ڴ��С
- * 
+ * @brief tuya_os_adapt_system_getMiniheapsize用于获取最小的剩余内存大小
+ *
  * @return int <0: don't support  >=0: mini heap size/free memory
  */
 int tuya_os_adapt_system_getMiniheapsize(void)
 {
-	return (int)xPortGetMinimumEverFreeHeapSize();
+    return (int)xPortGetMinimumEverFreeHeapSize();
 }
 
-/***********************************************************
-*  Function: system_get_rst_info 
-*  Input: none
-*  Output: none 
-*  Return: char *->reset reason
-***********************************************************/
+/**
+ * @brief tuya_os_adapt_system_get_rst_info用于获取硬件重启原因
+ *
+ * @return 硬件重启原因
+ */
 TY_RST_REASON_E tuya_os_adapt_system_get_rst_info(void)
 {
     unsigned char value = bk_misc_get_start_type() & 0xFF;
     TY_RST_REASON_E bk_value;
-    
-    switch(value) {
+
+    switch (value) {
         case RESET_SOURCE_POWERON:
             bk_value = TY_RST_POWER_OFF;
             break;
@@ -158,6 +200,7 @@ TY_RST_REASON_E tuya_os_adapt_system_get_rst_info(void)
         case RESET_SOURCE_CRASH_PREFETCH_ABORT:
         case RESET_SOURCE_CRASH_DATA_ABORT:
         case RESET_SOURCE_CRASH_UNUSED:
+        case RESET_SOURCE_CRASH_PER_XAT0:
             bk_value = TY_RST_FATAL_EXCEPTION;
             break;
 
@@ -166,40 +209,39 @@ TY_RST_REASON_E tuya_os_adapt_system_get_rst_info(void)
             break;
 
     }
-    //PR_ERR(fmt, ...)
 
-    bk_printf("bk_rst:%d tuya_rst:%d\r\n",value, bk_value);
-    
+    LOG_NOTICE("bk_rst:%d tuya_rst:%d\r\n", value, bk_value);
+
     return bk_value;
 }
 
 /**
- * @brief tuya_os_adapt_get_random_data 
- * 
- * @param[in] range 
- * @return rand data
+ * @brief tuya_os_adapt_get_random_data用于获取指定条件下的随机数
+ *
+ * @param[in] range
+ * @return 随机值
  */
 int tuya_os_adapt_get_random_data(const unsigned int range)
 {
     unsigned int trange = range;
-    if(range == 0)
+
+    if (range == 0) {
         trange = 0xFF;
+    }
 
     static char exec_flag = FALSE;
 
-    if(!exec_flag) {
-        //srand(12);
+    if (!exec_flag) {
         exec_flag = TRUE;
     }
 
-    return (rand() % trange);// + random_seed;
+    return (rand() % trange);
 }
-
 
 /**
  * @brief tuya_os_adapt_set_cpu_lp_mode -- set CPU lowpower mode
- * 
- * @param[in] en 
+ *
+ * @param[in] en
  * @param[in] mode
  * @return int 0=true，!0=false
  */
@@ -209,76 +251,40 @@ int tuya_os_adapt_wifi_get_lp_mode(void)
 {
     return cpu_lp_flag;
 }
-int tuya_os_adapt_set_cpu_lp_mode(const bool en,const TY_CPU_SLEEP_MODE_E mode)
-{
-    bk_printf("*******************************tuya_os_adapt_set_cpu_lp_mode,en = %d, mode = %d\r\n",en,mode);
 
-    if(mode == TY_CPU_SLEEP) {
-        if(en) {
-            if(cpu_lp_flag == 0) {
-                cpu_lp_flag = 1;                
-                bk_printf("pmu_release_wakelock(PMU_OS)\r\n");
+/**
+ * @brief tuya_os_adapt_set_cpu_lp_mode用于设置cpu的低功耗模式
+ *
+ * @param[in] en
+ * @param[in] mode
+ * @return int 0=成功，非0=失败
+ */
+int tuya_os_adapt_set_cpu_lp_mode(const bool_t en, const TY_CPU_SLEEP_MODE_E mode)
+{
+    LOG_DEBUG("*******************************tuya_os_adapt_set_cpu_lp_mode,en = %d, mode = %d\r\n", en, mode);
+
+    if (mode == TY_CPU_SLEEP) {
+        if (en) {
+            if (cpu_lp_flag == 0) {
+                cpu_lp_flag = 1;
+                LOG_DEBUG("pmu_release_wakelock(PMU_OS)\r\n");
             }
 
             bk_wlan_mcu_ps_mode_enable();
-            bk_printf("bk_wlan_mcu_ps_mode_enable()\r\n");
-        }else {
+            LOG_DEBUG("bk_wlan_mcu_ps_mode_enable()\r\n");
+        } else {
             bk_wlan_mcu_ps_mode_disable();
-            bk_printf("bk_wlan_mcu_ps_mode_disable()\r\n");
+            LOG_DEBUG("bk_wlan_mcu_ps_mode_disable()\r\n");
         }
-    }else {
+    } else {
         return OPRT_OS_ADAPTER_CPU_LPMODE_SET_FAILED;
     }
 
     return OPRT_OS_ADAPTER_OK;
 }
 
-/***********************************************************
-*  Function: tuya_os_adapt_watchdog_init_start 
-*  Input: timeval
-*  Output: none 
-*  Return: void *
-***********************************************************/
-unsigned int tuya_os_adapt_watchdog_init_start(const unsigned int timeval)
-{
-    //init 
-    int cyc_cnt = timeval * 1000;
-    
-    if(cyc_cnt > 0xFFFF) { /* 60s */
-        cyc_cnt = 0xFFFF;
-    }
-    //init wdt
-    sddev_control(WDT_DEV_NAME, WCMD_SET_PERIOD, &cyc_cnt);
-    
-    // start wdt timer
-    sddev_control(WDT_DEV_NAME, WCMD_POWER_UP, NULL);
-}
-
-/***********************************************************
-*  Function: tuya_os_adapt_watchdog_refresh 
-*  Input: none
-*  Output: none 
-*  Return: void *
-***********************************************************/
-void tuya_os_adapt_watchdog_refresh(void)
-{
-    sddev_control(WDT_DEV_NAME, WCMD_RELOAD_PERIOD, NULL);
-}
-
-/***********************************************************
-*  Function: tuya_os_adapt_watchdog_stop 
-*  Input: none
-*  Output: none 
-*  Return: void *
-***********************************************************/
-void tuya_os_adapt_watchdog_stop(void)
-{
-    sddev_control(WDT_DEV_NAME, WCMD_POWER_DOWN, NULL);
-}
-
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_system_intf(void)
 {
-    return tuya_os_adapt_reg_intf(INTF_SYSTEM, &m_tuya_os_system_intfs);
+    return tuya_os_adapt_reg_intf(INTF_SYSTEM, (void *)&m_tuya_os_system_intfs);
 }
-/* add end */
+

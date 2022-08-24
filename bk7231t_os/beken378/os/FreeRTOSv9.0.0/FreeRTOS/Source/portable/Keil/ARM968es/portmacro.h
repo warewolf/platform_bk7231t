@@ -83,6 +83,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "arch.h"
 
 /**
  * for compiling beken378 library with thumb instruction set
@@ -111,21 +112,65 @@ extern "C" {
 typedef portSTACK_TYPE StackType_t;
 typedef long BaseType_t;
 typedef unsigned long UBaseType_t;
+typedef uint32_t TickType_t;
+#define portMAX_DELAY ( TickType_t )        0xffffffffUL
 
-#if( configUSE_16_BIT_TICKS == 1 )
-	typedef uint16_t TickType_t;
-	#define portMAX_DELAY ( TickType_t )        0xffff
-#else
-	typedef uint32_t TickType_t;
-	#define portMAX_DELAY ( TickType_t )        0xffffffffUL
-#endif
+/* Constants required to setup the initial stack. */
+#define portINITIAL_SPSR 			    ( ( StackType_t ) 0x1f ) /* System mode, ARM mode, interrupts enabled. */
+#define portINSTRUCTION_SIZE	        ( ( StackType_t ) 4 )
+
+#define ARM968_SYS_MODE 	 	        0x1f
+#define ARM968_MODE_MASK 	 	        0x1f
+#define ARM968_IF_MASK       	        0xC0
+#define ARM968_IRQ_ENABLE    	        0x80
+#define ARM968_IF_MASK       	        0xC0
+#define ARM968_FIQ_ENABLE    	        0x40
+#define ARM968_IRQ_MODE      	        0x12
+#define ARM968_FIQ_MODE     	        0x11
+
+/* Constants required to handle critical sections. */
+#define portNO_CRITICAL_NESTING 		((uint32_t ) 0 )
+
 /*-----------------------------------------------------------*/
+enum arm_mode {
+	ARM_MODE_USR = 16,
+	ARM_MODE_FIQ = 17,
+	ARM_MODE_IRQ = 18,
+	ARM_MODE_SVC = 19,
+	ARM_MODE_MON = 22,
+	ARM_MODE_ABT = 23,
+	ARM_MODE_HYP = 26,
+	ARM_MODE_UND = 27,
+	ARM_MODE_1176_MON = 28,
+	ARM_MODE_SYS = 31,
+
+	ARM_MODE_THREAD = 0,
+	ARM_MODE_USER_THREAD = 1,
+	ARM_MODE_HANDLER = 2,
+
+	ARMV8_64_EL0T = 0x0,
+	ARMV8_64_EL1T = 0x4,
+	ARMV8_64_EL1H = 0x5,
+	ARMV8_64_EL2T = 0x8,
+	ARMV8_64_EL2H = 0x9,
+	ARMV8_64_EL3T = 0xC,
+	ARMV8_64_EL3H = 0xD,
+
+	ARM_MODE_ANY = -1
+};
+
+extern uint32_t preempt_delayed_schedule_handler(void);
 
 /* Hardware specifics. */
 #define portSTACK_GROWTH			( -1 )
 #define portTICK_PERIOD_MS			( ( TickType_t ) 1000 / configTICK_RATE_HZ )
 #define portBYTE_ALIGNMENT			8
-#define portYIELD()					__asm ( "SWI 0" )
+#define portYIELD()					do{\
+										if(0 == preempt_delayed_schedule_handler())\
+										{\
+											__asm ( "SWI 0" );\
+										}\
+									}while(0)
 #define portNOP()                   __asm ( "NOP" )
 
 /*-----------------------------------------------------------*/

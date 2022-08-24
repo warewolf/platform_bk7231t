@@ -87,6 +87,18 @@ typedef enum
     BLE_ROLE_HYBRID, /* reserved */
 } ble_role_t;
 
+enum {
+    BLE_SCAN_CLOSING = 0,
+    BLE_SCAN_CLOSED,
+    BLE_SCAN_OPENING,
+    BLE_SCAN_OPENED,
+};
+
+enum {
+    RF_USER_BLE,
+    RF_USER_WIFI,
+};
+
 #define APP_DEVICE_NAME_LENGTH_MAX      (18)
 /// Default Device Name if no value can be found in NVDS
 #define APP_DFLT_DEVICE_NAME            ("BK7231BT-01")
@@ -104,6 +116,7 @@ extern void ble_isr(void);
 extern void ble_set_role_mode(ble_role_t role);
 extern ble_role_t ble_get_role_mode();
 extern void ble_send_msg(UINT32 msg);
+extern void ble_send_msg_front(UINT32 data);
 extern void ble_intc_set(uint32_t enable);
 extern void ble_clk_power_up(void);
 extern void ble_clk_power_down(void);

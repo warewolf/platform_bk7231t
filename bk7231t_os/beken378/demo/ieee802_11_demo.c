@@ -34,64 +34,80 @@
 
 static void scan_cb(void *ctxt, uint8_t param)
 {
-    struct scanu_rst_upload *scan_rst;
-    ScanResult apList;
-    int i;
+#if !CFG_WPA_CTRL_IFACE
+	struct scanu_rst_upload *scan_rst;
+	ScanResult apList;
+	int i;
 
-    apList.ApList = NULL;
-    scan_rst = sr_get_scan_results();
-    if( scan_rst == NULL )
-    {
-        apList.ApNum = 0;
-        return;
-    }
-    else
-    {
-        apList.ApNum = scan_rst->scanu_num;
-    }
-    if( apList.ApNum > 0 )
-    {
-        apList.ApList = (void *)os_malloc(sizeof(*apList.ApList) * apList.ApNum);
-        for( i = 0; i < scan_rst->scanu_num; i++ )
-        {
-            os_memcpy(apList.ApList[i].ssid, scan_rst->res[i]->ssid, 32);
-            apList.ApList[i].ApPower = scan_rst->res[i]->level;
-        }
-    }
-    if( apList.ApList == NULL )
-    {
-        apList.ApNum = 0;
-    }
-	
+	apList.ApList = NULL;
+	scan_rst = sr_get_scan_results();
+	if (scan_rst == NULL) {
+		apList.ApNum = 0;
+		return;
+	} else {
+		apList.ApNum = scan_rst->scanu_num;
+	}
+	if (apList.ApNum > 0) {
+		apList.ApList = (void *)os_malloc(sizeof(*apList.ApList) * apList.ApNum);
+		for (i = 0; i < scan_rst->scanu_num; i++) {
+			os_memcpy(apList.ApList[i].ssid, scan_rst->res[i]->ssid, 32);
+			apList.ApList[i].ApPower = scan_rst->res[i]->level;
+		}
+	}
+	if (apList.ApList == NULL)
+		apList.ApNum = 0;
+
 	bk_printf("Got ap count: %d\r\n", apList.ApNum);
-	for( i = 0; i < apList.ApNum; i++ ) 
-	{
-		if(os_strlen(apList.ApList[i].ssid) >= SSID_MAX_LEN)
-		{
+	for (i = 0; i < apList.ApNum; i++) {
+		if (os_strlen(apList.ApList[i].ssid) >= SSID_MAX_LEN) {
 			char temp_ssid[33];
 			os_memset(temp_ssid, 0, 33);
 			os_memcpy(temp_ssid, apList.ApList[i].ssid, 32);
 			bk_printf("    %s, RSSI=%d\r\n", temp_ssid, apList.ApList[i].ApPower);
-		}
-		else
-		{
+		} else {
 			bk_printf("    %s, RSSI=%d\r\n", apList.ApList[i].ssid, apList.ApList[i].ApPower);
 		}
 	}
 	bk_printf("Get ap end.......\r\n\r\n");
-	
-    if( apList.ApList != NULL )
-    {
-        os_free(apList.ApList);
-        apList.ApList = NULL;
-    }
 
-	
+	if (apList.ApList != NULL) {
+		os_free(apList.ApList);
+		apList.ApList = NULL;
+	}
+
 #if CFG_ROLE_LAUNCH
 	rl_pre_sta_set_status(RL_STATUS_STA_LAUNCHED);
 #endif
 
-    sr_release_scan_results(scan_rst);
+	sr_release_scan_results(scan_rst);
+#else	/* CFG_WPA_CTRL_IFACE */
+	static const char *crypto_str[] = {
+		"None",
+		"WEP",
+		"WPA_TKIP",
+		"WPA_AES",
+		"WPA2_TKIP",
+		"WPA2_AES",
+		"WPA2_MIXED",		////BK_SECURITY_TYPE_WPA3_SAE
+		"WPA3_SAE",	  		/**< WPA3 SAE */
+		"WPA3_WPA2_MIXED",	/** WPA3 SAE or WPA2 AES */
+		"AUTO",
+	};
+
+	ScanResult_adv apList;
+	if (wlan_sta_scan_result(&apList) == 0) {
+		int ap_num = apList.ApNum;
+		int i;
+
+		bk_printf("Got ap count: %d\r\n", apList.ApNum);
+		for (i = 0; i < ap_num; i++)
+			bk_printf("    \"%s\", " MACSTR "\b, %d, %s, %d\n",
+					apList.ApList[i].ssid, MAC2STR(apList.ApList[i].bssid),
+					apList.ApList[i].ApPower, crypto_str[apList.ApList[i].security],
+					apList.ApList[i].channel);
+		os_free(apList.ApList);
+	}
+#endif /* CFG_WPA_CTRL_IFACE */
 }
 
 void demo_scan_app_init(void)
@@ -171,7 +187,7 @@ void demo_sta_adv_app_init(char *oob_ssid,char *connect_key)
 	os_memset( &wNetConfigAdv, 0x0, sizeof(network_InitTypeDef_adv_st) );
 	
 	os_strcpy((char*)wNetConfigAdv.ap_info.ssid, oob_ssid);
-	hwaddr_aton("48:ee:0c:48:93:12", wNetConfigAdv.ap_info.bssid);
+	hwaddr_aton("48:ee:0c:48:93:12", (unsigned char*)wNetConfigAdv.ap_info.bssid);
 	wNetConfigAdv.ap_info.security = SECURITY_TYPE_WPA2_MIXED;
 	wNetConfigAdv.ap_info.channel = 11;
 	
@@ -194,7 +210,7 @@ void demo_wlan_app_init(VIF_ADDCFG_PTR cfg)
         	os_memset( &networkadv_cfg, 0x0, sizeof(network_InitTypeDef_adv_st) );
         	
         	os_strcpy((char*)networkadv_cfg.ap_info.ssid, cfg->ssid);
-        	hwaddr_aton("48:ee:0c:48:93:12", networkadv_cfg.ap_info.bssid);
+        	hwaddr_aton("48:ee:0c:48:93:12", (unsigned char*)networkadv_cfg.ap_info.bssid);
         	networkadv_cfg.ap_info.security = SECURITY_TYPE_WPA2_MIXED;
         	networkadv_cfg.ap_info.channel = 11;
         	

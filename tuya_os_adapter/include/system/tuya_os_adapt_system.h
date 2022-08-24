@@ -47,56 +47,11 @@ void tuya_os_adapt_system_sleep(const unsigned long msTime);
 bool tuya_os_adapt_system_isrstatus(void);
 
 /**
- * @brief 内存分配操作
- * 
- */
-void* tuya_hal_internal_malloc(const size_t size);
-
-/**
- * @brief 内存释放操作
- * 
- */
-void tuya_hal_internal_free(void* ptr);
-
-/**
  * @brief tuya_os_adapt_system_reset用于重启系统
  * 
  */
 void tuya_os_adapt_system_reset(void);
 
-/**
- * @brief tuya_os_adapt_system_getheapsize用于获取堆大小/剩余内存大小
- * 
- * @return int <0: don't support  >=0: current heap size/free memory
- */
-int tuya_os_adapt_system_getheapsize(void);
-
-
-/**
- * @brief tuya_os_adapt_system_get_rst_info用于获取硬件重启原因
- * 
- * @return 硬件重启原因
- */
-TY_RST_REASON_E tuya_os_adapt_system_get_rst_info(void);
-
-
-/**
- * @brief tuya_os_adapt_get_random_data用于获取指定条件下的随机数
- * 
- * @param[in] range 
- * @return 随机值
- */
-int tuya_os_adapt_get_random_data(const unsigned int range);
-
-
-/**
- * @brief tuya_os_adapt_set_cpu_lp_mode用于设置cpu的低功耗模式
- * 
- * @param[in] en 
- * @param[in] mode
- * @return int 0=成功，非0=失败
- */
-int tuya_os_adapt_set_cpu_lp_mode(const bool en, const TY_CPU_SLEEP_MODE_E mode);
 /**
  * @brief 用于初始化并运行watchdog
  * 
@@ -118,10 +73,39 @@ void tuya_os_adapt_watchdog_refresh(void);
  */
 void tuya_os_adapt_watchdog_stop(void);
 
-/* add begin: by sunkz, interface regist */
-OPERATE_RET tuya_os_adapt_reg_system_intf(void);
-/* add end */
+/**
+ * @brief tuya_os_adapt_system_getheapsize用于获取堆大小/剩余内存大小
+ * 
+ * @return int <0: don't support  >=0: current heap size/free memory
+ */
+int tuya_os_adapt_system_getheapsize(void);
 
+/**
+ * @brief tuya_os_adapt_system_get_rst_info用于获取硬件重启原因
+ * 
+ * @return 硬件重启原因
+ */
+TY_RST_REASON_E tuya_os_adapt_system_get_rst_info(void);
+
+/**
+ * @brief tuya_os_adapt_get_random_data用于获取指定条件下的随机数
+ * 
+ * @param[in] range 
+ * @return 随机值
+ */
+int tuya_os_adapt_get_random_data(const unsigned int range);
+
+/**
+ * @brief tuya_os_adapt_set_cpu_lp_mode用于设置cpu的低功耗模式
+ * 
+ * @param[in] en 
+ * @param[in] mode
+ * @return int 0=成功，非0=失败
+ */
+int tuya_os_adapt_set_cpu_lp_mode(const bool_t en, const TY_CPU_SLEEP_MODE_E mode);
+
+
+OPERATE_RET tuya_os_adapt_reg_system_intf(void);
 
 #ifdef __cplusplus
 }

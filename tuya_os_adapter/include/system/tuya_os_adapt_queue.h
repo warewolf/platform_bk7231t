@@ -54,9 +54,7 @@ int tuya_os_adapt_queue_post(QUEUE_HANDLE queue, void *data, unsigned int timeou
  */
 int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void **msg, unsigned int timeout);
 
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_queue_intf(void);
-/* add end */
 
 
 #ifdef __cplusplus

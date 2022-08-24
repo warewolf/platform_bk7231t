@@ -48,8 +48,8 @@
 #endif
 
 
-#define GLOBAL_INT_START               portENABLE_INTERRUPTS
-#define GLOBAL_INT_STOP                portDISABLE_INTERRUPTS
+#define GLOBAL_INTERRUPT_START               portENABLE_INTERRUPTS
+#define GLOBAL_INTERRUPT_STOP                portDISABLE_INTERRUPTS
 
 #if CFG_SUPPORT_RTT
 

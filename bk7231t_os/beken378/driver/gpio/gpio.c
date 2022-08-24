@@ -511,6 +511,39 @@ reverse_exit:
     return;
 }
 
+void gpio_multi_output(multi_gpio val)
+{
+    UINT32 reg_val;
+    volatile UINT32 *gpio_cfg_addr;
+    unsigned char i = 0;
+
+    for(i = 0; i < val.cnt; i++) {
+        
+        if(GPIO_SUCCESS == gpio_ops_filter(val.multi_value[i].id))
+        {
+            WARN_PRT("gpio_output_fail\r\n");
+            goto output_exit;
+        }
+        
+        #if (CFG_SOC_NAME != SOC_BK7231)
+            if(val.multi_value[i].id >= GPIO32) {
+                val.multi_value[i].id += 16;
+             }
+        #endif // (CFG_SOC_NAME != SOC_BK7231)
+        
+        gpio_cfg_addr = (volatile UINT32 *)(REG_GPIO_CFG_BASE_ADDR + val.multi_value[i].id * 4);
+        reg_val = REG_READ(gpio_cfg_addr);
+
+        reg_val &= ~GCFG_OUTPUT_BIT;
+        reg_val |= (val.multi_value[i].val & 0x01) << GCFG_OUTPUT_POS;
+
+        REG_WRITE(gpio_cfg_addr, reg_val);
+
+    }
+
+output_exit:
+    return;
+}
 
 static void gpio_disable_jtag(void)
 {

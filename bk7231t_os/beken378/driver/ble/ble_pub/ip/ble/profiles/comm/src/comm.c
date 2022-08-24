@@ -26,9 +26,9 @@ static uint8_t bk_ble_service_init (struct prf_task_env* env, uint16_t* start_hd
 
     //Create FFF0 in the DB
     //------------------ create the attribute database for the profile -------------------
-    status = attm_svc_create_db(&(shdl), params->uuid, (uint8_t *)&cfg_flag,
-            params->att_db_nb, NULL, env->task, (struct attm_desc *)params->att_db,
-            (sec_lvl & (PERM_MASK_SVC_DIS | PERM_MASK_SVC_AUTH | PERM_MASK_SVC_EKS)));
+    status = attm_svc_create_db_128(&(shdl), params->uuid, (uint8_t *)&cfg_flag,
+            params->att_db_nb, NULL, env->task, (struct attm_desc_128 *)params->att_db,
+            (sec_lvl & (PERM_MASK_SVC_DIS | PERM_MASK_SVC_AUTH | PERM_MASK_SVC_EKS | PERM_MASK_SVC_UUID_LEN)));
 						
     //-------------------- Update profile task information  ---------------------
     if (status == ATT_ERR_NO_ERROR)

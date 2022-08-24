@@ -42,6 +42,14 @@ extern void wpas_thread_start(void);
 extern void wpas_thread_stop(void);
 extern void wpa_handler_signal(void *arg, u8 vif_idx);
 extern void dhcp_stop_timeout_check(void);
+extern void wpa_hostapd_queue_poll(uint32_t param);
+
+struct wpa_supplicant *wpa_suppliant_ctrl_get_wpas()
+{
+	if (!wpa_global_ptr)
+		return NULL;
+	return wpa_global_ptr->ifaces;
+}
 
 int wpa_get_psk(char *psk)
 {

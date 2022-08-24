@@ -94,8 +94,13 @@ void bk_send_byte(UINT8 uport, UINT8 data)
 
 void bk_send_string(UINT8 uport, const char *string)
 {
+	const char *p = string;
     while(*string)
     {
+		if (*string == '\n') {
+			if (p == string || *(string - 1) != '\r')
+				bk_send_byte(uport, '\r');	// append '\r'
+		}
         bk_send_byte(uport, *string++);
     }
 }
@@ -135,6 +140,18 @@ void bk_printf(const char *fmt, ...)
 	}
 #endif
     va_end(ap);
+}
+
+void print_hex_dump(const char *prefix, void *buf, int len)
+{
+	int i;
+	u8 *b = buf;
+
+	if (prefix)
+		os_printf("%s", prefix);
+	for (i = 0; i < len; i++)
+		os_printf("%02X ", b[i]);
+	os_printf("\n");
 }
 
 void fatal_print(const char *fmt, ...)
@@ -421,6 +438,7 @@ UINT32 uart_read_fifo_frame(UINT8 uport, KFIFO_PTR rx_ptr)
 {
     UINT32 val;
     UINT32 rx_count, fifo_status_reg;
+	UINT32 unused = kfifo_unused(rx_ptr);
 
     if(UART1_PORT == uport)
         fifo_status_reg = REG_UART1_FIFO_STATUS;
@@ -431,8 +449,12 @@ UINT32 uart_read_fifo_frame(UINT8 uport, KFIFO_PTR rx_ptr)
     while(REG_READ(fifo_status_reg) & FIFO_RD_READY)
     {
         UART_READ_BYTE(uport, val);
-        rx_count += kfifo_put(rx_ptr, (UINT8 *)&val, 1);
+		if(unused > rx_count)
+			rx_count += kfifo_put(rx_ptr, (UINT8 *)&val, 1);
     }
+
+	if(unused <= rx_count)
+		os_printf("uart rx fifo full\r\n");
 
     return rx_count;
 }
@@ -604,11 +626,15 @@ void uart1_exit(void)
 
 UINT32 uart1_open(UINT32 op_flag)
 {
-    return UART_SUCCESS;
+	uart1_init();
+
+	return UART_SUCCESS;
 }
 
 UINT32 uart1_close(void)
 {
+	uart1_exit();
+
     return UART_SUCCESS;
 }
 
@@ -843,11 +869,15 @@ void uart2_exit(void)
 
 UINT32 uart2_open(UINT32 op_flag)
 {
-    return UART_SUCCESS;
+	uart2_init();
+
+	return UART_SUCCESS;
 }
 
 UINT32 uart2_close(void)
 {
+	uart2_exit();
+
     return UART_SUCCESS;
 }
 

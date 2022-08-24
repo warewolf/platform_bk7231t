@@ -31,10 +31,10 @@ static char g_rl_sta_key[64];
 
 static void rl_read_bssid_info(RL_BSSID_INFO_PTR bssid_info)
 {
-	uint32_t status, addr,ret;
+	UINT32 status, addr,ret;
 	DD_HANDLE flash_hdl;
 	
-	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
+	flash_hdl = ddev_open(FLASH_DEV_NAME,&status,0);
 	if(DD_HANDLE_UNVALID == flash_hdl)
 	{
 		os_null_printf("DD_HANDLE_UNVALID\r\n");
@@ -55,7 +55,8 @@ static void rl_write_bssid_info(void)
 {
 	int i;
 	uint8_t *psk;
-	uint32_t status, addr;
+	UINT32 status;
+	uint32_t addr;
 	RL_BSSID_INFO_T bssid_info, pre_bssid;
 	LinkStatusTypeDef link_status;
 	uint8_t protect_flag, protect_param, temp[4];
@@ -66,12 +67,12 @@ static void rl_write_bssid_info(void)
 	bk_wlan_get_link_status(&link_status);
 	os_memset(&bssid_info, 0, sizeof(bssid_info));
 
-	ssid_len = os_strlen(link_status.ssid);
+	ssid_len = os_strlen((const char*)link_status.ssid);
 	if(ssid_len > SSID_MAX_LEN)
 	{
 		ssid_len = SSID_MAX_LEN;
 	}
-	os_strncpy(bssid_info.ssid, link_status.ssid, ssid_len);
+	os_strncpy((char*)bssid_info.ssid, (char*)link_status.ssid, ssid_len);
 	os_memcpy(bssid_info.bssid, link_status.bssid, 6);
 	bssid_info.security = link_status.security;
 	bssid_info.channel = link_status.channel;
@@ -80,10 +81,10 @@ static void rl_write_bssid_info(void)
 	os_memset(temp, 0, sizeof(temp));
 	for(i = 0; i < 32; i++)
 	{
-		sprintf(temp, "%02x", psk[i]);
-		strcat(bssid_info.psk, temp);
+		sprintf((char*)temp, "%02x", psk[i]);
+		strcat((char*)bssid_info.psk, (char*)temp);
 	}
-	os_strcpy(bssid_info.pwd, g_rl_sta_key);
+	os_strcpy((char*)bssid_info.pwd, g_rl_sta_key);
 
 	/*obtain the previous bssid-info*/
 	rl_read_bssid_info(&pre_bssid);
@@ -101,7 +102,7 @@ static void rl_write_bssid_info(void)
 	ddev_control(flash_hdl, CMD_FLASH_SET_PROTECT, (void *)&protect_param);
 	addr = BSSID_INFO_ADDR;
 	ddev_control(flash_hdl, CMD_FLASH_ERASE_SECTOR, (void *)&addr);
-	ddev_write(flash_hdl, &bssid_info, sizeof(bssid_info), addr);
+	ddev_write(flash_hdl, (char*)&bssid_info, sizeof(bssid_info), addr);
 	ddev_control(flash_hdl, CMD_FLASH_SET_PROTECT, (void *)&protect_flag);
 	ddev_close(flash_hdl);
 
@@ -115,20 +116,20 @@ static void rl_sta_fast_connect(RL_BSSID_INFO_PTR bssid_info)
 
 	os_memset(&inNetworkInitParaAdv, 0, sizeof(inNetworkInitParaAdv));
 	
-	os_strcpy((char*)inNetworkInitParaAdv.ap_info.ssid, bssid_info->ssid);
+	os_strcpy((char*)inNetworkInitParaAdv.ap_info.ssid, (char*)bssid_info->ssid);
 	os_memcpy(inNetworkInitParaAdv.ap_info.bssid, bssid_info->bssid, 6);
 	inNetworkInitParaAdv.ap_info.security = bssid_info->security;
 	inNetworkInitParaAdv.ap_info.channel = bssid_info->channel;
 	
 	if(bssid_info->security < SECURITY_TYPE_WPA_TKIP)
 	{
-		os_strcpy((char*)inNetworkInitParaAdv.key, bssid_info->pwd);
-		inNetworkInitParaAdv.key_len = os_strlen(bssid_info->pwd);
+		os_strcpy((char*)inNetworkInitParaAdv.key, (char*)bssid_info->pwd);
+		inNetworkInitParaAdv.key_len = os_strlen((char*)bssid_info->pwd);
 	}
 	else
 	{
-		os_strcpy((char*)inNetworkInitParaAdv.key, bssid_info->psk);
-		inNetworkInitParaAdv.key_len = os_strlen(bssid_info->psk);
+		os_strcpy((char*)inNetworkInitParaAdv.key, (char*)bssid_info->psk);
+		inNetworkInitParaAdv.key_len = os_strlen((char*)bssid_info->psk);
 	}
 	inNetworkInitParaAdv.dhcp_mode = DHCP_CLIENT;
 
@@ -138,7 +139,8 @@ static void rl_sta_fast_connect(RL_BSSID_INFO_PTR bssid_info)
 void rl_clear_bssid_info(void)
 {
 	DD_HANDLE flash_hdl;
-	uint32_t status, addr;
+	UINT32 status;
+	uint32_t addr;
 	uint8_t protect_flag, protect_param;
 	
 	flash_hdl = ddev_open(FLASH_DEV_NAME, &status, 0);
@@ -454,6 +456,7 @@ void rl_enter_handler(void *left, void *right)
 	ptr = 0;
 }
 
+extern void mhdr_set_station_status_when_reconnect_over(void);
 uint32_t rl_sta_cache_request_enter(void)
 {
 	uint32_t ret = 0;
@@ -659,7 +662,8 @@ uint32_t rl_sta_may_next_launch(void)
     }
 	else if(g_role_launch.pre_sta_cancel
         && ((RL_STATUS_STA_DHCPING == rl_pre_sta_get_status())
-        || (RL_STATUS_STA_CONNECTING == rl_pre_sta_get_status())))
+        || (RL_STATUS_STA_CONNECTING == rl_pre_sta_get_status())
+        || (RL_STATUS_STA_SCAN_VAIN == rl_pre_sta_get_status())))
 	{
 		yes = 2;
 	}
@@ -830,8 +834,8 @@ void rl_sta_request_start(LAUNCH_REQ *req)
 			os_strcpy(g_rl_sta_key, req->descr.wifi_key);
 			rl_read_bssid_info(&bssid_info);
 
-			uint32_t req_ssid_len = os_strlen(req->descr.wifi_ssid);
-			ssid_len = os_strlen(bssid_info.ssid);
+			uint32_t req_ssid_len = os_strlen((char*)req->descr.wifi_ssid);
+			ssid_len = os_strlen((char*)bssid_info.ssid);
 
 			ssid_len = (req_ssid_len > ssid_len)? req_ssid_len : ssid_len;
 			if(ssid_len > SSID_MAX_LEN)
@@ -839,7 +843,7 @@ void rl_sta_request_start(LAUNCH_REQ *req)
 				ssid_len = SSID_MAX_LEN;
 			}
 			if(os_memcmp(req->descr.wifi_ssid, bssid_info.ssid, ssid_len) == 0
-				&& os_strcmp(req->descr.wifi_key, bssid_info.pwd) == 0)
+				&& os_strcmp((char*)req->descr.wifi_key, (char*)bssid_info.pwd) == 0)
 			{
 				bk_printf("fast_connect\r\n");
                 if(rl_pre_sta_get_status() == RL_STATUS_STA_SCANNING)

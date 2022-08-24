@@ -42,14 +42,14 @@ UNW_ERRNO_T tuya_os_adapt_net_get_errno(void);
  * @param[in]      ip    ip字符串    "192.168.1.1"
  * @return  ip地址(4B)
  */
-UNW_IP_ADDR_T tuya_os_adapt_net_addr(const signed char *ip);
+UNW_IP_ADDR_T tuya_os_adapt_net_addr(const        char *ip);
 
 /**
  * @brief : Ascii网络字符串地址转换为主机序(4B)地址 
  * @param[in]            ip_str
  * @return   主机序ip地址(4B)
 */
-UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(signed char *ip);
+UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(const         char *ip);
 
 /**
  * @brief : set fds
@@ -91,8 +91,7 @@ int tuya_os_adapt_net_fd_zero(UNW_FD_SET_T* fds);
  * @param[inout]      ms_timeout
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_select(const int maxfd, UNW_FD_SET_T *readfds, UNW_FD_SET_T *writefds,\
-                        UNW_FD_SET_T *errorfds, const unsigned int ms_timeout);
+int tuya_os_adapt_net_select(const int maxfd, UNW_FD_SET_T *readfds, UNW_FD_SET_T *writefds, UNW_FD_SET_T *errorfds, const unsigned int ms_timeout);
 
 /**
  * @brief : close fd
@@ -240,7 +239,7 @@ int tuya_os_adapt_net_get_nonblock(const int fd);
  * @param[in]      block
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_set_block(const int fd, const bool block);
+int tuya_os_adapt_net_set_block(const int fd, const bool_t block);
 
 /**
  * @brief : set timeout
@@ -294,11 +293,8 @@ int tuya_os_adapt_net_set_boardcast(const int fd);
  * @param[in]            cnt-keep alive packets fail times to close the connection
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_set_keepalive(const int fd, \
-                               const bool alive,\
-                               const unsigned int idle, \
-                               const unsigned int intr,\
-                               const unsigned int cnt);
+int tuya_os_adapt_net_set_keepalive(int fd, const bool_t alive, const unsigned int idle, const unsigned int intr, const unsigned int cnt);
+
 
 /**
  * @brief : dns parse

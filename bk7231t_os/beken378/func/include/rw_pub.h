@@ -36,7 +36,41 @@ typedef struct cfg80211_connect_params
     struct scan_chan_tag chan;
     uint16_t ie_len;
     uint32_t ie_buf[64];
+    uint16_t bcn_len;
+    uint32_t bcn_buf[0];
 } CONNECT_PARAM_T;
+
+typedef struct cfg80211_auth_params
+{
+    uint32_t vif_idx;
+	uint8_t auth_type;
+    struct mac_addr bssid;
+    struct mac_ssid ssid;
+    struct scan_chan_tag chan;
+    uint16_t ie_len;
+    uint8_t ie_buf[128];
+	uint16_t sae_data_len;
+	uint8_t sae_data[0];
+} AUTH_PARAM_T;
+
+typedef struct cfg80211_external_auth_params
+{
+    uint32_t vif_idx;
+    uint16_t status;
+} EXTERNAL_AUTH_PARAM_T;
+
+typedef struct cfg80211_associate_params {
+	uint32_t flags;
+	uint32_t vif_idx;
+	uint8_t auth_type;
+	struct mac_addr bssid;
+	struct mac_ssid ssid;
+	struct scan_chan_tag chan;
+	uint16_t ie_len;
+	uint32_t ie_buf[64];
+	uint16_t bcn_len;
+	uint32_t bcn_buf[0];
+} ASSOC_PARAM_T;
 
 typedef struct cfg80211_scan_params
 {
@@ -44,6 +78,7 @@ typedef struct cfg80211_scan_params
     uint8_t vif_idx;
     struct mac_ssid ssids[SCAN_SSID_MAX];
     struct mac_addr bssid;
+	int freqs[14];	//FIXME: 5G
 } SCAN_PARAM_T;
 
 typedef struct cfg80211_fast_scan_params
@@ -62,6 +97,13 @@ typedef struct cfg80211_disconnect_params
     uint16_t reason_code;
     uint8_t vif_idx;
 }DISCONNECT_PARAM_T;
+
+typedef struct cfg80211_set_operate_params
+{
+    uint32_t flags;
+    uint32_t vif_idx;
+	int state;
+} SET_OPERATE_PARAM_T;
 
 typedef struct scanu_rst_upload
 {
@@ -231,6 +273,7 @@ extern UINT32 mr_kmsg_fwd(struct ke_msg *msg);
 extern UINT32 mr_kmsg_fuzzy_handle(void);
 extern UINT32 mr_kmsg_exact_handle(UINT16 rsp);
 extern void mhdr_assoc_cfm_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
+extern void mhdr_auth_cfm_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern void mhdr_scanu_reg_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern void mhdr_connect_user_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt);
 extern UINT32 rw_ieee80211_init(void);
@@ -248,6 +291,14 @@ extern rw_evt_type mhdr_get_station_status(void);
 extern int rw_msg_send(const void *msg_params, uint16_t reqid, void *cfm);
 extern int rw_msg_send_reset(void);
 extern int rw_msg_send_start(void);
+
+/**
+ * @brief equest MAC to enter active mode.
+ * This function changes MAC state to ACTIVE.
+ *
+ * @return 0 if success, else failed.
+ */
+extern int rw_msg_send_mm_active_req();
 extern int rw_msg_send_me_config_req(void);
 extern int rw_msg_send_me_chan_config_req(void);
 extern int rw_msg_send_add_if(const unsigned char *mac,
@@ -271,9 +322,15 @@ extern int rw_msg_set_channel(uint32_t channel, uint32_t band_width, void *cfm);
 extern int rw_msg_send_scan_cancel_req(void *cfm);
 extern int rw_msg_send_sm_disconnect_req(DISCONNECT_PARAM_T *param);
 extern int rw_msg_send_sm_connect_req( CONNECT_PARAM_T *sme, void *cfm);
+extern int rw_msg_send_sm_assoc_req( ASSOC_PARAM_T *sme, void *cfm);
 extern int rw_msg_send_tim_update(u8 vif_idx, u16 aid, u8 tx_status);
 extern int rw_msg_send_apm_stop_req(u8 vif_index);
 extern int rw_msg_set_power(u8 vif_idx, u8 power);
+extern int rw_msg_send_sm_auth_req(AUTH_PARAM_T *auth_param);
+extern int rw_msg_send_sm_external_auth_status(EXTERNAL_AUTH_PARAM_T *auth_param);
+extern int rw_msg_send_sm_set_operstate_req(SET_OPERATE_PARAM_T *param);
+
+
 extern VIF_INF_PTR rwm_mgmt_vif_idx2ptr(UINT8 vif_idx);
 extern VIF_INF_PTR rwm_mgmt_vif_type2ptr(UINT8 vif_type);
 extern STA_INF_PTR rwm_mgmt_sta_idx2ptr(UINT8 staid);

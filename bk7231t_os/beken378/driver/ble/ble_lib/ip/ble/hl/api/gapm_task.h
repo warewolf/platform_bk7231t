@@ -89,6 +89,8 @@ enum gapm_msg_id
     /// Advertising or scanning report information event
     GAPM_ADV_REPORT_IND,
 
+    GAPM_STOP_LL_SCAN,
+
     /// Set connection initialization Command
     GAPM_START_CONNECTION_CMD,
     /// Name of peer device indication
@@ -838,7 +840,6 @@ struct gapm_start_scan_cmd
     ///Scanning channel map, add by hengzhang for fixed channel scan
     uint8_t              channel_map;
 };
-
 
 /// Advertising or scanning report information event
 struct gapm_adv_report_ind

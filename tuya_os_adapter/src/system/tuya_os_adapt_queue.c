@@ -5,11 +5,15 @@
  * @copyright Copyright(C),2018-2020, 涂鸦科技 www.tuya.com
  *
  */
+
+#include "tuya_os_adapt_queue.h"
+#include "tuya_os_adapt_system.h"
+#include "tuya_os_adapt_memory.h"
+
 #include "FreeRTOS.h"
-//#include "basic_types.h"
 #include "task.h"
 #include "semphr.h"
-#include "tuya_os_adapt_queue.h"
+
 
 /***********************************************************
 *************************micro define***********************
@@ -22,14 +26,13 @@ typedef struct {
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
-/* add begin: by sunkz, interface regist */
+
 static const TUYA_OS_QUEUE_INTF m_tuya_os_queue_intfs = {
-    .init    = tuya_os_adapt_queue_create_init, 
+    .init    = tuya_os_adapt_queue_create_init,
     .free    = tuya_os_adapt_queue_free,
     .post    = tuya_os_adapt_queue_post,
     .fetch   = tuya_os_adapt_queue_fetch,
 };
-/* add end */
 
 /***********************************************************
 *************************function define********************
@@ -64,8 +67,6 @@ int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size)
         *queue = (QUEUE_HANDLE)pQueueManage;
     }
 
-    //printf("tuya_os_adapt_queue_create_init  %x   %x\n", pQueueManage, pQueueManage->queue);
-
     return OPRT_OS_ADAPTER_OK;
 }
 
@@ -81,10 +82,8 @@ void tuya_os_adapt_queue_free(QUEUE_HANDLE queue)
     pQueueManage = (P_QUEUE_MANAGE)queue;
 
     if (!queue) {
-        return OPRT_OS_ADAPTER_INVALID_PARM;
+        return ;
     }
-
-    //printf("tuya_os_adapt_queue_free  %x   %x\n", pQueueManage, pQueueManage->queue);
 
     if (uxQueueMessagesWaiting(pQueueManage->queue)) {
         /* Line for breakpoint.  Should never break here! */
@@ -115,15 +114,15 @@ int tuya_os_adapt_queue_post(QUEUE_HANDLE queue, void *msg, unsigned int timeout
         return OPRT_OS_ADAPTER_INVALID_PARM;
     }
 
-    //printf("tuya_os_adapt_queue_post  %x   %x\n", pQueueManage, pQueueManage->queue);
-    if(FALSE == tuya_os_adapt_system_isrstatus()) {
-        ret = xQueueSend( pQueueManage->queue, &msg, (timeout==TUYA_OS_ADAPT_QUEUE_FOREVER)?portMAX_DELAY:(timeout/ tuya_os_adapt_get_tickratems()));
+    if (FALSE == tuya_os_adapt_system_isrstatus()) {
+        ret = xQueueSend(pQueueManage->queue, &msg,
+                         (timeout == TUYA_OS_ADAPT_QUEUE_FOREVER) ? portMAX_DELAY : (timeout / tuya_os_adapt_get_tickratems()));
     } else {
         signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-        ret = xQueueSendFromISR( pQueueManage->queue, &msg, &xHigherPriorityTaskWoken);
+        ret = xQueueSendFromISR(pQueueManage->queue, &msg, &xHigherPriorityTaskWoken);
         portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
     }
-    
+
     if (pdPASS == ret) {
         return OPRT_OS_ADAPTER_OK;
     } else {
@@ -154,21 +153,17 @@ int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void **msg, unsigned int timeo
         msg = &dummyptr;
     }
 
-    //printf("tuya_os_adapt_queue_fetch  %x   %x\n", pQueueManage, pQueueManage->queue);
-
-    if (pdTRUE == xQueueReceive(pQueueManage->queue, &(*msg), (timeout == TUYA_OS_ADAPT_QUEUE_FOREVER) ? portMAX_DELAY : (timeout / tuya_os_adapt_get_tickratems()))) {
+    if (pdTRUE == xQueueReceive(pQueueManage->queue, &(*msg),
+                                (timeout == TUYA_OS_ADAPT_QUEUE_FOREVER) ? portMAX_DELAY : (timeout / tuya_os_adapt_get_tickratems()))) {
         return OPRT_OS_ADAPTER_OK;
     } else { // timed out blocking for message
         return OPRT_OS_ADAPTER_QUEUE_RECV_FAIL;
     }
 }
 
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_queue_intf(void)
 {
-    return tuya_os_adapt_reg_intf(INTF_QUEUE, &m_tuya_os_queue_intfs);
+    return tuya_os_adapt_reg_intf(INTF_QUEUE, (void *)&m_tuya_os_queue_intfs);
 }
-/* add end */
-
 
 

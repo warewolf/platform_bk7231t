@@ -14,24 +14,33 @@ USER_SW_VER=`echo $APP_VERSION | cut -d'-' -f1`
 echo "Start Compile"
 set -e
 APP_PATH=../../../apps
+# Applicant's obj directory
+APP_OBJ_PATH=Debug/apps
 
-for i in `find ${APP_PATH}/$APP_BIN_NAME/src -type d`
-do
-#    echo $i
+echo "Removing TUYA APP Common and Components Objs"
+# Remove TUYA APP OBJs first
+if [ -e "${APP_OBJ_PATH}/$APP_BIN_NAME/src" ]; then
+for i in `find ${APP_OBJ_PATH}/$APP_BIN_NAME/src -type d`; do
+    echo "  $i"
     rm -rf $i/*.o
 done
+fi
 
-for i in `find ../tuya_common -type d`
-do
-#    echo $i
+# Remove TUYA Common OBJs first
+if [ -e "Debug/tuya_common/src" ]; then
+for i in `find Debug/tuya_common/src -type d`; do
+    echo "  $i"
     rm -rf $i/*.o
 done
+fi
 
-for i in `find ../../../components -type d`
-do
-#    echo $i
+# Remove TUYA Components OBJs first
+if [ -e "Debug/components" ]; then
+for i in `find Debug/components -type d`; do
+    echo "  $i"
     rm -rf $i/*.o
 done
+fi
 
 if [ -z $CI_PACKAGE_PATH ]; then
     echo "not is ci build"
@@ -107,4 +116,7 @@ else
    cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_UG_${APP_VERSION}.bin ${CI_PACKAGE_PATH}/$FW_NAME"_UG_"$APP_VERSION.bin
    cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_UA_${APP_VERSION}.bin ${CI_PACKAGE_PATH}/$FW_NAME"_UA_"$APP_VERSION.bin
    cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_QIO_${APP_VERSION}.bin ${CI_PACKAGE_PATH}/$FW_NAME"_QIO_"$APP_VERSION.bin
+   cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_${APP_VERSION}.asm ${CI_PACKAGE_PATH}/$FW_NAME"_"$APP_VERSION.asm
+   cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_${APP_VERSION}.axf ${CI_PACKAGE_PATH}/$FW_NAME"_"$APP_VERSION.axf
+   cp ../../${APP_PATH}/$APP_BIN_NAME/output/$APP_VERSION/${APP_BIN_NAME}_${APP_VERSION}.map ${CI_PACKAGE_PATH}/$FW_NAME"_"$APP_VERSION.map
 fi

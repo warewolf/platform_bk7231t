@@ -43,33 +43,8 @@ void *tuya_os_adapt_system_malloc(const size_t size);
  */
 void tuya_os_adapt_system_free(void* ptr);
 #endif
-/* add begin: by sunkz, interface regist */
 OPERATE_RET tuya_os_adapt_reg_memory_intf(void);
-/* add end */
 
-
-/**
- * @brief 内存分配操作函数指针类型
- * 
- */
-typedef void* (*TUYA_MALLOC_FUNC_T)(const size_t size);
-
-/**
- * @brief 内存释放操作函数指针类型
- * 
- */
-typedef void (*TUYA_FREE_FUNC_T)(void* ptr);
-
-/**
- * @brief 设置内存操作函数
- *      Base 层的内存池管理初始化完成之后，通过此接口将内存操作函数设置给 OS 层
- * 
- * @param[in]       malloc_func 内存分配操作函数指针
- * @param[in]       free_func   内存释放操作函数指针
- * @retval          0           成功
- * @retval          非0         失败
- */
-int tuya_hal_set_mem_func(TUYA_MALLOC_FUNC_T malloc_func, TUYA_FREE_FUNC_T free_func);
 
 
 #ifdef __cplusplus

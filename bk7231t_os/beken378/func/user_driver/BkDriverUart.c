@@ -48,8 +48,20 @@ OSStatus bk_uart_initialize( bk_uart_t uart, const bk_uart_config_t *config, rin
     return ret;
 }
 
-OSStatus bk_uart_finalize( bk_uart_t uart )
+OSStatus bk_uart_finalize( bk_uart_t uart)
 {
+    UINT32 status;
+    DD_HANDLE uart_hdl;
+
+    if(BK_UART_1 == uart)
+        uart_hdl = ddev_open(UART1_DEV_NAME, &status, 0);
+    else
+        uart_hdl = ddev_open(UART2_DEV_NAME, &status, 0);
+
+    ASSERT(DRV_FAILURE != uart_hdl);
+
+    ddev_close(uart_hdl);
+
     return kNoErr;
 }
 
@@ -70,7 +82,7 @@ OSStatus bk_uart_recv( bk_uart_t uart, void *data, uint32_t size, uint32_t timeo
         uart_hdl = ddev_open(UART1_DEV_NAME, &status, 0);
     else
         uart_hdl = ddev_open(UART2_DEV_NAME, &status, 0);
-	
+
     ASSERT(DRV_FAILURE != uart_hdl);
     ret = ddev_control(uart_hdl, CMD_RX_COUNT, 0);
     if(ret < size)
@@ -95,7 +107,7 @@ OSStatus bk_uart_recv_prefetch( bk_uart_t uart, void *data, uint32_t size, uint3
         uart_hdl = ddev_open(UART1_DEV_NAME, &status, 0);
     else
         uart_hdl = ddev_open(UART2_DEV_NAME, &status, 0);
-	
+
     ASSERT(DRV_FAILURE != uart_hdl);
 
     peek.sig = URX_PEEK_SIG;

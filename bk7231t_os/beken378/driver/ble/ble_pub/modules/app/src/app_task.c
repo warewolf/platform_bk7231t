@@ -246,8 +246,8 @@ static int gapm_cmp_evt_handler(kernel_msg_id_t const msgid,
                 // Set Data length parameters
                 cmd->sugg_max_tx_octets = BLE_MIN_OCTETS;
                 cmd->sugg_max_tx_time   = BLE_MIN_TIME;
-								
-                //cmd->max_mtu = 256;
+
+                cmd->max_mtu = 256;
                 //Do not support secure connections
                 cmd->pairing_mode = GAPM_PAIRING_LEGACY;
                 #if (BLE_APP_HID)
@@ -806,7 +806,7 @@ static int gapc_disconnect_ind_handler(kernel_msg_id_t const msgid,
 
     if(ble_event_cb)
     {
-        ble_event_cb(BLE_DISCONNECT, &(param->reason));
+        ble_event_cb(BLE_DISCONNECT, (void*)(&(param->reason)));
     }
 	
     return (KERNEL_MSG_CONSUMED);
@@ -1244,7 +1244,7 @@ static int gattc_mtu_changed_ind_handler(kernel_msg_id_t const msgid,
 
     if(ble_event_cb)
     {
-        ble_event_cb(BLE_MTU_CHANGE, &(ind->mtu));
+        ble_event_cb(BLE_MTU_CHANGE, (void*)(&(ind->mtu)));
     }
 
     return (KERNEL_MSG_CONSUMED);
@@ -1286,8 +1286,10 @@ static int gapm_adv_report_ind_handler(kernel_msg_id_t const msgid,
                                      kernel_task_id_t const src_id)
 {
     //jiangji update
-    int i = 0;
 #if (BLE_APP_CLIENT)
+#if 0
+    int i = 0;
+
     if(adv_count < appm_get_max_scan_nums())
     {
         for (i = 0; i < adv_count; i++)
@@ -1320,10 +1322,22 @@ static int gapm_adv_report_ind_handler(kernel_msg_id_t const msgid,
             bk_printf("\r\n##################################\r\n");
         }
     }
+#endif
+
+    recv_adv_t adv_param;
+
+    adv_param.evt_type = param->evt_type;
+    adv_param.data = (uint8_t *)(&(param->data[0]));
+    adv_param.data_len = param->data_len;
+    adv_param.rssi = param->rssi;
+    adv_param.adv_addr_type = param->adv_addr_type;
+    memcpy(adv_param.adv_addr, param->adv_addr.addr, GAP_BD_ADDR_LEN);
+
+    
     if (ble_recv_adv_cb)
     {
         
-        (*ble_recv_adv_cb)(param->data, param->data_len);
+        (*ble_recv_adv_cb)(&adv_param);
     }
         
 #endif
@@ -1339,7 +1353,7 @@ static int gapm_gen_dh_key_ind_handler(kernel_msg_id_t const msgid,
     int msg_status = KERNEL_MSG_CONSUMED;
     struct ble_gen_dh_key_ind ind;
 
-    ind.result =  &(param->result[0]);
+    ind.result = (uint8_t *)(&(param->result[0]));
     ind.len =  GAP_P256_KEY_LEN;
 
     if(ble_event_cb)
@@ -1358,11 +1372,11 @@ static int gapm_get_key_ind_handler(kernel_msg_id_t const msgid,
     int msg_status = KERNEL_MSG_CONSUMED;
     struct ble_get_key_ind ind;
 
-    ind.pri_key =  &(param->pri_key[0]);
+    ind.pri_key =  (uint8_t *)&(param->pri_key[0]);
     ind.pri_len =  GAP_P256_KEY_LEN;
-    ind.pub_key_x =  &(param->pub_key_x[0]);
+    ind.pub_key_x =  (uint8_t *)&(param->pub_key_x[0]);
     ind.pub_x_len =  GAP_P256_KEY_LEN;
-    ind.pub_key_y =  &(param->pub_key_y[0]);
+    ind.pub_key_y =  (uint8_t *)&(param->pub_key_y[0]);
     ind.pub_y_len =  GAP_P256_KEY_LEN;
 
     if(ble_event_cb)

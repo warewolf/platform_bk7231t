@@ -4448,6 +4448,7 @@ int wpa_supplicant_run(struct wpa_global *global)
     wpa_hostapd_queue_poll((uint32_t)0xff);
 
 	return 0;
+	(void)wpa_s;
 }
 
 

@@ -20,8 +20,6 @@ extern "C" {
 /* tuya sdk definition of semaphore */
 typedef void* SEM_HANDLE;
 
-//阻塞等待
-#define TUYA_OS_ADAPT_SEM_FOREVER 0xffffffff
 
 /**
  * @brief tuya_os_adapt_semaphore_create_init用于创建并初始化semaphore

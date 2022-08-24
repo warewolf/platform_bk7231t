@@ -1,10 +1,14 @@
 /**
  * @file tuya_os_adapt_network.c
  * @brief 网络操作接口
- * 
+ *
  * @copyright Copyright(C),2018-2020, 涂鸦科技 www.tuya.com
- * 
+ *
  */
+#include "tuya_os_adapt_system.h"
+#include "tuya_os_adapt_mutex.h"
+#include "tuya_os_adapter_error_code.h"
+
 #include <assert.h>
 #include "tuya_os_adapt_network.h"
 #include "lwip/err.h"
@@ -12,57 +16,53 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 #include "lwip/inet.h"
-#include "tuya_os_adapt_system.h"
-#include "tuya_os_adapt_mutex.h"
-#include "tuya_os_adapter_error_code.h"
+
 /***********************************************************
 *************************micro define***********************
 ***********************************************************/
 typedef struct NETWORK_ERRNO_TRANS {
     int sys_err;
     int priv_err;
-}NETWORK_ERRNO_TRANS_S;
+} NETWORK_ERRNO_TRANS_S;
 
 #define UNW_TO_SYS_FD_SET(fds)  ((fd_set*)fds)
 
 // 编译期结构体大小检查，如果此处编译错误，请加大 UNW_FD_MAX_COUNT 的值
-typedef static_assert_impl_type[(sizeof(UNW_FD_SET_T)>=sizeof(fd_set))?1:-1]; // 编译期校验
+char static_assert_impl_type[(sizeof(UNW_FD_SET_T) >= sizeof(fd_set)) ? 1 : -1]; // 编译期校验
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
-const NETWORK_ERRNO_TRANS_S unw_errno_trans[]= {
-    {EINTR,UNW_EINTR},
-    {EBADF,UNW_EBADF},
-    {EAGAIN,UNW_EAGAIN},
-    {EFAULT,UNW_EFAULT},
-    {EBUSY,UNW_EBUSY},
-    {EINVAL,UNW_EINVAL},
-    {ENFILE,UNW_ENFILE},
-    {EMFILE,UNW_EMFILE},
-    {ENOSPC,UNW_ENOSPC},
-    {EPIPE,UNW_EPIPE},
-    {EWOULDBLOCK,UNW_EWOULDBLOCK},
-    {ENOTSOCK,UNW_ENOTSOCK},
-    {ENOPROTOOPT,UNW_ENOPROTOOPT},
-    {EADDRINUSE,UNW_EADDRINUSE},
-    {EADDRNOTAVAIL,UNW_EADDRNOTAVAIL},
-    {ENETDOWN,UNW_ENETDOWN},
-    {ENETUNREACH,UNW_ENETUNREACH},
-    {ENETRESET,UNW_ENETRESET},
-    {ECONNRESET,UNW_ECONNRESET},
-    {ENOBUFS,UNW_ENOBUFS},
-    {EISCONN,UNW_EISCONN},
-    {ENOTCONN,UNW_ENOTCONN},
-    {ETIMEDOUT,UNW_ETIMEDOUT},
-    {ECONNREFUSED,UNW_ECONNREFUSED},
-    {EHOSTDOWN,UNW_EHOSTDOWN},
-    {EHOSTUNREACH,UNW_EHOSTUNREACH},
-    {ENOMEM ,UNW_ENOMEM},
-    {EMSGSIZE,UNW_EMSGSIZE}
+const NETWORK_ERRNO_TRANS_S unw_errno_trans[] = {
+    {EINTR, UNW_EINTR},
+    {EBADF, UNW_EBADF},
+    {EAGAIN, UNW_EAGAIN},
+    {EFAULT, UNW_EFAULT},
+    {EBUSY, UNW_EBUSY},
+    {EINVAL, UNW_EINVAL},
+    {ENFILE, UNW_ENFILE},
+    {EMFILE, UNW_EMFILE},
+    {ENOSPC, UNW_ENOSPC},
+    {EPIPE, UNW_EPIPE},
+    {EWOULDBLOCK, UNW_EWOULDBLOCK},
+    {ENOTSOCK, UNW_ENOTSOCK},
+    {ENOPROTOOPT, UNW_ENOPROTOOPT},
+    {EADDRINUSE, UNW_EADDRINUSE},
+    {EADDRNOTAVAIL, UNW_EADDRNOTAVAIL},
+    {ENETDOWN, UNW_ENETDOWN},
+    {ENETUNREACH, UNW_ENETUNREACH},
+    {ENETRESET, UNW_ENETRESET},
+    {ECONNRESET, UNW_ECONNRESET},
+    {ENOBUFS, UNW_ENOBUFS},
+    {EISCONN, UNW_EISCONN},
+    {ENOTCONN, UNW_ENOTCONN},
+    {ETIMEDOUT, UNW_ETIMEDOUT},
+    {ECONNREFUSED, UNW_ECONNREFUSED},
+    {EHOSTDOWN, UNW_EHOSTDOWN},
+    {EHOSTUNREACH, UNW_EHOSTUNREACH},
+    {ENOMEM, UNW_ENOMEM},
+    {EMSGSIZE, UNW_EMSGSIZE}
 };
 
-
-/* add begin: by sunkz, interface regist */
 static const TUYA_OS_NETWORK_INTF m_tuya_os_network_intfs = {
     .get_errno        =    tuya_os_adapt_net_get_errno,
     .fd_set1          =    tuya_os_adapt_net_fd_set,
@@ -90,7 +90,7 @@ static const TUYA_OS_NETWORK_INTF m_tuya_os_network_intfs = {
     .set_boardcast    =    tuya_os_adapt_net_set_boardcast,
     .gethostbyname    =    tuya_os_adapt_net_gethostbyname,
     .accept           =    tuya_os_adapt_net_accept,
-    .recv_nd_size     =    tuya_os_adapt_net_recv_nd_size, 
+    .recv_nd_size     =    tuya_os_adapt_net_recv_nd_size,
     .str2addr         =    tuya_os_adapt_net_str2addr,
     .addr2str         =    NULL,
     .set_keepalive    =    tuya_os_adapt_net_set_keepalive,
@@ -99,15 +99,13 @@ static const TUYA_OS_NETWORK_INTF m_tuya_os_network_intfs = {
     .get_socket_ip    =    NULL,
     .addr             =    tuya_os_adapt_net_addr,
 };
-/* add end */
-
 
 /***********************************************************
 *************************function define********************
 ***********************************************************/
 /**
  * @brief 用于获取错误序号
- * 
+ *
  * @retval         errno
  */
 UNW_ERRNO_T tuya_os_adapt_net_get_errno(void)
@@ -116,8 +114,8 @@ UNW_ERRNO_T tuya_os_adapt_net_get_errno(void)
 
     int sys_err = errno;
 
-    for(i = 0; i < (int)sizeof(unw_errno_trans)/sizeof(unw_errno_trans[0]); i++) {
-        if(unw_errno_trans[i].sys_err == sys_err) {
+    for (i = 0; i < (int)sizeof(unw_errno_trans) / sizeof(unw_errno_trans[0]); i++) {
+        if (unw_errno_trans[i].sys_err == sys_err) {
             return unw_errno_trans[i].priv_err;
         }
     }
@@ -130,27 +128,27 @@ UNW_ERRNO_T tuya_os_adapt_net_get_errno(void)
  * @param[in]      ip    ip字符串    "192.168.1.1"
  * @return  ip地址(4B)
  */
-UNW_IP_ADDR_T tuya_os_adapt_net_addr(const signed char *ip)
+UNW_IP_ADDR_T tuya_os_adapt_net_addr(const        char *ip)
 {
-    if(ip == NULL) {
+    if (ip == NULL) {
         return 0xFFFFFFFF;
     }
 
-    return inet_addr(ip);
+    return inet_addr((char *)ip);
 }
 
 /**
- * @brief : Ascii网络字符串地址转换为主机序(4B)地址 
+ * @brief : Ascii网络字符串地址转换为主机序(4B)地址
  * @param[in]            ip_str
  * @return   主机序ip地址(4B)
  */
-UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(signed char *ip)
+UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(const char *ip)
 {
-    if(ip == NULL) {
+    if (ip == NULL) {
         return 0xFFFFFFFF;
     }
-    
-    UNW_IP_ADDR_T addr1 = inet_addr(ip);
+
+    UNW_IP_ADDR_T addr1 = inet_addr((char *)ip);
     UNW_IP_ADDR_T addr2 = ntohl(addr1);
 
     return addr2;
@@ -162,14 +160,14 @@ UNW_IP_ADDR_T tuya_os_adapt_net_str2addr(signed char *ip)
  * @param[inout]      fds
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_fd_set(const int fd, UNW_FD_SET_T* fds)
+int tuya_os_adapt_net_fd_set(const int fd, UNW_FD_SET_T *fds)
 {
-    if((fd < 0) || (fds == NULL)) {
+    if ((fd < 0) || (fds == NULL)) {
         return -3000 + fd;
     }
 
     FD_SET(fd, UNW_TO_SYS_FD_SET(fds));
-    
+
     return UNW_SUCCESS;
 }
 
@@ -179,12 +177,12 @@ int tuya_os_adapt_net_fd_set(const int fd, UNW_FD_SET_T* fds)
  * @param[inout]      fds
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_fd_clear(const int fd, UNW_FD_SET_T* fds)
+int tuya_os_adapt_net_fd_clear(const int fd, UNW_FD_SET_T *fds)
 {
-    if((fd < 0) || (fds == NULL)) {
+    if ((fd < 0) || (fds == NULL)) {
         return -3000 + fd;
     }
-    
+
     FD_CLR(fd, UNW_TO_SYS_FD_SET(fds));
 
     return UNW_SUCCESS;
@@ -196,9 +194,9 @@ int tuya_os_adapt_net_fd_clear(const int fd, UNW_FD_SET_T* fds)
  * @param[in]      fds
  * @return  0-没有可读fd other-有可读fd
  */
-int tuya_os_adapt_net_fd_isset(const int fd, UNW_FD_SET_T* fds)
+int tuya_os_adapt_net_fd_isset(const int fd, UNW_FD_SET_T *fds)
 {
-    if((fd < 0) || (fds == NULL)) {
+    if ((fd < 0) || (fds == NULL)) {
         return -3000 + fd;
     }
 
@@ -210,9 +208,9 @@ int tuya_os_adapt_net_fd_isset(const int fd, UNW_FD_SET_T* fds)
  * @param[inout]      fds
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_fd_zero(UNW_FD_SET_T* fds)
+int tuya_os_adapt_net_fd_zero(UNW_FD_SET_T *fds)
 {
-    if(fds == NULL) {
+    if (fds == NULL) {
         return 0xFFFFFFFF;
     }
 
@@ -230,18 +228,18 @@ int tuya_os_adapt_net_fd_zero(UNW_FD_SET_T* fds)
  * @param[inout]      ms_timeout
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_select(const int maxfd, UNW_FD_SET_T *readfds, UNW_FD_SET_T *writefds,\
-                        UNW_FD_SET_T *errorfds, const unsigned int ms_timeout)
+int tuya_os_adapt_net_select(const int maxfd, UNW_FD_SET_T *readfds, UNW_FD_SET_T *writefds, UNW_FD_SET_T *errorfds,
+                             const unsigned int ms_timeout)
 {
-    if(maxfd <= 0) {
+    if (maxfd <= 0) {
         return -3000 + maxfd;
     }
 
     struct timeval *tmp = NULL;
-    struct timeval timeout = {ms_timeout/1000, (ms_timeout%1000)*1000};
-    if(0 != ms_timeout) {
+    struct timeval timeout = {ms_timeout / 1000, (ms_timeout % 1000) * 1000};
+    if (0 != ms_timeout) {
         tmp = &timeout;
-    }else {
+    } else {
         tmp = NULL;
     }
 
@@ -255,7 +253,7 @@ int tuya_os_adapt_net_select(const int maxfd, UNW_FD_SET_T *readfds, UNW_FD_SET_
  */
 int tuya_os_adapt_net_close(const int fd)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
@@ -270,11 +268,11 @@ int tuya_os_adapt_net_close(const int fd)
 */
 int tuya_os_adapt_net_shutdown(const int fd, const int how)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
-    return shutdown(fd,how);
+    return shutdown(fd, how);
 }
 
 /**
@@ -286,10 +284,12 @@ int tuya_os_adapt_net_socket_create(const UNW_PROTOCOL_TYPE type)
 {
     int fd = -1;
 
-    if(PROTOCOL_TCP == type) {
+    if (PROTOCOL_TCP == type) {
         fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    }else {
-        fd = socket(AF_INET, SOCK_DGRAM,0);
+    } else if (PROTOCOL_RAW == type) {
+        fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    } else {
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
     }
 
     return fd;
@@ -304,7 +304,7 @@ int tuya_os_adapt_net_socket_create(const UNW_PROTOCOL_TYPE type)
 */
 int tuya_os_adapt_net_connect(const int fd, const UNW_IP_ADDR_T addr, const unsigned short port)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
@@ -316,7 +316,7 @@ int tuya_os_adapt_net_connect(const int fd, const UNW_IP_ADDR_T addr, const unsi
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
 
-    return connect(fd, (struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in));
+    return connect(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
 }
 
 /**
@@ -328,7 +328,7 @@ int tuya_os_adapt_net_connect(const int fd, const UNW_IP_ADDR_T addr, const unsi
 */
 int tuya_os_adapt_net_connect_raw(const int fd, void *p_socket_addr, const int len)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
@@ -344,7 +344,7 @@ int tuya_os_adapt_net_connect_raw(const int fd, void *p_socket_addr, const int l
 */
 int tuya_os_adapt_net_bind(const int fd, const UNW_IP_ADDR_T addr, const unsigned short port)
 {
-    if( fd < 0 ) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
@@ -356,7 +356,7 @@ int tuya_os_adapt_net_bind(const int fd, const UNW_IP_ADDR_T addr, const unsigne
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
 
-    return bind(fd,(struct sockaddr*)&sock_addr, sizeof(struct sockaddr_in));
+    return bind(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
 }
 
 /**
@@ -368,7 +368,7 @@ int tuya_os_adapt_net_bind(const int fd, const UNW_IP_ADDR_T addr, const unsigne
 */
 int tuya_os_adapt_net_socket_bind(const int fd, const char *ip)
 {
-    if(NULL == ip) {
+    if (NULL == ip) {
         return -3000;
     }
 
@@ -377,7 +377,7 @@ int tuya_os_adapt_net_socket_bind(const int fd, const char *ip)
     addr_client.sin_addr.s_addr      = inet_addr(ip);
     addr_client.sin_port     = 0;    /// 0 表示由系统自动分配端口号
 
-    if (0 != bind(fd,(struct sockaddr*)&addr_client,sizeof(addr_client))) {
+    if (0 != bind(fd, (struct sockaddr *)&addr_client, sizeof(addr_client))) {
         return UNW_FAIL;
     }
 
@@ -392,11 +392,11 @@ int tuya_os_adapt_net_socket_bind(const int fd, const char *ip)
 */
 int tuya_os_adapt_net_listen(const int fd, const int backlog)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
-    return listen(fd,backlog);
+    return listen(fd, backlog);
 }
 
 /**
@@ -408,22 +408,22 @@ int tuya_os_adapt_net_listen(const int fd, const int backlog)
 */
 int tuya_os_adapt_net_accept(const int fd, UNW_IP_ADDR_T *addr, unsigned short *port)
 {
-    if( fd < 0 ) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     struct sockaddr_in sock_addr;
     socklen_t len = sizeof(struct sockaddr_in);
-    int cfd = accept(fd, (struct sockaddr *)&sock_addr,&len);
-    if(cfd < 0) {
+    int cfd = accept(fd, (struct sockaddr *)&sock_addr, &len);
+    if (cfd < 0) {
         return UNW_FAIL;
     }
 
-    if(addr) {
+    if (addr) {
         *addr = ntohl((sock_addr.sin_addr.s_addr));
     }
 
-    if(port) {
+    if (port) {
         *port = ntohs((sock_addr.sin_port));
     }
 
@@ -439,11 +439,11 @@ int tuya_os_adapt_net_accept(const int fd, UNW_IP_ADDR_T *addr, unsigned short *
 */
 int tuya_os_adapt_net_send(const int fd, const void *buf, const unsigned int nbytes)
 {
-    if((fd < 0) || (buf == NULL) || (nbytes == 0)) {
+    if ((fd < 0) || (buf == NULL) || (nbytes == 0)) {
         return -3000 + fd;
     }
 
-    return send(fd,buf,nbytes,0);
+    return send(fd, buf, nbytes, 0);
 }
 
 /**
@@ -455,10 +455,10 @@ int tuya_os_adapt_net_send(const int fd, const void *buf, const unsigned int nby
  * @param[in]      port
  * @return  nbytes has sended
 */
-int tuya_os_adapt_net_send_to(const int fd, const void *buf, const unsigned int nbytes,\
-                         const UNW_IP_ADDR_T addr,const unsigned short port)
+int tuya_os_adapt_net_send_to(const int fd, const void *buf, const unsigned int nbytes, \
+                              const UNW_IP_ADDR_T addr, const unsigned short port)
 {
-    if((fd < 0) || (buf == NULL) || (nbytes == 0)) {
+    if ((fd < 0) || (buf == NULL) || (nbytes == 0)) {
         return -3000 + fd;
     }
 
@@ -470,7 +470,7 @@ int tuya_os_adapt_net_send_to(const int fd, const void *buf, const unsigned int 
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
 
-    return sendto(fd,buf,nbytes,0,(struct sockaddr *)&sock_addr,sizeof(sock_addr));
+    return sendto(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 }
 
 /**
@@ -482,23 +482,23 @@ int tuya_os_adapt_net_send_to(const int fd, const void *buf, const unsigned int 
  */
 int tuya_os_adapt_net_recv(const int fd, void *buf, const unsigned int nbytes)
 {
-    if((fd < 0) || (buf == NULL) || (nbytes == 0)) {
+    if ((fd < 0) || (buf == NULL) || (nbytes == 0)) {
         return -3000 + fd;
     }
     int flags = fcntl(fd, F_GETFL, 0);
 
     int noblock = flags & O_NONBLOCK;
 
-    if(!noblock) {
+    if (!noblock) {
         fd_set set;
         FD_ZERO(&set);
         FD_SET(fd, &set);
-        if(select(fd + 1, &set, NULL, NULL, NULL) < 0){
+        if (select(fd + 1, &set, NULL, NULL, NULL) < 0) {
             return -1;
         }
     }
 
-    return recv(fd,buf,nbytes,0);
+    return recv(fd, buf, nbytes, 0);
 }
 
 /**
@@ -510,12 +510,12 @@ int tuya_os_adapt_net_recv(const int fd, void *buf, const unsigned int nbytes)
  * @return  nbytes has received
 */
 int tuya_os_adapt_net_recv_nd_size(const int fd, \
-                              void *buf, \
-                              const unsigned int buf_size, \
-                              const unsigned int nd_size)
+                                   void *buf, \
+                                   const unsigned int buf_size, \
+                                   const unsigned int nd_size)
 {
-    if((fd < 0) || (NULL == buf) || (buf_size == 0) || \
-       (nd_size == 0) || (buf_size < nd_size)) {
+    if ((fd < 0) || (NULL == buf) || (buf_size == 0) || \
+            (nd_size == 0) || (buf_size < nd_size)) {
         return -3000 + fd;
     }
 
@@ -523,13 +523,13 @@ int tuya_os_adapt_net_recv_nd_size(const int fd, \
     unsigned int rd_size = 0;
     int ret = 0;
 
-    while(rd_size < nd_size) {
-        ret = recv(fd,((uint8_t *)buf+rd_size),nd_size-rd_size,0);
-        if(ret <= 0) {
+    while (rd_size < nd_size) {
+        ret = recv(fd, ((uint8_t *)buf + rd_size), nd_size - rd_size, 0);
+        if (ret <= 0) {
             UNW_ERRNO_T err = tuya_os_adapt_net_get_errno();
-            if(UNW_EWOULDBLOCK == err || \
-               UNW_EINTR == err || \
-               UNW_EAGAIN == err) {
+            if (UNW_EWOULDBLOCK == err || \
+                    UNW_EINTR == err || \
+                    UNW_EAGAIN == err) {
                 tuya_os_adapt_system_sleep(10);
                 continue;
             }
@@ -540,7 +540,7 @@ int tuya_os_adapt_net_recv_nd_size(const int fd, \
         rd_size += ret;
     }
 
-    if(rd_size < nd_size) {
+    if (rd_size < nd_size) {
         return -2;
     }
 
@@ -558,27 +558,27 @@ int tuya_os_adapt_net_recv_nd_size(const int fd, \
  * @return  nbytes has received
  */
 int tuya_os_adapt_net_recvfrom(const int fd, \
-                          void *buf, \
-                          const unsigned int nbytes,\
-                          UNW_IP_ADDR_T *addr, \
-                          unsigned short *port)
+                               void *buf, \
+                               const unsigned int nbytes, \
+                               UNW_IP_ADDR_T *addr, \
+                               unsigned short *port)
 {
-    if((fd < 0) || (buf == NULL) || (nbytes == 0)) {
+    if ((fd < 0) || (buf == NULL) || (nbytes == 0)) {
         return -3000 + fd;
     }
 
     struct sockaddr_in sock_addr;
     socklen_t addr_len = sizeof(struct sockaddr_in);
-    int ret = recvfrom(fd,buf,nbytes,0,(struct sockaddr *)&sock_addr,&addr_len);
-    if(ret <= 0) {
+    int ret = recvfrom(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, &addr_len);
+    if (ret <= 0) {
         return ret;
     }
 
-    if(addr) {
+    if (addr) {
         *addr = ntohl(sock_addr.sin_addr.s_addr);
     }
 
-    if(port) {
+    if (port) {
         *port = ntohs(sock_addr.sin_port);
     }
 
@@ -591,20 +591,20 @@ int tuya_os_adapt_net_recvfrom(const int fd, \
  * @param[in]      block
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_set_block(const int fd, const bool block)
+int tuya_os_adapt_net_set_block(const int fd, const bool_t block)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     int flags = fcntl(fd, F_GETFL, 0);
-    if(block) {
+    if (block) {
         flags &= (~O_NONBLOCK);
-    }else {
+    } else {
         flags |= O_NONBLOCK;
     }
 
-    if (fcntl(fd,F_SETFL,flags) < 0) {
+    if (fcntl(fd, F_SETFL, flags) < 0) {
         return UNW_FAIL;
     }
 
@@ -618,16 +618,16 @@ int tuya_os_adapt_net_set_block(const int fd, const bool block)
 */
 int tuya_os_adapt_net_get_nonblock(const int fd)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
 
-    if((fcntl(fd, F_GETFL, 0) & O_NONBLOCK) != O_NONBLOCK) {
+    if ((fcntl(fd, F_GETFL, 0) & O_NONBLOCK) != O_NONBLOCK) {
         return 0;
     }
 
-    if(errno == EAGAIN || errno == EWOULDBLOCK) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
         return 1;
     }
 
@@ -642,18 +642,18 @@ int tuya_os_adapt_net_get_nonblock(const int fd)
  * @return  0: success  <0: fail
 */
 int tuya_os_adapt_net_set_timeout(const int fd, \
-                             const int ms_timeout,\
-                             const UNW_TRANS_TYPE_E type)
+                                  const int ms_timeout, \
+                                  const UNW_TRANS_TYPE_E type)
 
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
-    struct timeval timeout = {ms_timeout/1000, (ms_timeout%1000)*1000};
-    int optname = ((type == TRANS_RECV) ? SO_RCVTIMEO:SO_SNDTIMEO);
+    struct timeval timeout = {ms_timeout / 1000, (ms_timeout % 1000) * 1000};
+    int optname = ((type == TRANS_RECV) ? SO_RCVTIMEO : SO_SNDTIMEO);
 
-    if(0 != setsockopt(fd, SOL_SOCKET, optname, (char *)&timeout, sizeof(timeout))) {
+    if (0 != setsockopt(fd, SOL_SOCKET, optname, (char *)&timeout, sizeof(timeout))) {
         return UNW_FAIL;
     }
 
@@ -668,17 +668,17 @@ int tuya_os_adapt_net_set_timeout(const int fd, \
  * @return  0: success  <0: fail
  */
 int tuya_os_adapt_net_set_bufsize(const int fd, \
-                             const int buf_size,\
-                             const UNW_TRANS_TYPE_E type)
+                                  const int buf_size, \
+                                  const UNW_TRANS_TYPE_E type)
 {
-    if( fd < 0 ) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     int size = buf_size;
-    int optname = ((type == TRANS_RECV) ? SO_RCVBUF:SO_SNDBUF);
+    int optname = ((type == TRANS_RECV) ? SO_RCVBUF : SO_SNDBUF);
 
-    if(0 != setsockopt(fd, SOL_SOCKET, optname, (char *)&size, sizeof(size))) {
+    if (0 != setsockopt(fd, SOL_SOCKET, optname, (char *)&size, sizeof(size))) {
         return UNW_FAIL;
     }
 
@@ -692,12 +692,12 @@ int tuya_os_adapt_net_set_bufsize(const int fd, \
  */
 int tuya_os_adapt_net_set_reuse(const int fd)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     int flag = 1;
-    if(0 != setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,(const char*)&flag,sizeof(int))) {
+    if (0 != setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&flag, sizeof(int))) {
         return UNW_FAIL;
     }
 
@@ -711,12 +711,12 @@ int tuya_os_adapt_net_set_reuse(const int fd)
  */
 int tuya_os_adapt_net_disable_nagle(const int fd)
 {
-    if(fd < 0) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     int flag = 1;
-    if(0 != setsockopt(fd,IPPROTO_TCP,TCP_NODELAY,(const char*)&flag,sizeof(int))) {
+    if (0 != setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char *)&flag, sizeof(int))) {
         return UNW_FAIL;
     }
 
@@ -730,12 +730,12 @@ int tuya_os_adapt_net_disable_nagle(const int fd)
  */
 int tuya_os_adapt_net_set_boardcast(const int fd)
 {
-    if( fd < 0 ) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
     int flag = 1;
-    if(0 != setsockopt(fd,SOL_SOCKET,SO_BROADCAST,(const char*)&flag,sizeof(int))) {
+    if (0 != setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (const char *)&flag, sizeof(int))) {
         return UNW_FAIL;
     }
 
@@ -743,21 +743,18 @@ int tuya_os_adapt_net_set_boardcast(const int fd)
 }
 
 /**
- * @brief : tcp保活设置 
+ * @brief : tcp保活设置
  * @param[in]            fd-the socket fd
- * @param[in]            alive-open(1) or close(0) 
- * @param[in]            idle-how long to send a alive packet(in seconds) 
+ * @param[in]            alive-open(1) or close(0)
+ * @param[in]            idle-how long to send a alive packet(in seconds)
  * @param[in]            intr-time between send alive packets (in seconds)
  * @param[in]            cnt-keep alive packets fail times to close the connection
  * @return  0: success  <0: fail
  */
-int tuya_os_adapt_net_set_keepalive(const int fd, \
-                               const bool alive,\
-                               const unsigned int idle, \
-                               const unsigned int intr,\
-                               const unsigned int cnt)
+int tuya_os_adapt_net_set_keepalive(int fd, const bool_t alive, const unsigned int idle, const unsigned int intr,
+                                    const unsigned int cnt)
 {
-    if( fd < 0 ) {
+    if (fd < 0) {
         return -3000 + fd;
     }
 
@@ -767,11 +764,11 @@ int tuya_os_adapt_net_set_keepalive(const int fd, \
     int keepinterval = intr;
     int keepcount = cnt;
 
-    ret |= setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive , sizeof(keepalive));
-    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (void*)&keepidle , sizeof(keepidle));
-    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&keepinterval , sizeof(keepinterval));
-    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&keepcount , sizeof(keepcount));
-    if(0 != ret) {
+    ret |= setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
+    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&keepidle, sizeof(keepidle));
+    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&keepinterval, sizeof(keepinterval));
+    ret |= setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&keepcount, sizeof(keepcount));
+    if (0 != ret) {
         return UNW_FAIL;
     }
 
@@ -786,23 +783,22 @@ int tuya_os_adapt_net_set_keepalive(const int fd, \
  */
 int tuya_os_adapt_net_gethostbyname(const char *domain, UNW_IP_ADDR_T *addr)
 {
-    if((domain == NULL) || (addr == NULL)) {
+    if ((domain == NULL) || (addr == NULL)) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
     }
 
-    struct hostent* h = NULL;
+    struct hostent *h = NULL;
     if ((h = gethostbyname(domain)) == NULL) {
         return UNW_FAIL;
     }
 
     *addr = ntohl(((struct in_addr *)(h->h_addr_list[0]))->s_addr);
-    
-    return UNW_SUCCESS;
 
+    return UNW_SUCCESS;
 }
-/* add begin: by sunkz, interface regist */
+
 OPERATE_RET tuya_os_adapt_reg_network_intf(void)
 {
-    return tuya_os_adapt_reg_intf(INTF_NETWORK, &m_tuya_os_network_intfs);
+    return tuya_os_adapt_reg_intf(INTF_NETWORK, (void *)&m_tuya_os_network_intfs);
 }
-/* add end */
+

@@ -153,6 +153,12 @@ __INLINE void ble_format_setf(int elt_idx, uint8_t format)
 #define BLE_FCNTOFFSET_INDEX  0x00000001
 #define BLE_FCNTOFFSET_RESET  0x00000000
 
+__INLINE uint16_t ble_cxcntl_frcntl_get(int elt_idx)
+{
+	////bk_printf("ExTab[%d]:%x\r\n",elt_idx,(BLE_FCNTOFFSET_ADDR - 2 + elt_idx * REG_BLE_EM_CS_SIZE));
+    return EM_BLE_RD((BLE_FCNTOFFSET_ADDR - 2) + elt_idx * REG_BLE_EM_CS_SIZE);
+}
+
 __INLINE uint16_t ble_fcntoffset_get(int elt_idx)
 {
     return EM_BLE_RD(BLE_FCNTOFFSET_ADDR + elt_idx * REG_BLE_EM_CS_SIZE);

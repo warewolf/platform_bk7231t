@@ -112,11 +112,14 @@
 
 #include "dbg.h"             // debug definition
 
+#include "gapm_task.h"
+
 #include "driver_sys_ctrl.h"
 #include "uart_pub.h"
 #include "ble.h"
 #include "ble_pub.h"
 #include "ble_api.h"
+#include "lld_scan.h"
 
 /*
  * DEFINES
@@ -137,7 +140,7 @@ typedef struct
 /// Sleep Duration Value in periodic wake-up mode
 #define MAX_SLEEP_DURATION_PERIODIC_WAKEUP     0x0320*20  //10s // 0.5s   
 /// Sleep Duration Value in external wake-up mode
-#define MAX_SLEEP_DURATION_EXTERNAL_WAKEUP     0x3E80*3  //30s //10s
+#define MAX_SLEEP_DURATION_EXTERNAL_WAKEUP     0x0320  //30s //10s
 
 #define MAX_SLEEP_DURATION_SHORT_WAKEUP     160
 
@@ -362,8 +365,14 @@ void rwip_reg_init(void)
 	ble_clk_power_up();
 
     //REG_ICU_INT_ENABLE |= (1<<30);  //enable ble INT    icu 0x10
+    GLOBAL_INT_DIS();
+	ble_intack_clear(ble_intstat_get());
     ble_intc_set(1);
-    
+	ble_intack_clear(ble_intstat_get());
+    GLOBAL_INT_RES();
+
+	unsigned char *p = (unsigned char *)0x00814000;
+	memset(p,0,4 * 1024);
 	REG_BLE_XVR_SLOT_TIME = 0x0D123B6D;  // BLE_XVR 0x2a
 	REG_BLE_XVR_TX_CONFIG = REG_BLE_XVR_TX_CONFIG | 0x80; // BLE_XVR 0x30
 	REG_BLE_XVR_AGC_CONFIG = 0x03371C02; // BLE_XVR 0x3c
@@ -373,10 +382,16 @@ void rwip_reg_init(void)
 
 void rwip_reg_deinit(void)
 {
+	GLOBAL_INT_DIS();
+	ble_intack_clear(ble_intstat_get());
+	ble_intc_set(0);
+	ble_rwblecntl_set(ble_rwblecntl_get() | BLE_MASTER_SOFT_RST_BIT);
+	ble_intack_clear(ble_intstat_get());
+	GLOBAL_INT_RES();
     ble_switch_rf_to_wifi();
-    
+
     ble_intc_set(0);
-    
+
 	ble_clk_power_down();
 
     ble_set_power_up(0);
@@ -631,6 +646,7 @@ void rwip_reset(void)
 
     // Restore interrupts once reset procedure is completed
     GLOBAL_INT_RES();
+	bk_printf("----> %s\r\n",__FUNCTION__);
 }
 
 void rwip_version(uint8_t* fw_version, uint8_t* hw_version)
@@ -652,20 +668,52 @@ uint32_t rwip_get_next_target_time(void)
     return (ea_timer_next_target_get());
 }
 
+extern uint8_t ble_scan_status;
+
 void rwip_schedule(void)
 {
     #if (KERNEL_SUPPORT)
     #if (DEEP_SLEEP)
     // If system is waking up, delay the handling
-    if ((rwip_env.prevent_sleep & RW_WAKERNEL_UP_ONGOING) == 0)
+    if ((rwip_env.prevent_sleep & (RW_WAKERNEL_UP_ONGOING | RW_SLEEP_EVENT_ONGOING)) == 0)
     #endif // DEEP_SLEEP
 
     {
         // schedule all pending events
         kernel_event_schedule();
-			  
+        if (ble_scan_status == BLE_SCAN_OPENING)
+        {
+            GLOBAL_INT_DIS();
+            ble_scan_status = BLE_SCAN_OPENED;
+            GLOBAL_INT_RES();
+
+            lld_adv_test_scan_start(160, GAPM_ADV_REPORT_IND, TASK_APP);
+        }
+        else if (ble_scan_status == BLE_SCAN_CLOSING)
+        {
+            GLOBAL_INT_DIS();
+            ble_scan_status = BLE_SCAN_CLOSED;
+            GLOBAL_INT_RES();
+
+            lld_adv_test_scan_stop(GAPM_STOP_LL_SCAN);
+        }
     }
     #endif //KERNEL_SUPPORT
+}
+
+#include "reg_ble_em_cs.h"
+#include "reg_common_em_et.h"
+void tst_ble_format(void)
+{
+	int i = 15;
+	GLOBAL_INT_DIS();
+	for(;i >= 0;i--){
+		////bk_printf("ExTab[%d] = %x\r\n",i,(*((volatile unsigned int *)(0x00814000 + i * 4))));
+		unsigned int format = ble_cxcntl_frcntl_get(i);
+		unsigned int csptr = em_common_extab1_csptr_getf_get_csptr(i);
+		bk_printf("format[%d] %x,csptr:%x,%x\r\n",i,format,csptr,em_common_extab1_csptr_get_value(i));
+	}
+	GLOBAL_INT_RES();
 }
 
 uint8_t rwip_sleep(void)

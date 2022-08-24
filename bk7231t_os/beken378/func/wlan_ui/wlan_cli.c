@@ -35,6 +35,7 @@
 #include "bk7011_cal_pub.h"
 #include "flash_pub.h"
 #include "mcu_ps_pub.h"
+#include "lwip/ping.h"
 
 #if CFG_SUPPORT_BOOTLOADER
 #include "wdt_pub.h"
@@ -1008,7 +1009,20 @@ void arp_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
 
 void ping_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    os_printf("ping_Command\r\n");
+#if CFG_PING_COMMAND
+    if (argc == 1)
+    {
+        os_printf("Please input: ping <host address>\n");
+    }
+    else
+    {
+		os_printf("ping IP address:%s\n",argv[1]);
+		ping(argv[1], 4, 0);
+	}
+#else
+    os_printf("ping_Command unsupported\r\n");
+#endif
+    return 0;
 }
 
 void dns_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
@@ -1577,6 +1591,15 @@ static const struct cli_command built_ins[] =
 #endif
 
 	{"cca", "cca open\\close\\show", phy_cca_test},
+
+	//{"cca", "cca open\\close\\show", phy_cca_test},
+    {"rfcali_cfg_mode",      "1:manual, 0:auto, others: clear flash mode",      cmd_rfcali_cfg_mode},
+    {"rfcali_cfg_tssi_g",    "0-255",                 cmd_rfcali_cfg_tssi_g},
+    {"rfcali_cfg_tssi_b",    "0-255",                 cmd_rfcali_cfg_tssi_b},
+    {"rfcali_cfg_tssi_n20",  "0-255",                 cmd_rfcali_cfg_tssi_n20},
+    {"rfcali_cfg_tssi_n40",  "0-255",                 cmd_rfcali_cfg_tssi_n40},
+    {"rfcali_show_data",     "",                      cmd_rfcali_show_data},
+    {"rfcali_cfg_rate_dist", "b g n40 ble (0-31)",    cmd_rfcali_cfg_rate_dist},
 };
 
 /* Built-in "help" command: prints all registered commands and their help

@@ -136,6 +136,7 @@ void rwm_txdesc_copy(struct txdesc *dst_local, ETH_HDR_PTR eth_hdr_ptr)
     os_memcpy(&host_ptr->eth_src_addr, &eth_hdr_ptr->e_src, sizeof(host_ptr->eth_src_addr));
 }
 
+extern int bmsg_ps_handler_rf_ps_mode_real_wakeup(void);
 int rwm_raw_frame_with_cb(uint8_t *buffer, int len, void *cb, void *param)
 {
 	int ret = 0;
@@ -522,7 +523,8 @@ uint8_t ipv4_ieee8023_dscp(UINT8 *buf)
 uint8_t ipv6_ieee8023_dscp(UINT8 *buf)
 {
 	uint8_t tos;
-	struct ip6_hdr *hdr = (struct ip_hdr *)buf;
+	struct ip_hdr *iphd = (struct ip_hdr *)buf;
+	struct ip6_hdr *hdr = (struct ip6_hdr *)iphd;
 
 	tos = IP6H_FL(hdr);
 
@@ -708,7 +710,7 @@ UINT32 rwm_transfer_node(MSDU_NODE_T *node, u8 flag)
 		sta = &sta_info_tab[vif->u.sta.ap_id];
 		if (qos_need_enabled(sta)) {
 			int i;
-			tid = classify8021d(eth_hdr_ptr);
+			tid = classify8021d((u8*)eth_hdr_ptr);
 			/* check admission ctrl */
 			for (i = mac_tid2ac[tid]; i >= 0; i--)
 				if (!(vif->bss_info.edca_param.acm & BIT(i)))
@@ -1098,7 +1100,7 @@ void rwn_mgmt_show_vif_peer_sta_list(UINT8 role)
                     ipptr = dhcp_lookup_mac(macptr);
                 } else if (role == VIF_STA){
                     struct netif *netif = (struct netif *)vif->priv;
-                    ipptr = inet_ntoa(netif->gw);
+                    ipptr = (UINT8 *)inet_ntoa(netif->gw);
                 }
                 
                 os_printf("%d: mac:%02x-%02x-%02x-%02x-%02x-%02x, ip:%s\r\n", num++,

@@ -39,8 +39,15 @@ bk_ble_read_cb_t bk_ble_read_cb = NULL;
 bk_ble_write_cb_t bk_ble_write_cb = NULL;
 ble_role_t ble_role_mode = BLE_ROLE_NONE;
 uint8_t ble_switch_old_state = HW_IDLE;
+uint8_t ble_is_revert_all = 0;
 uint8_t ble_switch_mac_sleeped = 0;
 uint8_t ble_active = 0;
+volatile uint8_t ble_hw_error = 0;
+
+uint32_t rf_wifi_time = 50;
+uint32_t rf_ble_time = 50;
+
+uint8_t rf_user;
 
 typedef struct ble_cfg_st {
     struct bd_addr mac;
@@ -168,18 +175,51 @@ void ble_switch_rf_to_wifi(void)
             nxmac_next_state_setf(ble_switch_old_state);
             while (nxmac_current_state_getf() != ble_switch_old_state);
         }
+		ble_switch_old_state = HW_IDLE;
+    }else if(nxmac_current_state_getf() == HW_ACTIVE){
+		ble_switch_old_state = HW_IDLE;
     }
 
 	if (!power_save_if_rf_sleep())
 	{
         power_save_rf_ps_wkup_semlist_set();
 	}
-    GLOBAL_INT_RESTORE();
+	ble_is_revert_all = 0;
+
 
     //Re-enable MAC interrupts
     nxmac_enable_master_gen_int_en_setf(1);
     nxmac_enable_master_tx_rx_int_en_setf(1);
+    GLOBAL_INT_RESTORE();
 }
+
+
+void ble_used_rf_end(void)
+{
+	GLOBAL_INT_DECLARATION();
+    GLOBAL_INT_DISABLE();
+	if(ble_is_revert_all && (ble_switch_mac_sleeped == 0)){
+		if (ble_switch_old_state != HW_IDLE && nxmac_current_state_getf() == HW_IDLE){
+	        if(ke_state_get(TASK_MM) == MM_ACTIVE){
+	            nxmac_next_state_setf(ble_switch_old_state);
+	            while (nxmac_current_state_getf() != ble_switch_old_state);
+	        }
+	    }else if(nxmac_current_state_getf() == HW_ACTIVE){
+			ble_switch_old_state = HW_IDLE;
+	    }
+
+		if (!power_save_if_rf_sleep()){
+	        power_save_rf_ps_wkup_semlist_set();
+		}
+		//Re-enable MAC interrupts
+		nxmac_enable_master_gen_int_en_setf(1);
+		nxmac_enable_master_tx_rx_int_en_setf(1);
+
+		ble_is_revert_all = 0;
+	}
+	GLOBAL_INT_RESTORE();
+}
+
 
 #define MAX_SKIP_CNT 5
 uint32_t ble_switch_skip_cnt = 0;
@@ -241,15 +281,17 @@ void ble_switch_rf_to_ble(void)
     }
 
     ble_switch_skip_cnt = 0;
-    
-    ble_switch_old_state = nxmac_current_state_getf();
+
+	uint8_t mac_cur_state = nxmac_current_state_getf();
+    ///ble_switch_old_state = nxmac_current_state_getf();
 
     // Ask HW to go to IDLE
-    if (ble_switch_old_state == HW_ACTIVE)
+    ///if (ble_switch_old_state == HW_ACTIVE)
+    if (mac_cur_state == HW_ACTIVE)
     {
         uint32_t i_tmp = 0, y_tmp = 0;
         uint32_t v_tmp;
-        
+        ble_switch_old_state = mac_cur_state;
         // Ask HW to go to IDLE
         if (nxmac_current_state_getf() != HW_IDLE)
         {
@@ -292,9 +334,9 @@ void ble_switch_rf_to_ble(void)
             ble_switch_clear_mac_interrupts();
         }
     }
-    else
-        ble_switch_old_state = HW_IDLE;
-    
+    else{
+       /// ble_switch_old_state = HW_IDLE;
+    }
     sctrl_rf_wakeup();//after swtich ble check if need start rf
     
     sddev_control(SCTRL_DEV_NAME, CMD_BLE_RF_BIT_SET, NULL);
@@ -309,7 +351,7 @@ void ble_switch_rf_to_ble(void)
     }
 
     ble_switch_mac_sleeped = 1;
-
+	ble_is_revert_all = 1;
     GLOBAL_INT_RESTORE();
 
     //PS_DEBUG_RF_UP_TRIGER;
@@ -317,32 +359,36 @@ void ble_switch_rf_to_ble(void)
 
 void ble_request_rf_by_isr(void)
 {
+    extern uint8_t ble_scan_status;
+    if ((BLE_SCAN_CLOSED == ble_scan_status) ||
+		((RF_USER_WIFI == rf_user) && (kernel_state_get(TASK_APP) == APPM_CONNECTED))) {
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_WIFI)
-    if(!ble_dut_flag)
-    {
-    ble_switch_rf_to_ble();
-    }
+        if (!ble_dut_flag) {
+            ble_switch_rf_to_ble();
+        }
 #else
-    if (kernel_state_get(TASK_APP) == APPM_CONNECTED)
-    {
-        ble_switch_rf_to_ble();
-    }
+        if (kernel_state_get(TASK_APP) == APPM_CONNECTED) {
+            ble_switch_rf_to_ble();
+        }
 #endif
+    }
 }
 
 void ble_release_rf_by_isr(void)
 {
+    extern uint8_t ble_scan_status;
+    if ((BLE_SCAN_CLOSED == ble_scan_status) ||
+		(ble_switch_mac_sleeped == 1)) {
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_WIFI)
-    if(!ble_dut_flag)
-    {
-    ble_switch_rf_to_wifi();
-    }
+        if (!ble_dut_flag) {
+            ble_switch_rf_to_wifi();
+        }
 #else
-    if (kernel_state_get(TASK_APP) == APPM_CONNECTED)
-    {
-        ble_switch_rf_to_wifi();
+        if (kernel_state_get(TASK_APP) == APPM_CONNECTED) {
+            ble_switch_rf_to_wifi();
+        }
+#endif
     }
-#endif    
 }
 
 void ble_set_power_up(uint32 up)
@@ -502,14 +548,24 @@ static void ble_main( void *arg )
         os_printf("ble name:%s, %02x:%02x:%02x:%02x:%02x:%02x\r\n", 
             app_dflt_dev_name, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     }
+	GLOBAL_INT_DIS();
+	ble_hw_error = 0;
+	GLOBAL_INT_RES();
 	rw_main();
 
-    rtos_deinit_queue(&ble_msg_que);
-    ble_msg_que = NULL;
+	beken_queue_t _ble_msg_queue_temp = NULL;
+	GLOBAL_INT_DIS();
+	_ble_msg_queue_temp = ble_msg_que;
+	ble_msg_que = NULL;
+	GLOBAL_INT_RES();
 #if (CFG_DEFAULT_RF_USER == CFG_RF_USER_BLE)
     rf_loop = 0;
 #endif
+	GLOBAL_INT_DIS();
     ble_thread_handle = NULL;
+	GLOBAL_INT_RES();
+	rtos_delay_milliseconds(200);
+	rtos_deinit_queue(&_ble_msg_queue_temp);
 	rtos_delete_thread(NULL);
 }
 
@@ -742,6 +798,25 @@ void ble_send_msg(UINT32 data)
     }
 }
 
+void ble_send_msg_front(UINT32 data)
+{
+	OSStatus ret;
+	BLE_MSG_T msg;
+
+	if(data == BLE_MSG_ERROR){
+		ble_hw_error = 1;
+	}
+	if(ble_msg_que) {
+		msg.data = data;
+
+		ret = rtos_push_to_queue_front(&ble_msg_que, &msg, BEKEN_NO_WAIT);
+		if(0 != ret){
+			//os_printf("ble_send_msg failed\r\n");
+		}
+	}
+}
+
+
 int blemsg_is_empty(void)
 {
     if(!rtos_is_queue_empty(&ble_msg_que))
@@ -752,6 +827,14 @@ int blemsg_is_empty(void)
     {
         return 1;
     }
+}
+
+void ble_set_rf_time(uint32_t wifi_time_ms, uint32_t ble_time_ms)
+{
+    GLOBAL_INT_DIS();
+    rf_wifi_time = wifi_time_ms;
+    rf_ble_time = ble_time_ms;
+    GLOBAL_INT_RES();
 }
 
 void ble_update_connection(void)

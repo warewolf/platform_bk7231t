@@ -37,6 +37,32 @@
 #define CFG_TX_EVM_TEST                            0
 #define CFG_RX_SENSITIVITY_TEST                    0
 #define CFG_ROLE_LAUNCH                            1
+#define CFG_USE_WPA_29							   0
+#define CFG_WPA_CTRL_IFACE						   0
+#define CFG_WLAN_FAST_CONNECT                      1
+/* PMF */
+#define CFG_IEEE80211W							   0
+#if CFG_WPA_CTRL_IFACE
+#undef CFG_ROLE_LAUNCH
+#define CFG_ROLE_LAUNCH							   0
+#endif
+#define CFG_WPA3								   1
+#if CFG_WPA3
+/* disable rl, enable ctrl iface, enable wpa29, pmf, sme */
+#undef CFG_ROLE_LAUNCH
+#define CFG_ROLE_LAUNCH                            0
+#undef CFG_WPA_CTRL_IFACE
+#define CFG_WPA_CTRL_IFACE						   1
+#undef CFG_USE_WPA_29
+#define CFG_USE_WPA_29							   1
+#undef CFG_IEEE80211W
+#define CFG_IEEE80211W							   1
+#define CFG_SME								       1
+#define CFG_WPA_CRYPTO_MBEDTLS                     1
+#define CFG_WRAP_LIBC                              1
+#endif
+//#define CFG_MESH								   0
+#define CFG_WFA_CERT							   0
 #define CFG_ENABLE_BUTTON                          0
 #define CFG_UDISK_MP3                              0
 
@@ -70,6 +96,7 @@
 #define CFG_ENABLE_WPA_LOG                         0
 #define CFG_IPERF_TEST                             0
 #define CFG_ENABLE_DEMO_TEST                       0
+#define CFG_PING_COMMAND                           0
 
 /*section 5-----PRODUCT macro config-----*/
 #define CFG_RELEASE_FIRMWARE                       0

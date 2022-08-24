@@ -24,6 +24,7 @@
 */
 
 // standard includes
+#include "rwnx_config.h"
 #include "co_int.h"
 #include "co_bool.h"
 #include "co_utils.h"
@@ -46,6 +47,7 @@ struct mac_report_set;
 struct mac_bss_info;
 struct sm_connect_req;
 struct mm_chan_ctxt_add_req;
+struct sm_assoc_req;
 
 /**
  ****************************************************************************************
@@ -266,7 +268,12 @@ uint16_t me_build_associate_req(uint32_t frame,
                                 uint8_t vif_idx,
                                 uint32_t *ie_addr,
                                 uint16_t *ie_len,
-                                struct sm_connect_req const *con_par);
+#if NX_HOST_SME
+                                struct sm_assoc_req const *con_par
+#else
+                                struct sm_connect_req const *con_par
+#endif
+								);
 
 /**
  ****************************************************************************************

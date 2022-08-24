@@ -738,6 +738,7 @@ struct prism2_hostapd_param {
 				u8 ssid[SSID_MAX_LEN];
 			}ssids[SCAN_SSID_MAX];
 			u8 ssids_num;
+			int freqs[14];		//FIXME: 5G
 		} scan_req;
         
 		struct wpa_scan_results *scan_rst;
@@ -748,8 +749,11 @@ struct prism2_hostapd_param {
 			u8 ssid[SSID_MAX_LEN];
 			u8 proto;
 			u8 auth_alg;
+			u8 mfp;
 			u16 ie_len;
 			u32 ie_buf[64];
+			u16 bcn_len;
+			u8 bcn_buf[0];
 		} assoc_req;
         
 		struct {

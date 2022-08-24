@@ -135,6 +135,7 @@
 
 /// Prefetch time (in us)
 #define LLD_EVT_PREFETCH_TIME_US       (210)
+#define LLD_EVT_PREFETCH_THREHOLD      (50)
 
 /// Define the margin needed to reschedule correctly a scan/adv in case where the interval == window
 /// or if the interval is < LLD_EVT_START_MARGIN

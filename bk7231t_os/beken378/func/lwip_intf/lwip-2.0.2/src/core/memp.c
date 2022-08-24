@@ -520,7 +520,7 @@ void memp_dump_Command( char *pcWriteBuffer, int xWriteBufferLen, int argc, char
 		tmp = (struct memp_desc*)memp_pools[i];
         cmd_printf("%-16s %-5d %-4d 0x%08x %-4d\r\n", 
 			tmp->desc, tmp->num, tmp->stats->used,
-			tmp->base, tmp->size);
+			(unsigned int)tmp->base, tmp->size);
     }
 
 	cmd_printf("===== MEM ======\r\n");

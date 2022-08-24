@@ -97,7 +97,7 @@ static void kmsg_bk_thread_main( void *arg )
 
 static void init_thread_main( void *arg )
 {
-    GLOBAL_INT_START();
+    GLOBAL_INTERRUPT_START();
 
     bk_app_init();
     os_printf("app_init finished\r\n");
@@ -156,9 +156,10 @@ void bmsg_tx_handler(BUS_MSG_T *msg)
     bmsg_ps_handler_rf_ps_mode_real_wakeup();
     bk_wlan_dtim_rf_ps_mode_do_wakeup();
 #endif
-    rwm_transfer(vif_idx, q->payload, q->len, 0, 0);
-tx_handler_exit:
 
+    rwm_transfer(vif_idx, q->payload, q->len, 0, 0);
+
+tx_handler_exit:
     pbuf_free(q);
 }
 
@@ -298,6 +299,7 @@ void ps_msg_process(UINT8 ps_msg)
         break;
 
     case PS_BMSG_IOCTL_RF_DISANABLE:
+        bmsg_ps_handler_rf_ps_mode_real_wakeup();
         power_save_dtim_disable();
         break;
 #endif

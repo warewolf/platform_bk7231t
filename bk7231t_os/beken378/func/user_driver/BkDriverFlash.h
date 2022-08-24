@@ -68,6 +68,7 @@ typedef enum
     BK_PARTITION_OTA,
     BK_PARTITION_RF_FIRMWARE,
     BK_PARTITION_NET_PARAM,
+    BK_PARTITION_USR_CONFIG,
     BK_PARTITION_MAX,
 } bk_partition_t;
 

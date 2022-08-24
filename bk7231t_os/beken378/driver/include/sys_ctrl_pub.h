@@ -140,7 +140,7 @@ enum
 #define PARAM_VSEL_SYS_LDO_MASK                  (0x3)
 
 #if (CFG_SOC_NAME == SOC_BK7231U)
-#define DEFAULT_TXID_XTAL                        (0x19)
+#define DEFAULT_TXID_XTAL                        (0x00)
 #elif (CFG_SOC_NAME == SOC_BK7221U)
 #define DEFAULT_TXID_XTAL                        (0x08)
 #endif // (CFG_SOC_NAME == SOC_BK7231U)

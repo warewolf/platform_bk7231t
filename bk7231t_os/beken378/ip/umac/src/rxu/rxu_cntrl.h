@@ -54,7 +54,11 @@
  * DEFINES
  ****************************************************************************************
  */
-	
+#define WEP_IV_LENGTH                   4
+#define FRM_CTRL_HDR_LENGTH             24
+#define CCMP_HDR_LEN					8
+#define TKIP_HDR_LEN					8
+
 	/// Ethernet Protocol IDs
 	/// IPX over DIX
 #define RX_ETH_PROT_ID_IPX          (0x8137)

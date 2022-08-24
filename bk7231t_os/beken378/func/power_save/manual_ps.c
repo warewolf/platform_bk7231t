@@ -253,6 +253,8 @@ void bk_enter_deep_sleep_mode ( PS_DEEP_CTRL_PARAM *deep_param )
 	sddev_control ( SCTRL_DEV_NAME, CMD_SCTRL_RTOS_DEEP_SLEEP, deep_param );
 	delay ( 5 );
 	GLOBAL_INT_RESTORE();
+	(void)i;
+	(void)param;
 }
 
 #if 0

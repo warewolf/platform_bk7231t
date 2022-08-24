@@ -198,7 +198,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 	bss = conf->last_bss;
     
 	os_strcpy(bss->iface, bss_iface);
-    wifi_get_mac_address((u8*)&bss->bssid, CONFIG_ROLE_AP);
+    wifi_get_mac_address((char*)&bss->bssid, CONFIG_ROLE_AP);
 	/* set default driver based on configuration */
 	conf->driver = wpa_drivers[0];
 	conf->last_bss = conf->bss[0];
@@ -320,6 +320,8 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 		if (bss->conf->bridge[0]) {
 			params.bridge[i] = bss->conf->bridge;
 		}
+#else
+		bss = bss;
 #endif
 	}
 
@@ -353,6 +355,8 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 				wpa_printf(MSG_ERROR, "set_wowlan failed");
 		}
 		os_free(triggs);
+#else	
+		triggs = triggs;
 #endif
 	}
 

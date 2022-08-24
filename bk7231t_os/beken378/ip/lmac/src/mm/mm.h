@@ -740,4 +740,6 @@ void mm_send_csa_traffic_ind(uint8_t vif_index, bool enable);
 
 void mm_hw_ap_disable(void);
 
+extern int32_t get_mm_sta_tbtt_residue_time(void);
+
 #endif // _MM_H_

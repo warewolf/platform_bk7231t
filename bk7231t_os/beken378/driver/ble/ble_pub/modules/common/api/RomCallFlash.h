@@ -63,32 +63,12 @@ struct rom_env_tag
 	
 };
 
-
-
-
-	
-
 void rom_env_init(struct rom_env_tag *api);
 
 //extern struct flash_for_rom_func_tag RcallF_func_list;
 extern struct rom_env_tag rom_env;
 
-
 void lld_bdaddr_init(const struct  bd_addr *addr);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif // __ROM_CALL_FLASH_H_
 
