@@ -507,7 +507,7 @@ void rwm_msdu_init(void)
 }
 
 /*
- * IEEE802.11-2016: Table 10-1—UP-to-AC mappings
+ * IEEE802.11-2016: Table 10-1UP-to-AC mappings
  */
 uint8_t ipv4_ieee8023_dscp(UINT8 *buf)
 {
@@ -558,11 +558,14 @@ uint8_t classify8021d(UINT8 *buf)
 UINT32 rwm_transfer(UINT8 vif_idx, UINT8 *buf, UINT32 len, int sync, void *args)
 {
     UINT32 ret = 0;
-    MSDU_NODE_T *node;
+    MSDU_NODE_T *node = NULL;
     ETH_HDR_PTR eth_hdr_ptr;
 
     ret = RW_FAILURE;
-    node = rwm_tx_node_alloc(len);
+    extern size_t xPortGetFreeHeapSize2(void);
+    if (xPortGetFreeHeapSize2() >= 2048) {
+        node = rwm_tx_node_alloc(len);
+    }
     if(NULL == node)
     {
         #if NX_POWERSAVE

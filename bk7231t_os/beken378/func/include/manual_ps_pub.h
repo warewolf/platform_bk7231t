@@ -1,6 +1,6 @@
 #ifndef _MANUAL_PS_PUB_H_
 #define _MANUAL_PS_PUB_H_
-
+#include "typedef.h"
 
 typedef enum {
     PS_DEEP_WAKEUP_GPIO = 1,

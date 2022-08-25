@@ -175,6 +175,12 @@ size_t xPortGetFreeHeapSize( void )
     tuya_memory_heap_diagnose(s_heap_handle);
 	return tuya_memory_heap_available(s_heap_handle);
 }
+
+size_t xPortGetFreeHeapSize2(void)
+{
+    return tuya_memory_heap_available(s_heap_handle);
+}
+
 /*-----------------------------------------------------------*/
 
 size_t xPortGetMinimumEverFreeHeapSize( void )

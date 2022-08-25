@@ -1043,3 +1043,71 @@ uint32_t rtos_is_scheduler_started(void)
 }
 // eof
 
+extern void fiq_handler();
+extern void _exit(int status);
+OSStatus rtos_print_stack2(beken_thread_t* thread, char* buff, int buff_size)
+{
+    beken_thread_t cur_thread;
+    TaskStatus_t xTaskStatus;
+    uint32_t call_stack_buf[16] = { 0 };
+    uint32_t code_start_addr;
+    uint32_t code_end_addr;
+    uint32_t stack_start_addr;
+    uint32_t stack_end_addr;
+    uint32_t sp;
+    uint32_t pc;
+    int call_stack_index = 0;
+
+    /* TODO: it should be more portable to calculate code space, like _stext _etext */
+    code_start_addr = (uint32_t)fiq_handler;
+    code_end_addr = (uint32_t)(&_exit);
+
+    if (NULL == thread) {
+        cur_thread = rtos_get_current_thread();
+        thread = &cur_thread;
+    }
+
+    memset(&xTaskStatus, 0x00, sizeof(xTaskStatus));
+    vTaskGetInfo(*thread, &xTaskStatus, pdFALSE, eInvalid);
+
+    /**
+     * WARNING: FreeRTOS can't return stack_size or stack_pointer,
+     * since TaskHandle_t -> TCB_t*
+     * and pxTopOfStack is the first member of TCB_t
+     */
+    stack_start_addr = (uint32_t)xTaskStatus.pxStackBase;
+    stack_end_addr = stack_start_addr + 4096*20;
+    sp = *(uint32_t*)(xTaskStatus.xHandle);
+#if portSTACK_GROWTH < 0
+    for (; sp < stack_end_addr; sp += sizeof(size_t))
+#else
+    for (; sp >= stack_start_addr; sp -= sizeof(size_t))
+#endif
+    {
+        pc = *((uint32_t*)sp);
+        /* FreeRTOS using arm other than thumb instruction, so the pc must be an even number */
+        if ((pc & 1) == 0) {
+            // continue;
+        }
+        if (((code_start_addr < pc) && (pc < code_end_addr))
+#if (CFG_SOC_NAME == SOC_BK7231N)
+            || (((uint32_t)&_itcmcode_ram_begin <= pc) && (pc < (uint32_t)&_itcmcode_ram_end))
+#endif
+        ) {
+            call_stack_buf[call_stack_index] = pc;
+            call_stack_index++;
+            if (call_stack_index >= sizeof(call_stack_buf) / sizeof(call_stack_buf[0])) {
+                break;
+            }
+        }
+    }
+    if (call_stack_index > 0) {
+        int index;
+        for (index = 0; index < call_stack_index; index++) {
+            char tmp[16];
+            sprintf(tmp, "%lx ", call_stack_buf[index]);
+            strcat(buff, tmp);
+        }
+    }
+    return kNoErr;
+}
