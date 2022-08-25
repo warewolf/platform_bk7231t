@@ -1921,21 +1921,17 @@ UINT32 rwnx_cal_load_user_rfcali_mode(int *rfcali_mode)
     GLOBAL_INT_RESTORE();
 
     ret = 0;
-    if(param == (UINT32)RF_MODE_AUTOCALI_GPIO_LEVEL)
-    {
-        if(flash != TXPWR_NONE_RD)
-        {
-            mode = CALI_MODE_MANUAL; // manual rf cali
-        }
-        else
-        {
-            mode = CALI_MODE_AUTO; // auto rf cali
-        }
-    }
-    else if(param == (UINT32)RF_MODE_MANULCALI_GPIO_LEVEL)
+
+    if(flash != TXPWR_NONE_RD)
     {
         mode = CALI_MODE_MANUAL; // manual rf cali
     }
+    else
+    {
+        mode = CALI_MODE_AUTO; // auto rf cali
+    }
+    
+
 
     if(rfcali_mode)
     {
