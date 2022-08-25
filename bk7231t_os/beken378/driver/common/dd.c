@@ -25,6 +25,11 @@
 #include "i2c_pub.h"
 #endif
 
+#if CFG_USE_IIC1_ONLY
+#include "i2c_pub.h"
+#endif
+
+
 #if CFG_USE_AUDIO
 #include "audio_pub.h"
 #endif
@@ -71,6 +76,9 @@ static DD_INIT_S dd_init_tbl[] =
 
 #if CFG_USE_SPIDMA
     {SPIDMA_DEV_NAME,       spidma_init,                spidma_uninit},
+#endif
+#if CFG_USE_IIC1_ONLY
+    {I2C1_DEV_NAME,         i2c1_init,                  i2c1_exit},
 #endif
 
 #if CFG_USE_CAMERA_INTF

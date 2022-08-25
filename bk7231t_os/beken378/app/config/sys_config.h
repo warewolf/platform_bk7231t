@@ -142,6 +142,7 @@
 #define CFG_USE_HSLAVE_SPI                         0
 #define CFG_USE_SPIDMA                             0
 #define CFG_USE_CAMERA_INTF                        0
+#define CFG_USE_IIC1_ONLY                          1
 
 /*section 13-----for GENERRAL DMA */
 #define CFG_GENERAL_DMA                            1

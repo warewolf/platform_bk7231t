@@ -11,7 +11,7 @@
 #if CFG_UART2_CLI
 #define os_printf                      bk_printf
 #else
-#define os_printf                      os_null_printf
+#define os_printf                      bk_printf
 #endif
 
 #define warning_prf                    bk_printf

@@ -41,10 +41,11 @@ static const TUYA_OS_QUEUE_INTF m_tuya_os_queue_intfs = {
  * @brief create queue
  *
  * @param[out]     queue      queue to be create
- * @param[in]      size       the deep of the queue
+ * @param[in]      size       the size of the item 
+ * @param[in]      count      the deep of the queue
  * @return  OPRT_OS_ADAPTER_OK: SUCCESS other:fail
  */
-int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size)
+int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size, int count)
 {
     P_QUEUE_MANAGE pQueueManage;
 
@@ -59,7 +60,7 @@ int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size)
         return OPRT_OS_ADAPTER_MALLOC_FAILED;
     }
 
-    pQueueManage->queue = xQueueCreate(size, sizeof(void *));
+    pQueueManage->queue = xQueueCreate(count, size);
     if (pQueueManage->queue == NULL) {
         tuya_os_adapt_system_free(pQueueManage);
         return OPRT_OS_ADAPTER_QUEUE_CREAT_FAILED;
@@ -139,7 +140,7 @@ int tuya_os_adapt_queue_post(QUEUE_HANDLE queue, void *msg, unsigned int timeout
  * @param[in]      timeout    max time to wait for msg(ms), TUYA_OS_ADAPT_QUEUE_FOREVER means forever wait
  * @return  int OPRT_OS_ADAPTER_OK:success    other:fail
  */
-int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void **msg, unsigned int timeout)
+int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void *msg, unsigned int timeout)
 {
     void *dummyptr;
     P_QUEUE_MANAGE pQueueManage;
@@ -153,7 +154,7 @@ int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void **msg, unsigned int timeo
         msg = &dummyptr;
     }
 
-    if (pdTRUE == xQueueReceive(pQueueManage->queue, &(*msg),
+    if (pdTRUE == xQueueReceive(pQueueManage->queue, msg,
                                 (timeout == TUYA_OS_ADAPT_QUEUE_FOREVER) ? portMAX_DELAY : (timeout / tuya_os_adapt_get_tickratems()))) {
         return OPRT_OS_ADAPTER_OK;
     } else { // timed out blocking for message

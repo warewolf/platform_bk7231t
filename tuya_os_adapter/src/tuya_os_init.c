@@ -14,6 +14,7 @@
 #include "tuya_os_adapt_memory.h"
 #include "tuya_os_adapt_thread.h"
 #include "tuya_os_adapt_mutex.h"
+#include "tuya_os_adapt_queue.h"
 #include "tuya_os_adapt_semaphore.h"
 #include "tuya_os_adapt_storge.h"
 #include "tuya_os_adapt_network.h"
@@ -45,6 +46,7 @@ void tuya_os_init(void)
     tuya_os_adapt_reg_network_intf();
     tuya_os_adapt_reg_output_intf();
     tuya_os_adapt_reg_system_intf();
+    tuya_os_adapt_reg_queue_intf();
 
     tuya_os_adapt_reg_wifi_intf();
 #if defined(TY_BT_MOD) && TY_BT_MOD == 1
@@ -62,6 +64,7 @@ void tuya_os_init(void)
 #if defined(TY_RTC) && TY_RTC == 1
     platform_rtc_init();
 #endif
+    extern int platform_iic_init(void);
     platform_iic_init();
 }
 

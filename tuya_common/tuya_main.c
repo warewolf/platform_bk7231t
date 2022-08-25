@@ -272,6 +272,7 @@ void user_main(void)
     // 设备功能初始化前置准备工作，处理一些依赖于基线的基础能力，又需要快速处理的业务
     pre_device_init();
 
+   
     // DB延后初始化
     tuya_iot_kv_flash_init(NULL);
 

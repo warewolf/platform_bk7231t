@@ -21,10 +21,11 @@ extern "C" {
  * @brief create queue
  *
  * @param[out]     queue      queue to be create
- * @param[in]      size       the deep of the queue
+ * @param[in]      size       the size of the item 
+ * @param[in]      count      the deep of the queue
  * @return  OPRT_OS_ADAPTER_OK: SUCCESS other:fail
  */
-int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size);
+int tuya_os_adapt_queue_create_init(QUEUE_HANDLE *queue, int size, int count);
 
 /**
  * @brief free queue
@@ -52,7 +53,7 @@ int tuya_os_adapt_queue_post(QUEUE_HANDLE queue, void *data, unsigned int timeou
  * @param[in]      timeout    max time to wait for msg(ms), TUYA_OS_ADAPT_QUEUE_FOREVER means forever wait
  * @return  int OPRT_OS_ADAPTER_OK:success    other:fail
  */
-int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void **msg, unsigned int timeout);
+int tuya_os_adapt_queue_fetch(QUEUE_HANDLE queue, void *msg, unsigned int timeout);
 
 OPERATE_RET tuya_os_adapt_reg_queue_intf(void);
 
